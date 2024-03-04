@@ -1,0 +1,255 @@
+*{
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+    text-decoration: none;
+}
+
+:root{
+    --lg: #d3d3d3;
+    --dark-teal: #21b892;
+}
+/* width and height for the scrollbar track */
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  
+  /* background color of the scrollbar track */
+  ::-webkit-scrollbar-track {
+    background: rgba(0,0,0,0.1);
+  }
+  
+  /* scrollbar thumb */
+  ::-webkit-scrollbar-thumb {
+    background: #fff;
+  }
+  
+  /* scrollbar thumb on hover */
+  ::-webkit-scrollbar-thumb:hover {
+    background: #fff;
+  }
+
+  css
+  Copy code
+  /* For Firefox */
+  
+  /* width and height for the scrollbar track */
+  /* Note: Firefox doesn't support separately styled scrollbar track */
+  /* So setting width and height for the scrollbar */
+  /* Also, Firefox doesn't support styling of scrollbar thumb on hover */
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: #888 #f1f1f1;
+  }
+
+
+.content-container{
+    min-height: 100vh;
+    width: 100vw;
+}
+
+.main-menu{
+    flex: 1;
+    padding:5px;
+    background: var(--teal);
+    border-right: 2px solid var(--dark-teal);
+}
+.main-menu .menu{
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+.main-menu .menu a{
+    cursor: pointer;
+    color: #fff;
+    padding: 10px;
+}
+.main-menu .menu a svg{
+    margin-top: -5px;
+}
+.main-menu .menu a:hover{
+    background: var(--dark-teal);
+    color: #fff;
+    text-decoration: none;
+}
+.main-menu .menu a.active{
+    background: var(--dark-teal);
+    color: #fff;
+}
+
+/* */
+
+.main-content{
+    flex: 4;
+    height: 100vh;
+    padding: 40px 20px;
+    background: var(--teal);
+}
+.main-content table{
+    width: 100%;
+    ;
+    overflow: auto;
+}
+
+.main-content table td{
+    padding: 5px;
+    color: #fff;
+}
+
+.main-content table thead{
+    background: var(--dark-teal);
+    color: #fff;
+    padding: 5px;
+    position: sticky;
+    top: 0;
+}
+
+/* */
+.buttons-wrapper{
+    width: 100%;
+    display: grid;
+    grid-template-columns: auto auto auto auto auto;
+    row-gap: 20px;
+    column-gap: 20px;
+}
+.buttons-wrapper > div{
+    text-align: center;
+    color: #fff;
+}
+.buttons-wrapper > div p{
+    font-size: 20px;
+}
+.buttons-wrapper > div div{
+    background: var(--dark-teal);
+    min-height: 150px;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+}
+
+/* */
+.notifications{
+    position: fixed;
+    z-index: 5;
+    bottom: 0;
+    left: 0;
+    padding-left: 20px;
+}
+.notifications2{
+    position: fixed;
+    z-index: 5;
+    bottom: 0;
+    left: 0;
+    padding-left: 20px;
+}
+
+/* */
+
+.pop-up-window, .third-layer-overlay{
+    width: 100vw;
+    height: 100vh;
+    position: fixed;
+    top: 0;
+    left: 0;
+    display: grid;
+    place-items: center;
+    z-index: 3;
+    background: rgba(0,0,0,0.2);
+}
+.third-layer-overlay{
+    width: 100vw;
+    height: 100vh;
+    position: fixed;
+    top: 0;
+    left: 0;
+    display: grid;
+    place-items: center;
+    z-index: 4;
+    background: transparent;
+}
+
+.third-layer-overlay .tlo-content{
+    display: grid;
+    grid-template-columns:  auto auto;
+}
+.third-layer-overlay .tlo-content > div{
+    display: flex;
+    flex-direction: column;
+    color: #fff;
+    padding: 10px;
+}
+
+/* */
+.window-content, .tlo-wrapper{
+    background: var(--dark-teal);
+    padding: 20px;
+    box-shadow: 0 0 2px #fff;
+}
+
+.window-content table{
+    width: 100%;
+    overflow: auto;
+}
+
+.window-content form{
+    display: flex;
+    flex-direction: column;
+    width: 400px;
+}
+
+.window-content input, .tlo-content input{
+    padding: 5px 10px;
+    margin-bottom: 5px;
+    border-radius: 4px;
+    border: none;
+}
+
+.window-content table thead{
+    background: var(--teal);
+    color: #fff;
+    padding: 5px;
+    position: sticky;
+    top: 0;
+}
+.window-content table thead td{
+    font-size: 15px;
+}
+.window-content table tbody{
+    color: #fff;
+}
+.window-content table td{
+    padding: 5px;
+    color: #fff;
+    font-size: 14px;
+}
+.window-content .action-button{
+    padding: 5px 15px;
+    border-radius: 4px;
+    background: var(--teal);
+    color: #fff;
+    border: none;
+    font-size: 15px;
+}
+.window-content .company-details-wrapper{
+    display: grid;
+    grid-template-columns: auto auto;
+    row-gap: 30px;
+    column-gap: 30px;
+}
+.window-content .company-details-wrapper > div{
+    min-width: 300px;
+    min-height: 150px;
+    padding: 10px;
+}
+.window-content .company-details-wrapper > div.deductions{
+    grid-column: 1 / span 2;
+}
+.window-content .company-details-wrapper > div > div span{
+    color: #fff;
+}
+.window-content .company-details-wrapper > div > div{
+    display: flex;
+    flex-direction: column;
+    
+}
