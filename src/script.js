@@ -132,7 +132,6 @@ $(".view-staffs").on("click", function(event){
                                 <tr>
                                     <td>NAME</td>
                                     <td>STATUS<td>
-                                    
                                     <td>TOTAL HOURS</td>
                                     <td>DAYS WORKED</td>
                                     <td>RATE</td>
@@ -142,8 +141,7 @@ $(".view-staffs").on("click", function(event){
                                     <td>SSS LOAN</td>
                                     <td>Pag-IBIG LOAN</td>
                                     <td>COMPANY LOAN</td>
-                                    <td>ALLOWANCE</td>
-                                    <td>ACTION</td>
+                                    <td class="text-center">ACTION</td>
                                 </tr>
                             </thead>
                             <tbody id="tbody">
@@ -178,8 +176,10 @@ $(".view-staffs").on("click", function(event){
                     <td>${data[i].sss_loan}</td>
                     <td>${data[i].pag_ibig_loan}</td>
                     <td>${data[i].company_loan}</td>
-                    <td>${data[i].allowance}</td>
-                    <td><button class="action-button" data-id="${data[i].id}" data-snumber="${data[i].serialnumber}" data-name="${data[i].name}">OPEN</button></td>
+                    <td>
+                    <button class="action-button" data-id="${data[i].id}" data-snumber="${data[i].serialnumber}" data-name="${data[i].name}" data-age="${data[i].age}" data-pos="${data[i].position}">DEDUCTIONS</button>
+                    <button class="action-button" data-id="${data[i].id}" data-snumber="${data[i].serialnumber}">RECORDS</button>
+                    </td>
                 </tr>`;
             }
 
@@ -192,8 +192,10 @@ $(".view-staffs").on("click", function(event){
                 let snumber = $(this).data("snumber");
                 let id = $(this).data("id");
                 let name = $(this).data("name");
+                let pos = $(this).data("pos");
+                let age = $(this).data("age");
                 
-                OPEN(snumber, id, name);
+                OPEN(snumber, id, name, age, pos);
             })
 
         }
@@ -210,41 +212,312 @@ $(".settings").on("click", function(event){
                 <div style="flex:1;display:grid;place-items:center;color:#fff;font-size:20px;">PAYROLL SETTINGS</div>
                 <div style="flex:1;height:1px;background:rgba(0,0,0,0.1);"></div>
             </div>
-            <form style="width:100%;">
+            <form style="width:100%;" id="companySettingsForm">
                 <div class="company-details-wrapper">
                     <div>
-                        <p class="text-center text-white">RATES</p>
+                        <p class="text-center text-white">COMPENSATIONS</p>
+                        
                         <div>
-                            <span>:</span>
-                            <input type="number" placeholder="Rate" />
-                            <span>:</span>
-                            <input type="number" placeholder="Rate" />
+                            <span>Allowance:</span>
+                            <input type="number" placeholder="Allowance" name="allowance"/>
+                            <span>Holidays:</span>
+                            <input type="button" id="add-holiday" value="ADD HOLIDAY"/>
                         </div>
                     </div>
                     <div>
-                        <p class="text-center text-white">COMPENSATIONS</p>
-                        <div>
-                            <span>Holidays:</span>
-                            <input type="button" value="ADD HOLIDAY"/>
-                        </div>
-                    </div>
-                    <div class="deductions">
                         <p class="text-center text-white">DEDUCTIONS</p>
                         <div>
                             <span>SSS:</span>
-                            <input type="number" placeholder="SSS deduction"/>
+                            <input type="number" placeholder="SSS deduction" name="sss"/>
                             <span>PhilHealth:</span>
-                            <input type="number" placeholder="PhilHealth deduction"/>
+                            <input type="number" placeholder="PhilHealth deduction" name="phil"/>
                             <span>Pag-IBIG:</span>
-                            <input type="number" placeholder="Pag-IBIG deduction"/>
+                            <input type="number" placeholder="Pag-IBIG deduction" name="pbig"/>
                             <br>
-                            <input type="submit" value="UPDATE"/>
+                            
                         </div>
+                    </div>
+                    <div class="deductions">
+                        <input type="submit" value="UPDATE" style="width:100%;"/>
                     </div>
                 </div>
             </form>
         </div>
     </div>`);
+
+    $.ajax({
+        type: 'GET',
+        url: '../php/fetch_company_settings.php',
+        success: function(res){
+            try {
+                res = JSON.parse(res);
+                $(".pop-up-window input[name='allowance']").val(res[0].allowance);
+                $(".pop-up-window input[name='sss']").val(res[0].sss_deduction);
+                $(".pop-up-window input[name='phil']").val(res[0].philhealth_deduction);
+                $(".pop-up-window input[name='pbig']").val(res[0].pag_ibig_deduction);
+
+            } catch (err) {
+                console.log(err);
+            }
+
+        }
+    })
+
+    $("input[type='submit']").on("click", function(event){
+        event.preventDefault();
+        event.stopImmediatePropagation();
+
+        let data = new FormData(document.getElementById("companySettingsForm"));
+        var formDataObject = {};
+        data.forEach(function(value, key){
+            formDataObject[key] = value;
+        });
+
+        $.ajax({
+            type: 'POST',
+            url: '../php/update_company_settings.php',
+            data: {
+                allowance: formDataObject.allowance,
+                sss: formDataObject.sss,
+                phil: formDataObject.phil,
+                pbig: formDataObject.pbig
+
+            }, success: function(res){
+                if (res == 'success') {
+                    successNotification("Payroll settings updated.", "success");
+                    
+                    $(".pop-up-window").remove();
+                    try {
+                        $(".must").remove();
+
+                    } catch(err){
+                        console.log("");
+                    }
+                }
+            }
+        })
+    })
+
+    $("#add-holiday").on("click", function(event){
+        event.stopImmediatePropagation();
+        document.body.insertAdjacentHTML("afterbegin", `
+        <div class="third-layer-overlay">
+            <div class="tlo-wrapper pt-5">
+                <p class="text-white text-center" style="font-size:20px;">HOLIDAYS</p>
+                <button id="add" style="padding: 5px 15px;
+                border-radius: 4px;
+                background: var(--teal);
+                color: #fff;
+                border: none;
+                font-size: 15px;">ADD</button>
+                <hr>
+                <div class="table-container" style="max-height:60vh;overflow:auto;max-width:30vw;min-width:25vw;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <td>DATE</td>
+                                <td>PERCENTAGE<td>
+                                <td>ACTION</td>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody">
+                            
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>`);
+
+        let container = document.getElementById("tbody");
+        var deleted = false;
+
+        $.ajax({
+            type: 'GET',
+            url: '../php/fetch_holidays.php',
+            success: function(res){
+                try{
+                    let data = JSON.parse(res);
+                    let content = "";
+
+                    while (container.firstChild) {
+                        container.removeChild(container.firstChild);
+                    }
+
+                    for (let i = 0; i < data.length; i++) {
+                        let date = new Date(data[i].holiday_date);
+                        let day = date.getDate();
+                        let month = date.getMonth(); // Note: Months are zero-based in JavaScript
+                        let year = date.getFullYear();
+
+                        // Formatted date string
+                        let formattedDate = `${months[month]} ${day}, ${year}`;
+                        content += `
+                        <tr class="holi-row-${data[i].id}">
+                            <td>${formattedDate}</td>
+                            <td>${data[i].percentage}%</td>
+                            <td>
+                                
+                            </td>
+                            <td>
+                                <button data-id="${data[i].id}" id="delete" class="text-right" style="padding: 5px 15px;
+                                border-radius: 4px;
+                                background: var(--teal);
+                                color: #fff;
+                                border: none;
+                                font-size: 15px;">DELETE</button>
+                            </td>
+                        </tr>`;
+                    }
+
+                    container.insertAdjacentHTML("afterbegin", `${content}`);
+                    deleted = true;
+
+                    $("#delete").on("click", function(event){
+                        event.stopImmediatePropagation();
+                        let id = $(this).data("id");
+
+                        $.ajax({
+                            type: 'POST',
+                            url: '../php/delete_holiday.php',
+                            data: {
+                                id: id,
+                            }, success: function(res){
+                                console.log(res);
+                                if (res == 'deleted') {
+                                    $(`.holi-row-${id}`).remove();
+                                }
+                            }
+                        })
+                    })
+
+                } catch(err){
+                    container.insertAdjacentHTML("afterbegin", `
+                    <tr>
+                        <td colspan="4" class="text-center p-5">No holiday</td>
+                    </tr>`);
+                }
+                
+            }
+        })
+
+        $("#add").on("click", function(event){
+            event.stopImmediatePropagation();
+            document.body.insertAdjacentHTML("afterbegin", `
+            <div class="fourth-layer-overlay">
+                <div class="folo-wrapper pt-5" style="min-width:20vw;">
+                    <p class="text-white text-center" style="font-size:20px;">ADD HOLIDAY</p>
+                    <hr>
+                    <form id="addHolidayForm">
+                        <div style="display:flex;flex-direction:column;color:#fff;">
+                            <span>SELECT DATE:</span>
+                            <input type="date" name="date" required>
+                            <span>PERCENTAGE:  <span id="percentage">0%</span></span>
+                            <input type="number" name="percentage" required>
+                            <input type="submit" value="ADD" style="width:100%;margin-top:10px;"/>
+                        </div>
+                    </form>
+                </div>
+            </div>`);
+
+            $("input[type='submit']").on("click", function(event){
+                
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                
+                let data = new FormData(document.getElementById("addHolidayForm"));
+                var formDataObject = {};
+                let isNotEmpty = true;
+                data.forEach(function(value, key){
+                    formDataObject[key] = value;
+                    if (value === '') {
+                        isNotEmpty = false;
+                    }
+                });
+
+                if (isNotEmpty)  {
+                    $.ajax({
+                        type: 'POST',
+                        url: '../php/add_holiday.php',
+                        data: {
+                            date: formDataObject.date,
+                            percentage: formDataObject.percentage
+                        }, success: function(res){
+                            console.log(res);
+                            try{
+                                res = JSON.parse(res);
+                                if (res.message == 'success') {
+                                    let date = new Date(formDataObject.date);
+                                    let day = date.getDate();
+                                    let month = date.getMonth(); // Note: Months are zero-based in JavaScript
+                                    let year = date.getFullYear();
+    
+                                    // Formatted date string
+                                    let formattedDate = `${months[month]} ${day}, ${year}`;
+                                    
+                                    if (!deleted) {
+                                        while (container.firstChild) {
+                                            container.removeChild(container.firstChild);
+                                        }
+                                        deleted = true;
+                                    }
+                                   
+    
+                                    container.insertAdjacentHTML("afterbegin", `
+                                        <tr class="holi-row-${res.id}">
+                                            <td>${formattedDate}</td>
+                                            <td>${formDataObject.percentage}%</td>
+                                            <td>
+                                                
+                                            </td>
+                                            <td>
+                                                <button data-id="${res.id}" class="text-right" style="padding: 5px 15px;
+                                                border-radius: 4px;
+                                                background: var(--teal);
+                                                color: #fff;
+                                                border: none;
+                                                font-size: 15px;">DELETE</button>
+                                            </td>
+                                        </tr>
+                                    `);
+                                    $(".fourth-layer-overlay").remove();
+                                }
+                            } catch(err){
+                                console.log(err);
+                            }
+                            
+                        }
+                    })
+                } else {
+                    errorNotification("Input fields must be filled out.", "warning");
+                }
+
+                
+            })
+
+            $("input[type='number']").on("keyup", function(event){
+                event.stopImmediatePropagation();
+                $("#percentage").html(" (" + $("input[type='number']").val() + "%)");
+            })
+
+            $(".folo-wrapper").on("click", function(event){
+                event.stopImmediatePropagation();
+            })
+        
+            $(".fourth-layer-overlay").on("click", function(event){
+                event.stopImmediatePropagation();
+                $(this).remove();
+            })
+        })
+
+        $(".tlo-wrapper").on("click", function(event){
+            event.stopImmediatePropagation();
+        })
+    
+        $(".third-layer-overlay").on("click", function(event){
+            event.stopImmediatePropagation();
+            $(this).remove();
+        })
+    })
 
     $(".window-content").on("click", function(event){
         event.stopImmediatePropagation();
@@ -255,7 +528,7 @@ $(".settings").on("click", function(event){
     })
 })
 
-function OPEN(snumber, id, name) {
+function OPEN(snumber, id, name, age, position) {
     $.ajax({
         type: 'POST',
         data: {
@@ -272,12 +545,11 @@ function OPEN(snumber, id, name) {
                 <div class="third-layer-overlay">
                     <div class="tlo-wrapper pt-5">
                         <p class="text-white text-center" style="font-size:20px;">${name}</p>
+                        <p class="text-white text-center" style="font-size:13px;margin-top:-20px;">${age} | ${position}</p>
                         <hr>
                         <form style="width:100%;" id="staffSettings">
                             <div class="tlo-content">
                                 <div>
-                                    <span>ALLOWANCE:</span>
-                                    <input type="number" name="allowance" value="${data.allowance}" placeholder="Allowance"/>
                                     <span>CHARGES:</span>
                                     <input type="number" name="charges" value="${data.charges}" placeholder="Charges"/>
                                     <span>ADJUSTMENT:</span>
@@ -317,7 +589,6 @@ function OPEN(snumber, id, name) {
                         data: {
                             id: id,
                             serialnumber: snumber,
-                            allowance: formDataObject.allowance,
                             charges: formDataObject.charges,
                             adjustment: formDataObject.adjustment,
                             cash_advance: formDataObject.cashad,

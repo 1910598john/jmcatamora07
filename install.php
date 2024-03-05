@@ -55,7 +55,6 @@
 		sss_loan int(11) NOT NULL,
 		pag_ibig_loan int(11) NOT NULL,
 		company_loan int(11) NOT NULL,
-		allowance int(11) NOT NULL,
 		total_hours float(10) NOT NULL,
 		days_worked float(10) NOT NULL,
 		hours_worked_today float(10) NOT NULL,
@@ -71,10 +70,10 @@
 	$sql = "CREATE TABLE IF NOT EXISTS company_settings (
 		id int(6) NOT NULL AUTO_INCREMENT PRIMARY KEY,
 		company_id int(11) NOT NULL,
-		total_employees int(10) NOT NULL,
 		sss_deduction int(10) NOT NULL,
 		philhealth_deduction int(10) NOT NULL,
 		pag_ibig_deduction int(10) NOT NULL,
+		allowance int(20) NOT NULL
 	)";
 
 	if ($conn->query($sql) === TRUE) {
@@ -82,6 +81,21 @@
 	} else {
 	    echo "Error creating table: " . $conn->error;
 	}
+
+	$sql = "CREATE TABLE IF NOT EXISTS company_holidays (
+		id int(6) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+		company_id int(11) NOT NULL,
+		holiday_date DATE,
+		percentage float(10)
+
+	)";
+
+	if ($conn->query($sql) === TRUE) {
+	    echo "<br>Table created successfully";
+	} else {
+	    echo "Error creating table: " . $conn->error;
+	}
+
 
 	$sql = "CREATE TABLE IF NOT EXISTS staffs_trail (
 		id int(6) NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -91,6 +105,9 @@
 		hours_worked float(10) NOT NULL,
 		start_time DATETIME,
 		end_time DATETIME,
+		total_hours float(10) NOT NULL,
+		ot_min int(10) NOT NULL,
+		ut_min int(10) NOT NULL,
 		date DATE
 	)";
 

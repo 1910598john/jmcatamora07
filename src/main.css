@@ -146,7 +146,7 @@
 
 /* */
 
-.pop-up-window, .third-layer-overlay{
+.pop-up-window, .third-layer-overlay, .fourth-layer-overlay{
     width: 100vw;
     height: 100vh;
     position: fixed;
@@ -158,16 +158,19 @@
     background: rgba(0,0,0,0.2);
 }
 .third-layer-overlay{
-    width: 100vw;
-    height: 100vh;
-    position: fixed;
-    top: 0;
-    left: 0;
-    display: grid;
-    place-items: center;
     z-index: 4;
-    background: transparent;
+    background: transparent !important;
 }
+.fourth-layer-overlay {
+    z-index: 5;
+    background: transparent !important;
+}
+.fourth-layer-overlay .folo-wrapper{
+    background: var(--dark-teal);
+    padding: 20px;
+    box-shadow: 0 0 2px #fff;
+}
+
 
 .third-layer-overlay .tlo-content{
     display: grid;
@@ -187,7 +190,7 @@
     box-shadow: 0 0 2px #fff;
 }
 
-.window-content table{
+.window-content table, .tlo-wrapper table{
     width: 100%;
     overflow: auto;
 }
@@ -198,32 +201,36 @@
     width: 400px;
 }
 
-.window-content input, .tlo-content input{
+.window-content input, .tlo-content input, .folo-wrapper input{
     padding: 5px 10px;
     margin-bottom: 5px;
     border-radius: 4px;
     border: none;
 }
 
-.window-content table thead{
+input[type='submit'], input[type='button']{
+    color: var(--dark-teal) !important;
+}
+
+.window-content table thead, .tlo-wrapper table thead{
     background: var(--teal);
     color: #fff;
     padding: 5px;
     position: sticky;
     top: 0;
 }
-.window-content table thead td{
+.window-content table thead td, .tlo-wrapper  table thead td{
     font-size: 15px;
 }
 .window-content table tbody{
     color: #fff;
 }
-.window-content table td{
+.window-content table td, .tlo-wrapper table td{
     padding: 5px;
     color: #fff;
     font-size: 14px;
 }
-.window-content .action-button{
+.window-content .action-button, .tlo-wrapper .action-button{
     padding: 5px 15px;
     border-radius: 4px;
     background: var(--teal);
@@ -244,6 +251,7 @@
 }
 .window-content .company-details-wrapper > div.deductions{
     grid-column: 1 / span 2;
+    min-height: 50px !important;
 }
 .window-content .company-details-wrapper > div > div span{
     color: #fff;
