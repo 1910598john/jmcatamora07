@@ -13,14 +13,14 @@ if ($conn->connect_error) {
 
 session_start();
 
-if (isset($_POST['serialnumber'])) {
-    $status = $_POST['status'];
-    $serialnumber = $_POST['serialnumber'];
+if (isset($_POST['serial'])) {
+
+    $serialnumber = $_POST['serial'];
     $company_id = $_SESSION['companyid'];
-    $sql = "UPDATE staffs SET status = '". $status ."' WHERE serialnumber = '" . $serialnumber . "' AND company_id = '$company_id'";
+
+    $sql = "DELETE FROM notice WHERE serialnumber = '" . $serialnumber . "' AND company_id = '$company_id'";
 
     if ($conn->query($sql) === TRUE) {
-      $_SESSION['time_logged'] = $status;
       echo "success";
     } 
 }

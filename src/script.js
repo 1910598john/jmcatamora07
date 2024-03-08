@@ -62,6 +62,233 @@ $(document).ready(function(){
     </div>`);
 })
 
+
+//
+$(".payroll").on("click", function(event){
+    event.stopImmediatePropagation();
+
+    $.ajax({
+        type: 'POST',
+        url: '../php/staffs.php',
+        success: function(res){
+            let content = "";
+            let responseBody;
+            try {
+                res = JSON.parse(res);
+                console.log(res);
+                responseBody = res;
+                for (let i = 0; i < res.length; i++) {
+                    content += `
+                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                        <td>${res[i].name}</td>
+                        <td>${res[i].position}</td>
+                        <td>${res[i].department}</td>
+                        <td>${res[i].rate}</td>
+                        <td>${res[i].total_hours}</td>
+                        <td><input type="number" id="cal${res[i].serialnumber}" style="margin-bottom:-1px;" placeholder="Enter calendar working days"/></td>
+                        <td id="gross-pay${res[i].serialnumber}">0</td>
+                        <td id="net-pay${res[i].serialnumber}">0</td>
+                        <td><button class="action-button mr-1 compute-salary" data-id="${res[i].serialnumber}">COMPUTE</button><button class="action-button view-details">VIEW DETAILS</button></td>
+                    </tr>`;
+                }
+
+            } catch(err) {
+                console.log(err);
+            }
+            document.body.insertAdjacentHTML("afterbegin", `
+            <div class="pop-up-window">
+                <div class="window-content pt-5">
+                    <p class="text-center text-white" style="font-size:20px;">PAYROLL</p>
+                    <div class="payroll-header-buttons" style="display:flex;justify-content:space-between;"><button class="action-button m-1">COMPUTE ALL</button></div>
+                    <hr>
+                    <div class="table-container" style="max-height:60vh;overflow:auto;max-width:70vw;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <td>NAME OF EMPLOYEE</td>
+                                    <td>POSITION</td>
+                                    <td>DEPARTMENT</td>
+                                    <td>DAILY RATE</td>
+                                    <td>TOTAL HOURS</td>
+                                    <td>CALENDAR WORKING DAYS</td>
+                                    <td>GROSS PAY</td>
+                                    <td>NET PAY</td>
+                                    <td class="text-center">ACTION</td>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody">
+                                ${content}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>`);
+
+            $(".compute-salary").on("click", function(event){
+                event.stopImmediatePropagation();
+                let id = $(this).data("id");
+                
+                if ($(`#cal${id}`).val() === '') {
+                    errorNotification("Please enter calendar working days.", "warning");
+                }
+                else {
+                    $.ajax({
+                        type: 'POST',
+                        url: '../php/fetch_company_settings.php',
+                        success: function(res){
+                            try{
+                                res = JSON.parse(res);
+                                let settings = res;
+                                let staff_data;
+
+                                $.ajax({
+                                    type: 'POST',
+                                    url: '../php/fetch_ut_and_ot.php',
+                                    data: {
+                                        serialnumber: id,
+                                    },
+                                    success: function(res){
+                                        try {
+                                            res = JSON.parse(res);
+                                            console.log(res);
+                                        } catch(err){
+                                            console.log(err);
+                                        }
+                                    }
+                                })
+                                
+                                if (responseBody != null) {
+                                    var foundItem = responseBody.find(item => item.serialnumber === `${id}`);
+                                    
+                                    staff_data = foundItem;
+                                    
+                                    let calendarWorkingDays = parseInt($(`#cal${id}`).val());
+
+                                }
+                                
+                            } catch(err){
+                                console.log(err);
+                            }
+                            
+                        }
+                    })
+                }
+            })
+
+            $(".view-details").on("click", function(event){
+                event.stopImmediatePropagation();
+                document.body.insertAdjacentHTML("afterbegin", `
+                <div class="third-layer-overlay">
+                    <div class="tlo-wrapper pt-5">
+                        <p class="text-white text-center" style="font-size:20px;">JUSTINE</p>
+                        <p class="text-white text-center"  style="font-size:13px;margin-top:-20px;">23 | Programmer</p>
+                        <div class="payroll-header-buttons" style="display:flex;justify-content:space-between;"><button class="action-button m-1">VIEW HOLIDAYS</button></div>
+                        <hr>
+                        <div class="table-container" style="max-height:40vh;overflow:auto;max-width:60vw;min-width:30vw;">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <td>NAME</td>
+                                        <td>VALUE</td>
+                                    </tr>
+                                </thead>
+                                <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                                    <td>DAILY RATE</td>
+                                    <td>395</td>
+                                </tr>
+                                <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                                    <td>TOTAL HOURS</td>
+                                    <td>84.2</td>
+                                </tr>
+                                <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                                    <td>CALENDAR WORKING DAYS</td>
+                                    <td>12</td>
+                                </tr>
+                                <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                                    <td>DAYS WORKED</td>
+                                    <td>10.5</td>
+                                </tr>
+                                <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                                    <td>HOLIDAYS (TOTAL)</td>
+                                    <td>800</td>
+                                </tr>
+                                <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                                    <td>OT (TOTAL)</td>
+                                    <td>100</td>
+                                </tr>
+                                <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                                    <td>UT (TOTAL)</td>
+                                    <td>200</td>
+                                </tr>
+                                <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                                    <td>SSS DEDUC.</td>
+                                    <td>100</td>
+                                </tr>
+                                <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                                    <td>PhiliHealth DEDUC.</td>
+                                    <td>100</td>
+                                </tr>
+                                <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                                    <td>Pag-IBIG DEDUC.</td>
+                                    <td>100</td>
+                                </tr>
+                                <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                                    <td>ADJUSTMENT</td>
+                                    <td>0</td>
+                                </tr>
+                                <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                                    <td>CASH ADVANCE</td>
+                                    <td>2500</td>
+                                </tr>
+                                <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                                    <td>CHARGES</td>
+                                    <td>0</td>
+                                </tr>
+                                <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                                    <td>SSS LOAN</td>
+                                    <td>0</td>
+                                </tr>
+                                <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                                    <td>Pag-IBIG LOAN</td>
+                                    <td>0</td>
+                                </tr>
+                                <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                                    <td>COMPANY LOAN</td>
+                                    <td>0</td>
+                                </tr>
+                                <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                                    <td>ALLOWANCE</td>
+                                    <td>1200</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>`);
+                $(".third-layer-overlay").on("click", function(event){
+                    event.stopImmediatePropagation();
+                    $(this).remove();
+                })
+                $(".tlo-wrapper").on("click", function(event){
+                    event.stopImmediatePropagation();
+                })
+
+            })
+
+            $(".pop-up-window").on("click", function(event){
+                event.stopImmediatePropagation();
+                $(this).remove();
+            })
+
+            $(".window-content").on("click", function(event){
+                event.stopImmediatePropagation();
+            })
+        }
+    })
+
+
+    
+})
+
 //management
 $(".add-staff").on("click", function(event){
     event.stopImmediatePropagation();
@@ -82,7 +309,7 @@ $(".add-staff").on("click", function(event){
                 <input type="text" placeholder="Phone number" name="phone" autocomplete="off">
                 <input type="text" placeholder="Position" name="position" autocomplete="off">
                 <input type="text" placeholder="Department" name="department" autocomplete="off">
-                <input type="number" placeholder="Rate" name="rate" autocomplete="off">
+                <input type="number" placeholder="Daily Rate" name="rate" autocomplete="off">
 
                 <div style="display: flex;align-items: center;margin-top:10px;">
                     <div style="flex:1;height:1px;background:rgba(0,0,0,0.1);"></div>
@@ -131,10 +358,10 @@ $(".view-staffs").on("click", function(event){
                             <thead>
                                 <tr>
                                     <td>NAME</td>
-                                    <td>STATUS<td>
+                                    <td>STATUS</td>
                                     <td>TOTAL HOURS</td>
-                                    <td>DAYS WORKED</td>
-                                    <td>RATE</td>
+                                    <td>DAYS PRESENT</td>
+                                    <td>DAILY RATE</td>
                                     <td>ADJUSTMENT</td>
                                     <td>CHARGES</td>
                                     <td>CASH ADV.</td>
@@ -166,9 +393,9 @@ $(".view-staffs").on("click", function(event){
                 content += `
                 <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
                     <td>${data[i].name}</td>
-                    <td>${data[i].status}<td>
+                    <td>${data[i].status}</td>
                     <td>${totalHours} hrs</td>
-                    <td>${data[i].days_worked}</td>
+                    <td>${data[i].days_worked} day(s)</td>
                     <td>${data[i].rate}</td>
                     <td>${data[i].adjustment}</td>
                     <td>${data[i].charges}</td>
@@ -176,9 +403,10 @@ $(".view-staffs").on("click", function(event){
                     <td>${data[i].sss_loan}</td>
                     <td>${data[i].pag_ibig_loan}</td>
                     <td>${data[i].company_loan}</td>
-                    <td>
-                    <button class="action-button" data-id="${data[i].id}" data-snumber="${data[i].serialnumber}" data-name="${data[i].name}" data-age="${data[i].age}" data-pos="${data[i].position}">DEDUCTIONS</button>
-                    <button class="action-button" data-id="${data[i].id}" data-snumber="${data[i].serialnumber}">RECORDS</button>
+                    <td style="display:grid;grid-template-columns: auto auto auto;column-gap:5px;">
+                        <button class="action-button add-deductions" data-id="${data[i].id}" data-snumber="${data[i].serialnumber}" data-name="${data[i].name}" data-age="${data[i].age}" data-pos="${data[i].position}">DEDUCTIONS</button>
+                        <button class="action-button" data-id="${data[i].id}" data-snumber="${data[i].serialnumber}">TRAIL</button>
+                        <button class="action-button" data-id="${data[i].id}" data-snumber="${data[i].serialnumber}">RECORDS</button>
                     </td>
                 </tr>`;
             }
@@ -187,7 +415,7 @@ $(".view-staffs").on("click", function(event){
             document.getElementById("tbody").insertAdjacentHTML("afterbegin", `${content}`);
             $("#num-of-staffs").html(data.length);
 
-            $(".action-button").on("click", function(event){
+            $(".add-deductions").on("click", function(event){
                 event.stopImmediatePropagation();
                 let snumber = $(this).data("snumber");
                 let id = $(this).data("id");
@@ -215,16 +443,6 @@ $(".settings").on("click", function(event){
             <form style="width:100%;" id="companySettingsForm">
                 <div class="company-details-wrapper">
                     <div>
-                        <p class="text-center text-white">COMPENSATIONS</p>
-                        
-                        <div>
-                            <span>Allowance:</span>
-                            <input type="number" placeholder="Allowance" name="allowance"/>
-                            <span>Holidays:</span>
-                            <input type="button" id="add-holiday" value="ADD HOLIDAY"/>
-                        </div>
-                    </div>
-                    <div>
                         <p class="text-center text-white">DEDUCTIONS</p>
                         <div>
                             <span>SSS:</span>
@@ -237,6 +455,17 @@ $(".settings").on("click", function(event){
                             
                         </div>
                     </div>
+                    <div>
+                        <p class="text-center text-white">COMPENSATIONS</p>
+                        
+                        <div>
+                            <span>Allowance:</span>
+                            <input type="number" placeholder="Allowance" name="allowance"/>
+                            <span>Holidays:</span>
+                            <input type="button" id="add-holiday" value="ADD HOLIDAY"/>
+                        </div>
+                    </div>
+                    
                     <div class="deductions">
                         <input type="submit" value="UPDATE" style="width:100%;"/>
                     </div>
@@ -412,7 +641,7 @@ $(".settings").on("click", function(event){
                             <span>SELECT DATE:</span>
                             <input type="date" name="date" required>
                             <span>PERCENTAGE:  <span id="percentage">0%</span></span>
-                            <input type="number" name="percentage" required>
+                            <input type="number" name="percentage" placeholder="Percentage" required>
                             <input type="submit" value="ADD" style="width:100%;margin-top:10px;"/>
                         </div>
                     </form>

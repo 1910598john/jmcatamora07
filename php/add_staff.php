@@ -31,20 +31,13 @@ if (isset($_POST['name'])) {
 
     if ($stmt->execute()) {
         echo "success";
-        updateCompanySettings($company_id, $conn);
+   
         
     } else {
         echo "An error occured!";
     }
 }
 
-function updateCompanySettings($company_id, $conn){
-    $sql = "UPDATE company_settings SET total_employees = total_employees + 1 WHERE company_id = '$company_id'";
-
-    if ($conn->query($sql) === TRUE) {
-        
-    }
-}
 
 $conn->close();
 ?>

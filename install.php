@@ -58,7 +58,10 @@
 		total_hours float(10) NOT NULL,
 		days_worked float(10) NOT NULL,
 		hours_worked_today float(10) NOT NULL,
-		status varchar(10) NOT NULL
+		status varchar(10) NOT NULL,
+		ut_total float(11) NOT NULL,
+		ot_total float(11) NOT NULL,
+		date DATE
 	)";
 
 	if ($conn->query($sql) === TRUE) {
@@ -106,8 +109,26 @@
 		start_time DATETIME,
 		end_time DATETIME,
 		total_hours float(10) NOT NULL,
-		ot_min int(10) NOT NULL,
-		ut_min int(10) NOT NULL,
+		ot_total float(10) NOT NULL,
+		ut_total float(10) NOT NULL,
+		date DATE
+	)";
+
+	if ($conn->query($sql) === TRUE) {
+	    echo "<br>Table created successfully";
+	} else {
+	    echo "Error creating table: " . $conn->error;
+	}
+
+	$sql = "CREATE TABLE IF NOT EXISTS notice (
+		id int(6) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+		company_id int(11) NOT NULL,
+		name varchar (30) NOT NULL,
+		serialnumber int(11) NOT NULL,
+		position varchar(30) NOT NULL,
+		department varchar(30) NOT NULL,
+		contact_number varchar(20) NOT NULL,
+		notice_message varchar(100) NOT NULL,
 		date DATE
 	)";
 

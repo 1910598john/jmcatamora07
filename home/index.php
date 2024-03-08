@@ -6,6 +6,8 @@ $username = "root";
 $password = "";
 $dbname = "payroll";
 
+date_default_timezone_set('Asia/Manila');
+
 // Create connection
 $conn = new mysqli($servername, $username, $password, $dbname);
 // Check connection
@@ -15,6 +17,16 @@ if ($conn->connect_error) {
 
 if (!(isset($_SESSION['username']))) {
     header('Location: ../');
+}
+
+$sql = "SELECT date FROM attendance WHERE company_id = '". $_SESSION['companyid'] . "' ORDER BY id DESC LIMIT 1";
+$result = $conn->query($sql);
+
+if ($result->num_rows > 0) {
+    $row = $result->fetch_assoc();
+    $date = $row['date'];
+
+    
 }
 
 ?>
@@ -175,6 +187,7 @@ if (isset($_SESSION["time_logged"])) {
 ?>
 </div>
 <script src="./script.js"></script>
+<script src="../src/notice.js"></script>
 </body>
 </html>
 

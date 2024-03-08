@@ -36,7 +36,6 @@ function onMessage(event) {
                     id: id,
                 }, 
                 success: function(res){
-                  
                     try{
                         let data = JSON.parse(res);
                         let name = data[0].name;
@@ -45,7 +44,6 @@ function onMessage(event) {
                         let status = data[0].status;
                         
                         if (status == 'Not set' || status == 'NOT SET') {
-                            
                             $.ajax({
                                 type: 'POST',
                                 url: '../php/attendance.php',
@@ -54,26 +52,13 @@ function onMessage(event) {
                                     name: name,
                                     pos: pos,
                                     dept: department,
-                                    status: "IN",
-
+                                    status: "IN",   
                                 },success: function(res){
                                     console.log(res);
                                     if (res == 'success') {
-                                        $.ajax({
-                                            type: 'POST',
-                                            url: '../php/update_employee_status.php',
-                                            data : {
-                                                serialnumber: id,
-                                                status: "IN",
-                                            }, success: function(res){
-                                                if (res == 'success') {
-                                                    
-                                                    setTimeout(() => {
-                                                        location.reload();
-                                                    }, 1000);
-                                                } 
-                                            }
-                                        })
+                                        setTimeout(() => {
+                                            location.reload();
+                                        }, 1000);
                                     }
                                 }
                             })
@@ -94,21 +79,9 @@ function onMessage(event) {
                                     },success: function(res){
                                         console.log(res);
                                         if (res == 'success') {
-                                            $.ajax({
-                                                type: 'POST',
-                                                url: '../php/update_employee_status.php',
-                                                data : {
-                                                    serialnumber: id,
-                                                    status: "OUT",
-                                                }, success: function(res){
-                                                    if (res == 'success') {
-                                                        
-                                                        setTimeout(() => {
-                                                            location.reload();
-                                                        }, 1000);
-                                                    } 
-                                                }
-                                            })
+                                            setTimeout(() => {
+                                                location.reload();
+                                            }, 1000);
                                         }
                                     }
                                 })
@@ -126,21 +99,9 @@ function onMessage(event) {
                                     },success: function(res){
                                         console.log(res);
                                         if (res == 'success') {
-                                            $.ajax({
-                                                type: 'POST',
-                                                url: '../php/update_employee_status.php',
-                                                data : {
-                                                    serialnumber: id,
-                                                    status: "IN",
-                                                }, success: function(res){
-                                                    if (res == 'success') {
-                                                        
-                                                        setTimeout(() => {
-                                                            location.reload();
-                                                        }, 1000);
-                                                    } 
-                                                }
-                                            })
+                                            setTimeout(() => {
+                                                location.reload();
+                                            }, 1000);
                                         }
                                     }
                                 })

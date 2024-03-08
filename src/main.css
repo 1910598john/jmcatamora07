@@ -201,7 +201,7 @@
     width: 400px;
 }
 
-.window-content input, .tlo-content input, .folo-wrapper input{
+.window-content input, .tlo-wrapper input, .folo-wrapper input{
     padding: 5px 10px;
     margin-bottom: 5px;
     border-radius: 4px;
@@ -222,6 +222,7 @@ input[type='submit'], input[type='button']{
 .window-content table thead td, .tlo-wrapper  table thead td{
     font-size: 15px;
 }
+
 .window-content table tbody{
     color: #fff;
 }
@@ -261,3 +262,47 @@ input[type='submit'], input[type='button']{
     flex-direction: column;
     
 }
+
+#notice{
+    animation: notice 2s infinite forwards;
+    animation-direction: alternate;
+    cursor: pointer;
+}
+
+@keyframes notice {
+    from{
+        bottom: 40px;
+    } to {
+        bottom: 20px;
+    }
+}
+
+.tooltiptext {
+    visibility: hidden;
+    width: 100px;
+    background-color: orange;
+    text-align: center;
+    color: #fff;
+    border-radius: 6px;
+    padding: 5px 0;
+    position: absolute;
+    z-index: 2;
+    bottom: 150%;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  
+  .tooltiptext::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: orange transparent transparent transparent;
+  }
+  
+  #notice:hover .tooltiptext {
+    visibility: visible;
+  }

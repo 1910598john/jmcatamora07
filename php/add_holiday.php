@@ -27,8 +27,8 @@ if (isset($_POST['date'])) {
     $data = array();
 
     if ($stmt->execute()) {
-        $data["message"] = "success";
-        $data["id"] = $conn->insert_id;
+      $data["message"] = "success";
+      $data["id"] = $conn->insert_id;
     } 
 
     echo json_encode($data);
