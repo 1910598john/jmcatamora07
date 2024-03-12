@@ -190,7 +190,7 @@
     box-shadow: 0 0 2px #fff;
 }
 
-.window-content table, .tlo-wrapper table{
+.window-content table, .tlo-wrapper table, .folo-wrapper table{
     width: 100%;
     overflow: auto;
 }
@@ -212,7 +212,7 @@ input[type='submit'], input[type='button']{
     color: var(--dark-teal) !important;
 }
 
-.window-content table thead, .tlo-wrapper table thead{
+.window-content table thead, .tlo-wrapper table thead, .folo-wrapper table thead{
     background: var(--teal);
     color: #fff;
     padding: 5px;
@@ -226,7 +226,7 @@ input[type='submit'], input[type='button']{
 .window-content table tbody{
     color: #fff;
 }
-.window-content table td, .tlo-wrapper table td{
+.window-content table td, .tlo-wrapper table td, .folo-wrapper  table td{
     padding: 5px;
     color: #fff;
     font-size: 14px;

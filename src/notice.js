@@ -38,8 +38,7 @@ $(document).ready(function() {
     })
 
     checkNotice();
-
-
+    
     function checkNotice() {
         $.ajax({
             type: 'GET',
@@ -83,7 +82,7 @@ $(document).ready(function() {
                                                 <td>${res[i].notice_message}</td>
                                                 <td>${res[i].date}</td>
                                                 <td class="text-center">
-                                                    <button class="action-button solve" data-name="${res[i].name}" data-pos="${res[i].position}" data-dept="${res[i].department}" data-serialnumber="${res[i].serialnumber}" data-date="${res[i].date}">SOLVE</button>
+                                                    <button class="action-button solve" data-name="${res[i].name}" data-pos="${res[i].position}" data-dept="${res[i].department}" data-serialnumber="${res[i].serialnumber}" data-date="${res[i].date}">RESOLVE</button>
                                                 </td>
                                             </tr>
                                         `;
@@ -157,7 +156,7 @@ $(document).ready(function() {
                                             document.body.insertAdjacentHTML("afterbegin", `
                                             <div class="third-layer-overlay">
                                                 <div class="tlo-wrapper pt-5" style="min-width:400px;color:#fff;">
-                                                    <p class="text-white text-center" style="font-size:20px;">SOLVE NOTICE</p>
+                                                    <p class="text-white text-center" style="font-size:20px;">RESOLVE NOTICE</p>
                                                     <hr>
                                                     <form style="width:100%;display:flex;flex-direction:column;" id="noticeForm">
                                                         <span id="hr" class="text-center">(hours worked)</span>
@@ -167,7 +166,7 @@ $(document).ready(function() {
                                                         <span>ENTER TIME OUT:</span>
                                                         <input type="time" name="time"/>
                                                         <br>
-                                                        <input type="submit" value="SOLVE"/>
+                                                        <input type="submit" value="RESOLVE"/>
                                                     </form>
                                                 </div>
                                             </div>`);
@@ -217,7 +216,7 @@ $(document).ready(function() {
                                                         console.log("attendance: " + res);
                                                         if (res == 'success') {
                                                             
-                                                            successNotification("Missed time out solved.", "success");
+                                                            successNotification("Missed time out resolved.", "success");
                                                             $(".third-layer-overlay").remove();
                                                             $(`#notice-row${serialnumber}`).remove();
                                                             $.ajax({

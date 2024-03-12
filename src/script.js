@@ -63,6 +63,174 @@ $(document).ready(function(){
 })
 
 
+var salary_details;
+
+
+function computeSalary(id, responseBody) {
+    $.ajax({
+        type: 'POST',
+        url: '../php/fetch_company_settings.php',
+        success: function(res){
+            try{
+                res = JSON.parse(res);
+                let settings = res;
+                let staff_data;
+
+                let ot_total = 0;
+                let ut_total = 0;
+                
+
+                $.ajax({
+                    type: 'POST',
+                    url: '../php/fetch_ut_and_ot.php',
+                    data: {
+                        serialnumber: id,
+                    },
+                    success: function(res){
+                        try {
+                            res = JSON.parse(res);
+                            for (let i = 0; i < res.length; i++) {
+                                ot_total += parseFloat(res[i].ot_total);
+                                ut_total += parseFloat(res[i].ut_total);
+                            }
+
+                        } catch(err){
+                            console.log(err);
+                        }
+
+                        $.ajax({
+                            type: 'POST',
+                            url: '../php/fetch_holidays.php',
+                            success: function(res){
+
+                                let holidays_total = 0;
+
+                                if (responseBody != null) {
+                                    var foundItem = responseBody.find(item => item.serialnumber === `${id}`);
+                                    
+                                    staff_data = foundItem;
+                                    
+                                    let calendarWorkingDays = parseInt($(`#cal${id}`).val());
+                                    let rate = parseInt(staff_data.rate);
+
+
+                                    try {
+                                        res = JSON.parse(res);
+    
+                                        for (let i = 0; i < res.length; i++) {
+                                            let percentage = parseFloat(res[i].percentage) / 100;
+                                            holidays_total += (rate * percentage);
+                                        }
+    
+                                        console.log("HOLIDAYS TOTALLL: " + holidays_total);
+                                        
+                                        
+                                    } catch(err) {
+                                        console.log(err);
+                                    }
+
+
+
+                                    let total_hours = parseFloat(staff_data.total_hours);
+
+                                    let salary_rate = calendarWorkingDays * rate;
+                                    let days_worked = total_hours /  8;
+                                    
+                                    let basic = days_worked * rate;
+                                    basic = basic.toFixed(2);
+                                    let absent = salary_rate - basic;
+
+                                    let grossPay = 0;
+                                    grossPay = salary_rate - absent;
+                                    grossPay = grossPay - ut_total;
+                                    basic = grossPay;
+                                    grossPay = grossPay + holidays_total;
+                                    grossPay = grossPay + ot_total;
+                            
+                                    $(`#gross-pay${id}`).html(grossPay.toLocaleString());
+
+                                    let allowance = settings[0].allowance;
+                                    let sss_deduction = settings[0].sss_deduction;
+                                    let ph = settings[0].philhealth_deduction;
+                                    let pbig = settings[0].pag_ibig_deduction;
+                                    let adjustment = staff_data.adjustment;
+                                    let CA = staff_data.cash_advance;
+                                    let charges = staff_data.charges;
+                                    let sss_loan = staff_data.sss_loan;
+                                    let pbig_loan = staff_data.pag_ibig_loan;
+                                    let company_loan = staff_data.company_loan;
+
+                                    let netPay = 0;
+                                    let allowance_deduction;
+
+                                    if ($(`#allowance-deduc`).val() === '') {
+                                        allowance_deduction = 0;
+                                    } else {
+                                        let percentDeduc = parseFloat($(`#allowance-deduc`).val());
+                                        let absent_days = calendarWorkingDays - days_worked;
+                                        let deduc = absent_days * percentDeduc;
+                                        percentDeduc = deduc / 100;
+                                        
+                                        allowance_deduction = allowance * percentDeduc;
+                                    }
+
+                                    allowance = allowance - allowance_deduction;
+
+                                    netPay = grossPay;
+                                    netPay = netPay - sss_deduction;
+                                    netPay = netPay - ph;
+                                    netPay = netPay - pbig;
+                                    netPay = netPay - adjustment;
+                                    netPay = netPay - CA;
+                                    netPay = netPay - charges;
+                                    netPay = netPay - sss_loan;
+                                    netPay = netPay - pbig_loan;
+                                    netPay = netPay - company_loan;
+                                    netPay = netPay + allowance;
+                                    
+                                    $(`#net-pay${id}`).html(netPay.toLocaleString());
+
+                                    salary_details = {
+                                        allowance_deduction: allowance_deduction,
+                                        netPay: netPay,
+                                        grossPay: grossPay,
+                                        salary_rate: salary_rate,
+                                        rate: rate,
+                                        calendarWorkingDays: calendarWorkingDays,
+                                        days_worked: days_worked,
+                                        total_hours: total_hours,
+                                        absent: absent,
+                                        holidays_total: holidays_total,
+                                        ot_total: ot_total,
+                                        ut_total: ut_total,
+                                        sss_deduction: sss_deduction,
+                                        philhealth_deduction: ph,
+                                        pag_ibig_deduction: pbig,
+                                        adjustment: adjustment,
+                                        cash_advance: CA,
+                                        charges: charges,
+                                        sss_loan: sss_loan,
+                                        pbig_loan: pbig_loan,
+                                        company_loan: company_loan,
+                                        allowance: allowance
+                                    };
+                                }
+                                
+                            }
+                        })
+                    }
+                })
+                
+                
+                
+            } catch(err){
+                console.log(err);
+            }
+            
+        }
+    })
+}
+
 //
 $(".payroll").on("click", function(event){
     event.stopImmediatePropagation();
@@ -73,10 +241,13 @@ $(".payroll").on("click", function(event){
         success: function(res){
             let content = "";
             let responseBody;
+            let staffs_len
             try {
                 res = JSON.parse(res);
                 console.log(res);
                 responseBody = res;
+                staffs_len = res.length;
+                
                 for (let i = 0; i < res.length; i++) {
                     content += `
                     <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
@@ -88,18 +259,21 @@ $(".payroll").on("click", function(event){
                         <td><input type="number" id="cal${res[i].serialnumber}" style="margin-bottom:-1px;" placeholder="Enter calendar working days"/></td>
                         <td id="gross-pay${res[i].serialnumber}">0</td>
                         <td id="net-pay${res[i].serialnumber}">0</td>
-                        <td><button class="action-button mr-1 compute-salary" data-id="${res[i].serialnumber}">COMPUTE</button><button class="action-button view-details">VIEW DETAILS</button></td>
+                        <td><button class="action-button mr-1 compute-salary" data-id="${res[i].serialnumber}">COMPUTE SALARY</button>
+                        <button class="action-button mr-1 payslip${res[i].serialnumber} generate-payslip" data-id="${res[i].serialnumber}" style="background:orange;display:none;">GENERATE PAYSLIP</button>
+                        <button class="action-button view-details" data-id="${res[i].serialnumber}" data-name="${res[i].name}" data-age="${res[i].age}" data-position="${res[i].position}">VIEW DETAILS</button></td>
                     </tr>`;
                 }
-
+                
             } catch(err) {
                 console.log(err);
             }
+
             document.body.insertAdjacentHTML("afterbegin", `
             <div class="pop-up-window">
                 <div class="window-content pt-5">
                     <p class="text-center text-white" style="font-size:20px;">PAYROLL</p>
-                    <div class="payroll-header-buttons" style="display:flex;justify-content:space-between;"><button class="action-button m-1">COMPUTE ALL</button></div>
+                    <div class="payroll-header-buttons" style="display:flex;justify-content:space-between;"><div style="color:#fff;display:flex;flex-direction:column;">Allowance deduc. (per day): <input type="number" id="allowance-deduc" style="margin-bottom:-1px;" placeholder="Enter percentage"/></div><div style="color:#fff;display:flex;flex-direction:column;">No. of Employees: <span class="text-center">${staffs_len}</span></div></div>
                     <hr>
                     <div class="table-container" style="max-height:60vh;overflow:auto;max-width:70vw;">
                         <table>
@@ -127,151 +301,228 @@ $(".payroll").on("click", function(event){
             $(".compute-salary").on("click", function(event){
                 event.stopImmediatePropagation();
                 let id = $(this).data("id");
+
                 
                 if ($(`#cal${id}`).val() === '') {
                     errorNotification("Please enter calendar working days.", "warning");
                 }
+
                 else {
-                    $.ajax({
-                        type: 'POST',
-                        url: '../php/fetch_company_settings.php',
-                        success: function(res){
-                            try{
-                                res = JSON.parse(res);
-                                let settings = res;
-                                let staff_data;
-
-                                $.ajax({
-                                    type: 'POST',
-                                    url: '../php/fetch_ut_and_ot.php',
-                                    data: {
-                                        serialnumber: id,
-                                    },
-                                    success: function(res){
-                                        try {
-                                            res = JSON.parse(res);
-                                            console.log(res);
-                                        } catch(err){
-                                            console.log(err);
-                                        }
-                                    }
-                                })
-                                
-                                if (responseBody != null) {
-                                    var foundItem = responseBody.find(item => item.serialnumber === `${id}`);
-                                    
-                                    staff_data = foundItem;
-                                    
-                                    let calendarWorkingDays = parseInt($(`#cal${id}`).val());
-
-                                }
-                                
-                            } catch(err){
-                                console.log(err);
-                            }
-                            
-                        }
-                    })
+                    computeSalary(id, responseBody);
+                    $(this).remove();
+                    $(`.payslip${id}`).css("display", "inline");
                 }
+            })
+
+            $(".generate-payslip").on("click", function(event){
+                event.stopImmediatePropagation();
+                alert('test');
             })
 
             $(".view-details").on("click", function(event){
                 event.stopImmediatePropagation();
-                document.body.insertAdjacentHTML("afterbegin", `
-                <div class="third-layer-overlay">
-                    <div class="tlo-wrapper pt-5">
-                        <p class="text-white text-center" style="font-size:20px;">JUSTINE</p>
-                        <p class="text-white text-center"  style="font-size:13px;margin-top:-20px;">23 | Programmer</p>
-                        <div class="payroll-header-buttons" style="display:flex;justify-content:space-between;"><button class="action-button m-1">VIEW HOLIDAYS</button></div>
-                        <hr>
-                        <div class="table-container" style="max-height:40vh;overflow:auto;max-width:60vw;min-width:30vw;">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <td>NAME</td>
-                                        <td>VALUE</td>
-                                    </tr>
-                                </thead>
-                                <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
-                                    <td>DAILY RATE</td>
-                                    <td>395</td>
-                                </tr>
-                                <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
-                                    <td>TOTAL HOURS</td>
-                                    <td>84.2</td>
-                                </tr>
-                                <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
-                                    <td>CALENDAR WORKING DAYS</td>
-                                    <td>12</td>
-                                </tr>
-                                <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
-                                    <td>DAYS WORKED</td>
-                                    <td>10.5</td>
-                                </tr>
-                                <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
-                                    <td>HOLIDAYS (TOTAL)</td>
-                                    <td>800</td>
-                                </tr>
-                                <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
-                                    <td>OT (TOTAL)</td>
-                                    <td>100</td>
-                                </tr>
-                                <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
-                                    <td>UT (TOTAL)</td>
-                                    <td>200</td>
-                                </tr>
-                                <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
-                                    <td>SSS DEDUC.</td>
-                                    <td>100</td>
-                                </tr>
-                                <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
-                                    <td>PhiliHealth DEDUC.</td>
-                                    <td>100</td>
-                                </tr>
-                                <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
-                                    <td>Pag-IBIG DEDUC.</td>
-                                    <td>100</td>
-                                </tr>
-                                <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
-                                    <td>ADJUSTMENT</td>
-                                    <td>0</td>
-                                </tr>
-                                <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
-                                    <td>CASH ADVANCE</td>
-                                    <td>2500</td>
-                                </tr>
-                                <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
-                                    <td>CHARGES</td>
-                                    <td>0</td>
-                                </tr>
-                                <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
-                                    <td>SSS LOAN</td>
-                                    <td>0</td>
-                                </tr>
-                                <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
-                                    <td>Pag-IBIG LOAN</td>
-                                    <td>0</td>
-                                </tr>
-                                <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
-                                    <td>COMPANY LOAN</td>
-                                    <td>0</td>
-                                </tr>
-                                <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
-                                    <td>ALLOWANCE</td>
-                                    <td>1200</td>
-                                </tr>
-                            </table>
-                        </div>
-                    </div>
-                </div>`);
-                $(".third-layer-overlay").on("click", function(event){
-                    event.stopImmediatePropagation();
-                    $(this).remove();
-                })
-                $(".tlo-wrapper").on("click", function(event){
-                    event.stopImmediatePropagation();
-                })
+                let id = $(this).data("id");
+                let name = $(this).data("name");
+                let position = $(this).data("position");
+                let age = $(this).data("age");
 
+                if ($(`#cal${id}`).val() === '') {
+                    errorNotification("Please enter calendar working days.", "warning");
+                } else {
+                    computeSalary(id, responseBody);
+                    document.body.insertAdjacentHTML("afterbegin", `
+                    <div class="third-layer-overlay">
+                        <div class="tlo-wrapper pt-5">
+                            <p class="text-white text-center" style="font-size:20px;">${name}</p>
+                            <p class="text-white text-center"  style="font-size:13px;margin-top:-20px;">${age} | ${position}</p>
+                            <div class="payroll-header-buttons" style="display:flex;justify-content:space-between;"><button class="action-button m-1 view-holidays">VIEW HOLIDAYS</button></div>
+                            <hr>
+                            <div class="table-container" style="max-height:40vh;overflow:auto;max-width:60vw;min-width:30vw;">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <td>NAME</td>
+                                            <td>VALUE</td>
+                                        </tr>
+                                    </thead>
+                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                                        <td>DAILY RATE</td>
+                                        <td>${parseFloat(salary_details.rate).toLocaleString()}</td>
+                                    </tr>
+                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                                        <td>SALARY RATE</td>
+                                        <td>${parseFloat(salary_details.salary_rate).toLocaleString()}</td>
+                                    </tr>
+                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                                        <td>CALENDAR WORKING DAYS</td>
+                                        <td>${salary_details.calendarWorkingDays}</td>
+                                    </tr>
+                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                                        <td>TOTAL HOURS</td>
+                                        <td>${salary_details.total_hours}</td>
+                                    </tr>
+                                    
+                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                                        <td>DAYS WORKED</td>
+                                        <td>${parseFloat(salary_details.days_worked).toFixed(2)}</td>
+                                    </tr>
+                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                                        <td>ABSENT (TOTAL)</td>
+                                        <td>- ${salary_details.absent}</td>
+                                    </tr>
+                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                                        <td>UT (TOTAL)</td>
+                                        <td>- ${salary_details.ut_total}</td>
+                                    </tr>
+                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                                        <td>HOLIDAYS (TOTAL)</td>
+                                        <td>+ ${salary_details.holidays_total}</td>
+                                    </tr>
+                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                                        <td>OT (TOTAL)</td>
+                                        <td>+ ${salary_details.ot_total}</td>
+                                    </tr>
+                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);background:#fff;">
+                                        <td style="color:var(--dark-teal) !important;">GROSS PAY</td>
+                                        <td style="color:var(--dark-teal) !important;">${parseFloat(salary_details.grossPay).toLocaleString()}</td>
+                                    </tr>
+                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                                        <td>SSS DEDUC.</td>
+                                        <td>- ${salary_details.sss_deduction}</td>
+                                    </tr>
+                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                                        <td>PhilHealth DEDUC.</td>
+                                        <td>- ${salary_details.philhealth_deduction}</td>
+                                    </tr>
+                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                                        <td>Pag-IBIG DEDUC.</td>
+                                        <td>- ${salary_details.pag_ibig_deduction}</td>
+                                    </tr>
+                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                                        <td>ADJUSTMENT</td>
+                                        <td>- ${salary_details.adjustment}</td>
+                                    </tr>
+                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                                        <td>CASH ADVANCE</td>
+                                        <td>- ${salary_details.cash_advance}</td>
+                                    </tr>
+                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                                        <td>CHARGES</td>
+                                        <td>- ${salary_details.charges}</td>
+                                    </tr>
+                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                                        <td>SSS LOAN</td>
+                                        <td>- ${salary_details.sss_loan}</td>
+                                    </tr>
+                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                                        <td>Pag-IBIG LOAN</td>
+                                        <td>- ${salary_details.pbig_loan}</td>
+                                    </tr>
+                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                                        <td>COMPANY LOAN</td>
+                                        <td>- ${salary_details.company_loan}</td>
+                                    </tr>
+                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                                        <td>ALLOWANCE</td>
+                                        <td>+ ${salary_details.allowance}</td>
+                                    </tr>
+                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);background:#fff;">
+                                        <td style="color:var(--dark-teal) !important;">NET PAY</td>
+                                        <td style="color:var(--dark-teal) !important;">${parseFloat(salary_details.netPay).toLocaleString()}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>`);
+
+                    $(".view-holidays").on("click", function(event){
+                        event.stopImmediatePropagation();
+                        document.body.insertAdjacentHTML("afterbegin", `
+                        <div class="fourth-layer-overlay">
+                            <div class="folo-wrapper pt-5" style="min-width:20vw;">
+                                <p class="text-white text-center" style="font-size:20px;">HOLIDAYS</p>
+                                <hr>
+                                <div class="table-container" style="max-height:60vh;overflow:auto;max-width:30vw;min-width:25vw;">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <td>DATE</td>
+                                                <td>PERCENTAGE<td>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="tbody">
+                                            
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>`);
+
+                        let container = document.getElementById("tbody");
+
+
+                        $.ajax({
+                            type: 'GET',
+                            url: '../php/fetch_holidays.php',
+                            success: function(res){
+                                try{
+                                    let data = JSON.parse(res);
+                                    let content = "";
+
+                                    while (container.firstChild) {
+                                        container.removeChild(container.firstChild);
+                                    }
+
+                                    for (let i = 0; i < data.length; i++) {
+                                        let date = new Date(data[i].holiday_date);
+                                        let day = date.getDate();
+                                        let month = date.getMonth(); // Note: Months are zero-based in JavaScript
+                                        let year = date.getFullYear();
+
+                                        // Formatted date string
+                                        let formattedDate = `${months[month]} ${day}, ${year}`;
+                                        content += `
+                                        <tr class="holi-row-${data[i].id}">
+                                            <td>${formattedDate}</td>
+                                            <td>${data[i].percentage}%</td>
+                                            <td>
+                                            </td>
+                                        </tr>`;
+                                    }
+
+                                    container.insertAdjacentHTML("afterbegin", `${content}`);
+
+                                } catch(err){
+                                    container.insertAdjacentHTML("afterbegin", `
+                                    <tr>
+                                        <td colspan="4" class="text-center p-5 text-white">No holiday</td>
+                                    </tr>`);
+                                }
+                            }
+                        });
+
+                        $(".fourth-layer-overlay").on("click", function(event){
+                            event.stopImmediatePropagation();
+                            $(this).remove();
+                        })
+    
+                        $(".folo-wrapper").on("click", function(event){
+                            event.stopImmediatePropagation();
+                        })
+                    })
+
+                    $(".third-layer-overlay").on("click", function(event){
+                        event.stopImmediatePropagation();
+                        $(this).remove();
+                    })
+
+                    $(".tlo-wrapper").on("click", function(event){
+                        event.stopImmediatePropagation();
+                    })
+
+                }
+
+                
             })
 
             $(".pop-up-window").on("click", function(event){
@@ -346,7 +597,7 @@ $(".view-staffs").on("click", function(event){
         type: 'GET',
         url: '../php/staffs.php',
         success:function(res){
-            console.log(res);
+           
             let data = JSON.parse(res);
             let content = ""; 
             document.body.insertAdjacentHTML("afterbegin", `
@@ -405,8 +656,7 @@ $(".view-staffs").on("click", function(event){
                     <td>${data[i].company_loan}</td>
                     <td style="display:grid;grid-template-columns: auto auto auto;column-gap:5px;">
                         <button class="action-button add-deductions" data-id="${data[i].id}" data-snumber="${data[i].serialnumber}" data-name="${data[i].name}" data-age="${data[i].age}" data-pos="${data[i].position}">DEDUCTIONS</button>
-                        <button class="action-button" data-id="${data[i].id}" data-snumber="${data[i].serialnumber}">TRAIL</button>
-                        <button class="action-button" data-id="${data[i].id}" data-snumber="${data[i].serialnumber}">RECORDS</button>
+                        <button class="action-button view-records" data-id="${data[i].id}" data-snumber="${data[i].serialnumber}">RECORDS</button>
                     </td>
                 </tr>`;
             }
@@ -424,6 +674,76 @@ $(".view-staffs").on("click", function(event){
                 let age = $(this).data("age");
                 
                 OPEN(snumber, id, name, age, pos);
+            })
+
+            $(".view-records").on("click", function(event){
+                event.stopImmediatePropagation();
+
+                let content = "";
+
+                $.ajax({
+                    type: 'POST',
+                    url: '../php/fetch_records.php',
+                    data: {
+                        serialnumber: `${$(this).data("snumber")}`,
+                    },
+                    success: function(res){
+
+                        try {
+                            res = JSON.parse(res);
+
+                            for (let i = 0; i < res.length; i++) {
+                                content += `
+                                <tr>
+                                    <td>${res[i].name}</td>
+                                    <td>${parseFloat(res[i].hours_worked).toFixed(2)} hrs</td>
+                                    <td>${res[i].start_time}</td>
+                                    <td>${res[i].end_time}</td>
+                                    <td>${res[i].ot_total}</td>
+                                    <td>${res[i].ut_total}</td>
+                                    <td>${res[i].date}</td>
+                                </tr>`;
+                            }
+                            
+                            document.body.insertAdjacentHTML("afterbegin", `
+                            <div class="third-layer-overlay">
+                                <div class="tlo-wrapper pt-5">
+                                    <p class="text-white text-center" style="font-size:20px;">RECORDS</p>
+                                    <hr>
+                                    <div class="table-container" style="max-height:60vh;overflow:auto;max-width:50vw;min-width:25vw;">
+                                        <table>
+                                            <thead>
+                                                <tr>
+                                                    <td>NAME</td>
+                                                    <td>HOURS WORKED</td>
+                                                    <td>START TIME</td>
+                                                    <td>END TIME</td>
+                                                    <td>OT (TOTAL)</td>
+                                                    <td>UT (TOTAL)</td>
+                                                    <td>DATE</td>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="tbody">
+                                                ${content}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>`);
+                            $(".third-layer-overlay").on("click", function(event){
+                                $(this).remove();
+                            })
+                            $(".tlo-wrapper").on("click", function(event){
+                                event.stopImmediatePropagation();
+    
+                            })
+                        } catch(err){
+                            errorNotification("No records.", "warning");
+                        }
+                        
+                    }
+                })
+                
             })
 
         }
@@ -452,12 +772,10 @@ $(".settings").on("click", function(event){
                             <span>Pag-IBIG:</span>
                             <input type="number" placeholder="Pag-IBIG deduction" name="pbig"/>
                             <br>
-                            
                         </div>
                     </div>
                     <div>
                         <p class="text-center text-white">COMPENSATIONS</p>
-                        
                         <div>
                             <span>Allowance:</span>
                             <input type="number" placeholder="Allowance" name="allowance"/>
@@ -465,7 +783,6 @@ $(".settings").on("click", function(event){
                             <input type="button" id="add-holiday" value="ADD HOLIDAY"/>
                         </div>
                     </div>
-                    
                     <div class="deductions">
                         <input type="submit" value="UPDATE" style="width:100%;"/>
                     </div>
@@ -488,7 +805,6 @@ $(".settings").on("click", function(event){
             } catch (err) {
                 console.log(err);
             }
-
         }
     })
 

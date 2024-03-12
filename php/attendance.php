@@ -1,5 +1,4 @@
 <?php
-
 date_default_timezone_set('Asia/Manila');
 
 $servername = "localhost";
@@ -22,6 +21,7 @@ if (isset($_POST['serialnumber'], $_POST['name'], $_POST['pos'], $_POST['dept'],
   $pos = $_POST['pos'];
   $dept = $_POST['dept'];
   $status = $_POST['status'];
+
   if (isset($_POST['companyid'])) {
     $company_id = $_POST['companyid'];
   } else {
@@ -42,14 +42,10 @@ if (isset($_POST['serialnumber'], $_POST['name'], $_POST['pos'], $_POST['dept'],
     $stmt->bind_param("sssisi", $name, $pos, $dept, $serialnumber, $status, $company_id);
   }
 
-
   if ($stmt->execute()) {
     
-   
     UPDATESTAFFSTATUS($conn, $serialnumber, $company_id, $status);
     UPDATESTAFF($conn, $serialnumber, $company_id);
-    
-    
 
     if ($status == "OUT") {
       calculateDaysWorked($conn, $serialnumber, $company_id);
@@ -188,7 +184,6 @@ function getHourWorkedToday($serialnumber, $conn, $company_id){
   return 0;
 }
 
-
 function checkIfSameDay($conn, $serialnumber, $company_id){
   $sql = "SELECT date FROM attendance WHERE serialnumber = '$serialnumber' AND company_id = '$company_id' AND status = 'OUT' ORDER BY id DESC LIMIT 1";
   $result = $conn->query($sql);
@@ -208,14 +203,14 @@ function checkIfSameDay($conn, $serialnumber, $company_id){
   return false;
 }
 
-function updateStaffWorkedHours($serial, $company_id, $conn, $hoursWorked, $id, $totalMinutesWorked, $id2, $isSameDay){
+function updateStaffWorkedHours($serial, $company_id, $conn, $hoursWorked, $id, $totalMinutesWorked, $id2, $isSameDay2){
   $hour_worked_today = getHourWorkedToday($serial, $conn, $company_id);
   $isSameDay = checkIfSameDay($conn, $serial, $company_id);
 
   if (isset($_POST['date'])) {
     $sql = "UPDATE staffs SET total_hours = total_hours + $hoursWorked, hours_worked_today = $hour_worked_today WHERE company_id = '$company_id' AND serialnumber = '$serial'";
     if ($conn->query($sql) === TRUE) {
-      updateTotalWorkedToday($conn, $hour_worked_today, $company_id, $serial, $id, $totalMinutesWorked, $id2, $isSameDay);
+      updateTotalWorkedToday($conn, $hour_worked_today, $company_id, $serial, $id, $totalMinutesWorked, $id2, $isSameDay2);
     }
   } else {
     if (!$isSameDay) {
@@ -227,7 +222,7 @@ function updateStaffWorkedHours($serial, $company_id, $conn, $hoursWorked, $id, 
     } else {
       $sql = "UPDATE staffs SET total_hours = total_hours + $hoursWorked, hours_worked_today = $hour_worked_today WHERE company_id = '$company_id' AND serialnumber = '$serial'";
       if ($conn->query($sql) === TRUE) {
-        updateTotalWorkedToday($conn, $hour_worked_today, $company_id, $serial, $id, $totalMinutesWorked, $id2, $isSameDay);
+        updateTotalWorkedToday($conn, $hour_worked_today, $company_id, $serial, $id, $totalMinutesWorked, $id2, $isSameDay2);
       }
     }
   }
@@ -241,14 +236,14 @@ function UPDATEOTANDUTVALUE($conn, $serial, $company_id, $id) {
   }
 }
 
-function updateTotalWorkedToday($conn, $hour_worked_today, $company_id, $serial, $id, $totalMinutesWorked, $id2, $isSameDay){
+function updateTotalWorkedToday($conn, $hour_worked_today, $company_id, $serial, $id, $totalMinutesWorked, $id2, $isSameDay2){
 
   $rate = GETSTAFFRATE($conn, $serial, $company_id);
   $rate = intval($rate);
 
   $per_hour = $rate / 8;
   $per_min = $per_hour / 60;
-  
+
   $ot = 0;
   $ut = 0;
 
@@ -261,13 +256,12 @@ function updateTotalWorkedToday($conn, $hour_worked_today, $company_id, $serial,
   }
 
   $sql = "UPDATE staffs_trail SET total_hours = total_hours + $hour_worked_today, ot_total = '$ot', ut_total = '$ut' WHERE company_id = '$company_id' AND serialnumber = '$serial' AND id = '$id'";
- 
+
   if ($conn->query($sql) === TRUE) {
-    if ($isSameDay) {
+    if ($isSameDay2) {
       UPDATEOTANDUTVALUE($conn, $serial, $company_id, $id2);
     }
   }
-  
 }
 
 function checkIfSameDayST($conn, $serialnumber, $company_id){
@@ -286,7 +280,6 @@ function checkIfSameDayST($conn, $serialnumber, $company_id){
       return array('id' => $row['id'], 'isSameDay' => false);
     }
   }
-  return array('id' => "1", 'isSameDay' => false);
 }
 
 function updateHoursWorkedTodayToZero($conn, $serial, $company_id){
