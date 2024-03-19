@@ -30,19 +30,16 @@ if (isset($_POST['username']) && isset($_POST['password']) && isset($_POST['name
         $companyid = $_POST['companyid'];
     }
     
-    $company_name = "NOT SET";
-    $company_address = "NOT SET";
-
 
     //encrypt password
     $ciphering = "AES-128-CTR";
     $option = 0;
     $encryption_iv = "1234567890123456";
-    $encryption_key = "12345";
+    $encryption_key = "1910598";
     $encrypted_data = openssl_encrypt($pass, $ciphering, $encryption_key, $option, $encryption_iv);
 
-    $sql = "INSERT INTO payroll_admin (name, username, password, registered_id, serialnumber, machine_id, company_id, company_name, company_add)
-    VALUES ('$name', '$user_name', '$encrypted_data', '$registered_id', '$serialnumber', '$machine_id', '$companyid', '$company_name', '$company_address')";
+    $sql = "INSERT INTO payroll_admin (name, username, password, registered_id, serialnumber, machine_id, company_id)
+    VALUES ('$name', '$user_name', '$encrypted_data', '$registered_id', '$serialnumber', '$machine_id', '$companyid')";
 
     if ($conn->query($sql) === TRUE) {
         echo "success";

@@ -133,6 +133,7 @@ function loginAdmin(){
                 password: formDataObject.password
             },
             success: function(res){
+                console.log(res);
                 if (res == 'success') {
                     $("input[type='text'], input[type='password'], input[type='number']").val('');
                     successNotification("You have successfully logged in.", "success");

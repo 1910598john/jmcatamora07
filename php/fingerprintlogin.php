@@ -24,7 +24,7 @@ if (isset($_POST['id'])) {
       $ciphering = "AES-128-CTR";
       $option = 0;
       $decryption_iv = "1234567890123456";
-      $decryption_key = "12345";
+      $decryption_key = "1910598";
       $decrypted_data = openssl_decrypt($row['password'], $ciphering, $decryption_key, $option, $decryption_iv);
 
       $row['password'] = $decrypted_data;

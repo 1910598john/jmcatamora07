@@ -3,23 +3,32 @@
 // Start and end timestamps
 date_default_timezone_set('Asia/Manila');
 
-$startTimestamp = strtotime("2024-03-01 09:10:01");
-$endTimestamp = strtotime("2024-03-01 00:45:34");
+$currentWeekday = strtolower(date('l'));
+echo $currentWeekday;
 
-// Convert timestamps to DateTime objects
-$startTime = new DateTime("@$startTimestamp");
-$endTime = new DateTime("@$endTimestamp");
+// $startTimestamp = strtotime("2024-03-01 07:30:00");
+// $endTimestamp = strtotime("2024-03-01 07:35:34");
 
-// Calculate the difference between the two timestamps
-$interval = $startTime->diff($endTime);
+// // Check if end timestamp is before start timestamp
+// if ($endTimestamp < $startTimestamp) {
+//     echo "End timestamp is before start timestamp. Difference is negative.";
+// } else {
+//     // Convert timestamps to DateTime objects
+//     $startTime = new DateTime("@$startTimestamp");
+//     $endTime = new DateTime("@$endTimestamp");
 
-// Calculate the total hours worked
-$totalHoursWorked = $interval->h;
+//     // Calculate the difference between the two timestamps
+//     $interval = $startTime->diff($endTime);
 
-// Add minutes to the total hours worked
-$totalHoursWorked += $interval->i / 60;
+//     // Calculate the total hours worked
+//     $totalHoursWorked = $interval->h;
 
-$totalMinutesWorked = round($totalHoursWorked * 60);
+//     // Add minutes to the total hours worked
+//     $totalHoursWorked += $interval->i / 60;
 
-echo $totalMinutesWorked - 480;
+//     $totalMinutesWorked = round($totalHoursWorked * 60);
+
+//     echo "Total minutes worked: $totalMinutesWorked";
+// }
+
 ?>

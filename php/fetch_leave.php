@@ -8,28 +8,29 @@ $dbname = "payroll";
 $conn = new mysqli($servername, $username, $password, $dbname);
 // Check connection
 if ($conn->connect_error) {
-  die("Connection failed: " . $conn->connect_error);
+    die("Connection failed: " . $conn->connect_error);
 }
 
 session_start();
+if (isset($_POST['serial'])) {
+    $serial = $_POST['serial'];
 
-if (isset($_POST['id'])) {
-    $id = $_POST['id'];
-
-    $sql = "SELECT name, class, position, department, status FROM staffs WHERE serialnumber = '". $id . "' AND company_id = '". $_SESSION['companyid'] . "'";
+    $sql = "SELECT leave_start, leave_end, paid_leave FROM staffs WHERE company_id = '". $_SESSION['companyid'] . "' AND serialnumber = '$serial'";
     $result = $conn->query($sql);
-    
-    $data = array();
 
     if ($result->num_rows > 0) {
+    // output data of each row
+       
         $row = $result->fetch_assoc();
-        //output data of each row
+       
+        $data = array();
         $data[] = $row;
 
         echo json_encode($data);
-    } 
-
+        
+    } else {
+        echo "none";
+    }
 }
-
 $conn->close();
 ?>

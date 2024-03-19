@@ -13,20 +13,19 @@ if ($conn->connect_error) {
 
 session_start();
 
-$sql = "SELECT * FROM holidays WHERE company_id = '". $_SESSION['companyid'] . "' ORDER BY id DESC";
+$sql = "SELECT * FROM employees_classification WHERE company_id = '". $_SESSION['companyid'] . "'";
 $result = $conn->query($sql);
 
 if ($result->num_rows > 0) {
 // output data of each row
     $data = array();
-    while($row = $result->fetch_assoc()) {
-       $data[] = $row;
+    while ($row = $result->fetch_assoc()) {
+        $data[] = $row;
     }
-    
+
     $json = json_encode($data);
+    
     echo $json;
-} else {
-    echo "No item";
 }
 
 $conn->close();

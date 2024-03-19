@@ -34,6 +34,7 @@ function onMessage(event) {
             $("input[type='submit']").prop("disabled", false);
             successNotification("Fingerprint confirmed.", "success");
         } 
+
     } catch(err){
         console.log(err);
     }
@@ -66,169 +67,116 @@ $(document).ready(function(){
 var salary_details;
 
 
-function computeSalary(id, responseBody) {
+function computeSalary(id) {
+    var responseBody;
     $.ajax({
         type: 'POST',
-        url: '../php/fetch_company_settings.php',
+        url: '../php/fetch_staff.php',
+        data: {
+            serial: id,
+        },
         success: function(res){
-            try{
+            try{ 
                 res = JSON.parse(res);
-                let settings = res;
-                let staff_data;
+                responseBody = res;
 
-                let ot_total = 0;
-                let ut_total = 0;
-                
+               
 
+                //fetch class
                 $.ajax({
                     type: 'POST',
-                    url: '../php/fetch_ut_and_ot.php',
+                    url: '../php/fetch_class.php',
                     data: {
-                        serialnumber: id,
-                    },
-                    success: function(res){
+                        class: responseBody.class,
+
+                    }, success: function(res){
+                    
                         try {
                             res = JSON.parse(res);
-                            for (let i = 0; i < res.length; i++) {
-                                ot_total += parseFloat(res[i].ot_total);
-                                ut_total += parseFloat(res[i].ut_total);
-                            }
 
-                        } catch(err){
-                            console.log(err);
-                        }
+                            
+                            
+                            let className, in_sched, holiday_pay, hour_perday, ot_pay, rate, rateType;
 
-                        $.ajax({
-                            type: 'POST',
-                            url: '../php/fetch_holidays.php',
-                            success: function(res){
+                            className =  res.class_name;
+                            holiday_pay = res.holi_pay;
+                            ot_pay = res.ot_pay;
+                            hour_perday = res.hour_perday;
+                            rate = res.rate;
+                            rateType = res.rate_type;
+                            
+                            let name, pos, department, adjustment, CA, charges, sss_loan, pbig_loan, company_loan, days_worked;
 
-                                let holidays_total = 0;
+                            name = responseBody.name;
+                            pos = responseBody.position;
+                            department = responseBody.department;
+                            adjustment = responseBody.adjustment;
+                            CA = responseBody.cash_advance;
+                            charges = responseBody.charges;
+                            sss_loan = responseBody.sss_loan;
+                            pbig_loan = responseBody.pag_ibig_loan;
+                            company_loan = responseBody.company_loan;
+                            days_worked = responseBody.days_worked;
 
-                                if (responseBody != null) {
-                                    var foundItem = responseBody.find(item => item.serialnumber === `${id}`);
-                                    
-                                    staff_data = foundItem;
-                                    
-                                    let calendarWorkingDays = parseInt($(`#cal${id}`).val());
-                                    let rate = parseInt(staff_data.rate);
+                            $.ajax({
+                                type: 'POST',
+                                url: '../php/fetch_staffs_trail.php',
+                                data: {
+                                    serialnumber: responseBody.serialnumber,
+                                },
 
-
+                                success: function(res){
                                     try {
                                         res = JSON.parse(res);
-    
-                                        for (let i = 0; i < res.length; i++) {
-                                            let percentage = parseFloat(res[i].percentage) / 100;
-                                            holidays_total += (rate * percentage);
-                                        }
-    
-                                        console.log("HOLIDAYS TOTALLL: " + holidays_total);
+
+                                        let ot_total = 0;
+                                        let ut_total = 0;
+                                        let ot_mins = 0;
+                                        let ut_mins = 0;
+                                        let late_mins = 0;
                                         
+                                        for (let i = 0; i < res.length; i++) {
+                                            ot_total += parseFloat(res[i].ot_total);
+                                            ut_total += parseFloat(res[i].ut_total);
+                                            ot_mins += parseFloat(res[i].ot_mins);
+                                            ut_mins += parseFloat(res[i].ut_mins);
+
+                                            late_mins += parseInt(res[i].late_mins);
+                                        }
+
+                                        let salaryRate = rate * parseInt($(`#cal${id}`).val());
+                                        let basic = rate * parseInt(days_worked);
+                                        let absent = salaryRate - basic;
+
+                                        console.log("RATE: " + rate);
+                                        console.log("SALARY RATE: " + salaryRate);
+                                        console.log("BASIC: " + basic);
+                                        console.log("ABSENT: " + absent);
+                                        
+                                        console.log("OT TOTAL: " + ot_total);
+                                        console.log("UT TOTAL: " + ut_total);
+                                        console.log("OT MINS: " + ot_mins);
+                                        console.log("UT MINS: " + ut_mins);
+                                        console.log("LATE: (minutes)" + late_mins);
                                         
                                     } catch(err) {
                                         console.log(err);
                                     }
-
-
-
-                                    let total_hours = parseFloat(staff_data.total_hours);
-
-                                    let salary_rate = calendarWorkingDays * rate;
-                                    let days_worked = total_hours /  8;
-                                    
-                                    let basic = days_worked * rate;
-                                    basic = basic.toFixed(2);
-                                    let absent = salary_rate - basic;
-
-                                    let grossPay = 0;
-                                    grossPay = salary_rate - absent;
-                                    grossPay = grossPay - ut_total;
-                                    basic = grossPay;
-                                    grossPay = grossPay + holidays_total;
-                                    grossPay = grossPay + ot_total;
-                            
-                                    $(`#gross-pay${id}`).html(grossPay.toLocaleString());
-
-                                    let allowance = settings[0].allowance;
-                                    let sss_deduction = settings[0].sss_deduction;
-                                    let ph = settings[0].philhealth_deduction;
-                                    let pbig = settings[0].pag_ibig_deduction;
-                                    let adjustment = staff_data.adjustment;
-                                    let CA = staff_data.cash_advance;
-                                    let charges = staff_data.charges;
-                                    let sss_loan = staff_data.sss_loan;
-                                    let pbig_loan = staff_data.pag_ibig_loan;
-                                    let company_loan = staff_data.company_loan;
-
-                                    let netPay = 0;
-                                    let allowance_deduction;
-
-                                    if ($(`#allowance-deduc`).val() === '') {
-                                        allowance_deduction = 0;
-                                    } else {
-                                        let percentDeduc = parseFloat($(`#allowance-deduc`).val());
-                                        let absent_days = calendarWorkingDays - days_worked;
-                                        let deduc = absent_days * percentDeduc;
-                                        percentDeduc = deduc / 100;
-                                        
-                                        allowance_deduction = allowance * percentDeduc;
-                                    }
-
-                                    allowance = allowance - allowance_deduction;
-
-                                    netPay = grossPay;
-                                    netPay = netPay - sss_deduction;
-                                    netPay = netPay - ph;
-                                    netPay = netPay - pbig;
-                                    netPay = netPay - adjustment;
-                                    netPay = netPay - CA;
-                                    netPay = netPay - charges;
-                                    netPay = netPay - sss_loan;
-                                    netPay = netPay - pbig_loan;
-                                    netPay = netPay - company_loan;
-                                    netPay = netPay + allowance;
-                                    
-                                    $(`#net-pay${id}`).html(netPay.toLocaleString());
-
-                                    salary_details = {
-                                        allowance_deduction: allowance_deduction,
-                                        netPay: netPay,
-                                        grossPay: grossPay,
-                                        salary_rate: salary_rate,
-                                        rate: rate,
-                                        calendarWorkingDays: calendarWorkingDays,
-                                        days_worked: days_worked,
-                                        total_hours: total_hours,
-                                        absent: absent,
-                                        holidays_total: holidays_total,
-                                        ot_total: ot_total,
-                                        ut_total: ut_total,
-                                        sss_deduction: sss_deduction,
-                                        philhealth_deduction: ph,
-                                        pag_ibig_deduction: pbig,
-                                        adjustment: adjustment,
-                                        cash_advance: CA,
-                                        charges: charges,
-                                        sss_loan: sss_loan,
-                                        pbig_loan: pbig_loan,
-                                        company_loan: company_loan,
-                                        allowance: allowance
-                                    };
                                 }
-                                
-                            }
-                        })
+                            })
+
+                        } catch(err) {
+                            console.log(err);
+                        }
                     }
                 })
-                
-                
-                
-            } catch(err){
+            } catch(err) {
                 console.log(err);
             }
-            
         }
     })
+
+    
 }
 
 //
@@ -244,7 +192,7 @@ $(".payroll").on("click", function(event){
             let staffs_len
             try {
                 res = JSON.parse(res);
-                console.log(res);
+
                 responseBody = res;
                 staffs_len = res.length;
                 
@@ -252,10 +200,6 @@ $(".payroll").on("click", function(event){
                     content += `
                     <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
                         <td>${res[i].name}</td>
-                        <td>${res[i].position}</td>
-                        <td>${res[i].department}</td>
-                        <td>${res[i].rate}</td>
-                        <td>${res[i].total_hours}</td>
                         <td><input type="number" id="cal${res[i].serialnumber}" style="margin-bottom:-1px;" placeholder="Enter calendar working days"/></td>
                         <td id="gross-pay${res[i].serialnumber}">0</td>
                         <td id="net-pay${res[i].serialnumber}">0</td>
@@ -273,17 +217,13 @@ $(".payroll").on("click", function(event){
             <div class="pop-up-window">
                 <div class="window-content pt-5">
                     <p class="text-center text-white" style="font-size:20px;">PAYROLL</p>
-                    <div class="payroll-header-buttons" style="display:flex;justify-content:space-between;"><div style="color:#fff;display:flex;flex-direction:column;">Allowance deduc. (per day): <input type="number" id="allowance-deduc" style="margin-bottom:-1px;" placeholder="Enter percentage"/></div><div style="color:#fff;display:flex;flex-direction:column;">No. of Employees: <span class="text-center">${staffs_len}</span></div></div>
+                    <div class="payroll-header-buttons" style="display:flex;justify-content:space-between;"><div style="color:#fff;display:flex;flex-direction:column;">Add holiday</div><div style="color:#fff;display:flex;flex-direction:column;">No. of Employees: <span class="text-center">${staffs_len}</span></div></div>
                     <hr>
                     <div class="table-container" style="max-height:60vh;overflow:auto;max-width:70vw;">
                         <table>
                             <thead>
                                 <tr>
                                     <td>NAME OF EMPLOYEE</td>
-                                    <td>POSITION</td>
-                                    <td>DEPARTMENT</td>
-                                    <td>DAILY RATE</td>
-                                    <td>TOTAL HOURS</td>
                                     <td>CALENDAR WORKING DAYS</td>
                                     <td>GROSS PAY</td>
                                     <td>NET PAY</td>
@@ -308,7 +248,7 @@ $(".payroll").on("click", function(event){
                 }
 
                 else {
-                    computeSalary(id, responseBody);
+                    computeSalary(id);
                     $(this).remove();
                     $(`.payslip${id}`).css("display", "inline");
                 }
@@ -329,7 +269,7 @@ $(".payroll").on("click", function(event){
                 if ($(`#cal${id}`).val() === '') {
                     errorNotification("Please enter calendar working days.", "warning");
                 } else {
-                    computeSalary(id, responseBody);
+                    computeSalary(id);
                     document.body.insertAdjacentHTML("afterbegin", `
                     <div class="third-layer-overlay">
                         <div class="tlo-wrapper pt-5">
@@ -440,7 +380,7 @@ $(".payroll").on("click", function(event){
                         document.body.insertAdjacentHTML("afterbegin", `
                         <div class="fourth-layer-overlay">
                             <div class="folo-wrapper pt-5" style="min-width:20vw;">
-                                <p class="text-white text-center" style="font-size:20px;">HOLIDAYS</p>
+                                <p class="text-white text-center" style="font-size:20px;">HOLIDAYS RATE</p>
                                 <hr>
                                 <div class="table-container" style="max-height:60vh;overflow:auto;max-width:30vw;min-width:25vw;">
                                     <table>
@@ -543,51 +483,80 @@ $(".payroll").on("click", function(event){
 //management
 $(".add-staff").on("click", function(event){
     event.stopImmediatePropagation();
-    document.body.insertAdjacentHTML("afterbegin", `
-    <div class="pop-up-window">
-        <div class="window-content pt-5">
-            <p class="text-center text-white" style="font-size:20px;">Register Employee</p>
 
-            <div style="display: flex;align-items: center;margin-top:10px;margin-bottom:10px;">
-                <div style="flex:1;height:1px;background:rgba(0,0,0,0.1);"></div>
-                <div style="flex:2;display:grid;place-items:center;color:#fff;">EMPLOYEE DETAILS</div>
-                <div style="flex:1;height:1px;background:rgba(0,0,0,0.1);"></div>
-            </div>
-            
-            <form id="registerStaffForm">
-                <input type="text" placeholder="Name" name="name" autocomplete="off">
-                <input type="number" placeholder="Age" name="age" autocomplete="off">
-                <input type="text" placeholder="Phone number" name="phone" autocomplete="off">
-                <input type="text" placeholder="Position" name="position" autocomplete="off">
-                <input type="text" placeholder="Department" name="department" autocomplete="off">
-                <input type="number" placeholder="Daily Rate" name="rate" autocomplete="off">
+    $.ajax({
+        type: 'GET',
+        url: '../php/fetch_classes.php',
+        success: function(res){
+       
+            try {
+                res = JSON.parse(res);
+                
+                let ops = "";
 
-                <div style="display: flex;align-items: center;margin-top:10px;">
-                    <div style="flex:1;height:1px;background:rgba(0,0,0,0.1);"></div>
-                    <div style="flex:2;display:grid;place-items:center;color:#fff;">SCAN FINGERPRINT</div>
-                    <div style="flex:1;height:1px;background:rgba(0,0,0,0.1);"></div>
-                </div>
+                for (let i = 0; i < res.length ; i++) {
+                    ops += `
+                    <option value="${res[i].id}">${res[i].class_name}</option>
+                    `;
+                }
 
-                <div class="fingerprint-login d-flex align-items-center justify-content-center pt-2 pb-4">
-                    <div style="width:25%;padding:5px;margin-right:30px;">
-                        <img src="../src/images/fingerprint_img.png" style="width:100%;"/>
+                document.body.insertAdjacentHTML("afterbegin", `
+                <div class="pop-up-window">
+                    <div class="window-content pt-5">
+                        <p class="text-center text-white" style="font-size:20px;">REGISTER EMPLOYEE</p>
+
+                        <div style="display: flex;align-items: center;margin-top:10px;margin-bottom:10px;">
+                            <div style="flex:1;height:1px;background:rgba(0,0,0,0.1);"></div>
+                            <div style="flex:2;display:grid;place-items:center;color:#fff;">EMPLOYEE DETAILS</div>
+                            <div style="flex:1;height:1px;background:rgba(0,0,0,0.1);"></div>
+                        </div>
+                        
+                        <form id="registerStaffForm">
+                            <input type="text" placeholder="Name" name="name" autocomplete="off">
+                            <input type="number" placeholder="Age" name="age" autocomplete="off">
+                            <input type="text" placeholder="Phone number" name="phone" autocomplete="off">
+                            <input type="text" placeholder="Position" name="position" autocomplete="off">
+                            <input type="text" placeholder="Department" name="department" autocomplete="off">
+                            
+                            <span>SELECT CLASS:</span>
+                            <select name="class">
+                                ${ops}
+                            </select>
+
+                            <div style="display: flex;align-items: center;margin-top:10px;">
+                                <div style="flex:1;height:1px;background:rgba(0,0,0,0.1);"></div>
+                                <div style="flex:2;display:grid;place-items:center;color:#fff;">SCAN FINGERPRINT</div>
+                                <div style="flex:1;height:1px;background:rgba(0,0,0,0.1);"></div>
+                            </div>
+
+                            <div class="fingerprint-login d-flex align-items-center justify-content-center pt-2 pb-4">
+                                <div style="width:25%;padding:5px;margin-right:30px;">
+                                    <img src="../src/images/fingerprint_img.png" style="width:100%;"/>
+                                </div>
+                                <p class="text-white" style="font-size:20px;">Scan staff<br> Fingerprint</p>
+                            </div>
+
+                            <input disabled type="submit" onclick="addStaff()" value="Add Staff" style="background:var(--lg);"/>
+                        </form>
                     </div>
-                    <p class="text-white" style="font-size:20px;">Scan staff<br> Fingerprint</p>
-                </div>
+                </div>`);
 
-                <input disabled type="submit" onclick="addStaff()" value="Add Staff" style="background:var(--lg);"/>
-            </form>
-        </div>
-    </div>`);
+                $(".pop-up-window").on("click", function(event){
+                    event.stopImmediatePropagation();
+                    $(this).remove();
+                })
 
-    $(".pop-up-window").on("click", function(event){
-        event.stopImmediatePropagation();
-        $(this).remove();
-    })
+                $(".window-content").on("click", function(event){
+                    event.stopImmediatePropagation();
+                })
 
-    $(".window-content").on("click", function(event){
-        event.stopImmediatePropagation();
-    })
+            } catch (err) {
+                console.log(err);
+            }
+        }
+    });
+
+    
 })
 
 $(".view-staffs").on("click", function(event){
@@ -604,15 +573,12 @@ $(".view-staffs").on("click", function(event){
             <div class="pop-up-window">
                 <div class="window-content">
                     <p class="text-center text-white" style="font-size:20px;">Employees (<span id="num-of-staffs"></span>)</p>
-                    <div class="table-container" style="max-height:60vh;overflow:auto;max-width:70vw;">
+                    <div class="table-container" style="max-height:60vh;overflow:auto;max-width:80vw;">
                         <table>
                             <thead>
                                 <tr>
-                                    <td>NAME</td>
+                                    <td>NAME OF EMPLOYEE</td>
                                     <td>STATUS</td>
-                                    <td>TOTAL HOURS</td>
-                                    <td>DAYS PRESENT</td>
-                                    <td>DAILY RATE</td>
                                     <td>ADJUSTMENT</td>
                                     <td>CHARGES</td>
                                     <td>CASH ADV.</td>
@@ -623,7 +589,6 @@ $(".view-staffs").on("click", function(event){
                                 </tr>
                             </thead>
                             <tbody id="tbody">
-                                
                             </tbody>
                         </table>
                     </div>
@@ -645,9 +610,6 @@ $(".view-staffs").on("click", function(event){
                 <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
                     <td>${data[i].name}</td>
                     <td>${data[i].status}</td>
-                    <td>${totalHours} hrs</td>
-                    <td>${data[i].days_worked} day(s)</td>
-                    <td>${data[i].rate}</td>
                     <td>${data[i].adjustment}</td>
                     <td>${data[i].charges}</td>
                     <td>${data[i].cash_advance}</td>
@@ -655,15 +617,610 @@ $(".view-staffs").on("click", function(event){
                     <td>${data[i].pag_ibig_loan}</td>
                     <td>${data[i].company_loan}</td>
                     <td style="display:grid;grid-template-columns: auto auto auto;column-gap:5px;">
-                        <button class="action-button add-deductions" data-id="${data[i].id}" data-snumber="${data[i].serialnumber}" data-name="${data[i].name}" data-age="${data[i].age}" data-pos="${data[i].position}">DEDUCTIONS</button>
-                        <button class="action-button view-records" data-id="${data[i].id}" data-snumber="${data[i].serialnumber}">RECORDS</button>
+                        <button class="action-button open" data-id="${data[i].id}" data-snumber="${data[i].serialnumber}" data-name="${data[i].name}" data-dept="${data[i].department}" data-pos="${data[i].position}">OPEN</button>
+                        <button class="action-button add-deductions" data-id="${data[i].id}" data-snumber="${data[i].serialnumber}" data-name="${data[i].name}" data-dept="${data[i].department}" data-pos="${data[i].position}">ADD DEDUCTIONS</button>
                     </td>
                 </tr>`;
             }
 
+            // <button class="action-button add-deductions" data-id="${data[i].id}" data-snumber="${data[i].serialnumber}" data-name="${data[i].name}" data-age="${data[i].age}" data-pos="${data[i].position}">DEDUCTIONS</button>
+            // <button class="action-button view-records" data-id="${data[i].id}" data-snumber="${data[i].serialnumber}">RECORDS</button>
+            // <button class="action-button view-records" data-id="${data[i].id}" data-snumber="${data[i].serialnumber}">REQUESTED LEAVE</button>
            
             document.getElementById("tbody").insertAdjacentHTML("afterbegin", `${content}`);
             $("#num-of-staffs").html(data.length);
+
+
+            $(".open").on("click", function(event){
+                event.stopImmediatePropagation();
+                
+                let snumber = $(this).data("snumber");
+                let id = $(this).data("id");
+                let name = $(this).data("name");
+                let pos = $(this).data("pos");
+                let dept = $(this).data("dept");
+
+                var offdays;
+                var restdays;
+                var leave_start;
+                var leave_end;
+                var paid_leave;
+
+                $.ajax({
+                    type: 'POST',
+                    url: '../php/fetch_offdays.php',
+                    data: {
+                        serial: snumber,
+                    },
+                    success: function(res) {
+                        offdays = res;
+                    }
+                })
+
+                $.ajax({
+                    type: 'POST',
+                    url: '../php/fetch_restdays.php',
+                    data: {
+                        serial: snumber,
+                    },
+                    success: function(res) {
+                         restdays = res;
+                    }
+                })
+
+                $.ajax({
+                    type: 'POST',
+                    url: '../php/fetch_leave.php',
+                    data: {
+                        serial: snumber,
+                    },
+                    success: function(res) {
+                        try {
+                            res = JSON.parse(res);
+                            leave_start = res[0].leave_start;
+                            leave_end = res[0].leave_end;
+                            paid_leave = parseInt(res[0].paid_leave);
+
+                        } catch(err) {
+                            console.log("");
+                        }
+                    }
+                })
+
+                document.body.insertAdjacentHTML("afterbegin", `
+                <div class="third-layer-overlay">
+                    <div class="tlo-wrapper pt-5"  style="max-height:60vh;overflow:auto;max-width:30vw;min-width:30vw;">
+                        <p class="text-white text-center" style="font-size:20px;">${name}</p>
+                        <p class="text-white text-center" style="font-size:13px;margin-top:-20px;">${dept} | ${pos}</p>
+                        <hr>
+
+                        <form style="width:100%;" id="staffSettings">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <td>TYPE</td>
+                                        <td>VALUE</td>
+                                        <td>ACTION</td>
+
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                                        <td>OFF DAY</td>
+                                        <td id="offdays"></td>
+                                        <td style="display:grid;grid-template-columns: auto auto;column-gap:5px;">
+                                            <input type="button" id="add-off" value="ADD DAY"/>
+                                            <input type="button" id="edit-off" value="REMOVE"/>
+                                            
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                                        <td>REST DAY</td>
+                                        <td id="restdays"></td>
+                                        <td style="display:grid;grid-template-columns: auto auto;column-gap:5px;">
+                                            <input type="button" id="add-rest" value="ADD DAY"/>
+                                            <input type="button" id="edit-rest" value="REMOVE"/>
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                                        <td>REQUEST LEAVE</td>
+                                        <td id="leave"></td>
+                                        <td style="display:grid;grid-template-columns: auto auto;column-gap:5px;">
+                                            <input type="button" id="edit-leave" value="REQUEST"/>
+                                            <input type="button" id="cancel-leave" value="CANCEL"/>
+                                        </td>
+                                    </tr>
+
+                                </tbody>
+                            </table>
+
+                        </form>
+                    </div>
+                </div>`);
+
+                setTimeout(() => {
+                    
+
+                    if (offdays != 'none') {
+                        let val = "";
+                        if (offdays.includes("monday")) {
+                            val += "Monday ";
+                        }
+                        if (offdays.includes("tuesday")) {
+                            val += "Tuesday ";
+                        }
+                        if (offdays.includes("wednesday")) {
+                            val += "Wednesday ";
+                        }
+                        if (offdays.includes("thursday")) {
+                            val += "Thursday ";
+                        }
+                         if (offdays.includes("friday")) {
+                            val += "Friday ";
+                        } 
+                        if (offdays.includes("saturday")) {
+                            val += "Saturday ";
+                        } 
+                        if (offdays.includes("sunday")) {
+                            val += "Sunday ";
+                        } 
+                        if (offdays === 'None') {
+                            $("#offdays").html("None");
+                        } else {
+                            $("#offdays").html(val);
+                        }
+                        
+
+                    } 
+
+                    $("#restdays").html("None");
+
+                    if (restdays != 'none') {
+                        let val2 = "";
+                        if (restdays.includes("monday")) {
+                            val2 += "Monday ";
+                        }
+                        if (restdays.includes("tuesday")) {
+                            val2 += "Tuesday ";
+                        }
+                        if (restdays.includes("wednesday")) {
+                            val2 += "Wednesday ";
+                        }
+                        if (restdays.includes("thursday")) {
+                            val2 += "Thursday ";
+                        }
+                         if (restdays.includes("friday")) {
+                            val2 += "Friday ";
+                        } 
+                        if (restdays.includes("saturday")) {
+                            val2 += "Saturday ";
+                        } 
+                        if (restdays.includes("sunday")) {
+                            val2 += "Sunday ";
+                        } 
+                        if (restdays === 'None') {
+                            $("#restdays").html("None");
+                        } else {
+                            $("#restdays").html(val2);
+                        }
+
+                    } 
+
+                    if (leave_start != undefined || leave_start != null) {
+                        if (paid_leave == 0) {
+                            $("#leave").html(`${leave_start} - ${leave_end} (not paid)`);
+                        } else {
+                            $("#leave").html(`${leave_start} - ${leave_end} (paid leave)`);
+                        }
+                        
+                    } else {
+                        $("#leave").html("None");
+                    }
+
+                }, 200);
+
+                $("#edit-off").click(function(event){
+                    event.stopImmediatePropagation();
+                    document.body.insertAdjacentHTML("afterbegin", `
+                    <div class="fourth-layer-overlay">
+                        <div class="folo-wrapper pt-5" style="min-width:20vw;">
+                            <p class="text-white text-center" style="font-size:20px;">REMOVE DAY (OFF)</p>
+                            <hr>
+                            <form id="removeOffDayForm">
+                                <span>SELECT DAY:</span>
+                                <select id="day-select" name="day">
+                                    <option value="monday">Monday</option>
+                                    <option value="tuesday">Tuesday</option>
+                                    <option value="wednesday">Wednesday</option>
+                                    <option value="thursday">Thursday</option>
+                                    <option value="friday">Friday</option>
+                                    <option value="saturday">Saturday</option>
+                                    <option value="sunday">Sunday</option>
+                                </select>
+                                <br>
+                                <input type="submit" data-id="${snumber}" value="UPDATE"/>
+                            </form>
+                        </div>
+                    </div>`);
+
+                    $("input[type='submit']").click(function(event){
+                        event.preventDefault();
+                        let data = new FormData(document.getElementById("removeOffDayForm"));
+                        var formDataObject = {};
+                        let isNotEmpty = true;
+                        data.forEach(function(value, key){
+                            formDataObject[key] = value;
+                            if (value === '') {
+                                isNotEmpty = false;
+                            }
+                        });
+
+                        $.ajax({
+                            type: 'POST',
+                            url: '../php/remove_off.php',
+                            data: {
+                                serial: snumber,
+                                day: formDataObject.day,
+                            }, success: function(res){
+                                
+                                try {
+                                    
+                                    if (res.includes('success')) {
+                                        successNotification("Removed selected day off.", "success");
+                                        $(".fourth-layer-overlay").remove();
+                                    }
+    
+                                } catch(err) {
+                                    console.log(err);
+                                }
+                            }
+                        })
+                        
+                    })
+
+
+                    $(".folo-wrapper").on("click", function(event){
+                        event.stopImmediatePropagation();
+                    })
+                    $(".fourth-layer-overlay").on("click", function(){
+                        $(this).remove();
+                    })
+                })
+
+                $("#add-off").click(function(event){
+                    event.stopImmediatePropagation();
+                    document.body.insertAdjacentHTML("afterbegin", `
+                    <div class="fourth-layer-overlay">
+                        <div class="folo-wrapper pt-5" style="min-width:20vw;">
+                            <p class="text-white text-center" style="font-size:20px;">ADD DAY (OFF)</p>
+                            <hr>
+                            <form id="addOffDayForm">
+                                <span>SELECT DAY:</span>
+                                <select id="day-select" name="day">
+                                    <option value="monday">Monday</option>
+                                    <option value="tuesday">Tuesday</option>
+                                    <option value="wednesday">Wednesday</option>
+                                    <option value="thursday">Thursday</option>
+                                    <option value="friday">Friday</option>
+                                    <option value="saturday">Saturday</option>
+                                    <option value="sunday">Sunday</option>
+                                </select>
+                                <br>
+                                <input type="submit" value="UPDATE"/>
+                            </form>
+                        </div>
+                    </div>`);
+
+                    $("input[type='submit']").click(function(event){
+                        event.preventDefault();
+                        let data = new FormData(document.getElementById("addOffDayForm"));
+                        var formDataObject = {};
+                        let isNotEmpty = true;
+                        data.forEach(function(value, key){
+                            formDataObject[key] = value;
+                            if (value === '') {
+                                isNotEmpty = false;
+                            }
+                        });
+
+                        $.ajax({
+                            type: 'POST',
+                            url: '../php/add_off.php',
+                            data: {
+                                serial: snumber,
+                                day: formDataObject.day,
+                            }, success: function(res){
+                              
+                                try {
+                                 
+                                    if (res.includes('success')) {
+                                        successNotification("Off day added.", "success");
+                                        $(".fourth-layer-overlay").remove();
+                                    }
+    
+                                } catch(err) {
+                                    console.log(err);
+                                }
+                            }
+                        })
+                        
+                    })
+
+
+
+                    $(".folo-wrapper").on("click", function(event){
+                        event.stopImmediatePropagation();
+                    })
+                    $(".fourth-layer-overlay").on("click", function(){
+                        $(this).remove();
+                    })
+                })
+
+                $("#add-rest").click(function(event){
+                    event.stopImmediatePropagation();
+                    document.body.insertAdjacentHTML("afterbegin", `
+                    <div class="fourth-layer-overlay">
+                        <div class="folo-wrapper pt-5" style="min-width:20vw;">
+                            <p class="text-white text-center" style="font-size:20px;">ADD DAY (REST)</p>
+                            <hr>
+                            <form id="addRestDayForm">
+                                <span>SELECT DAY:</span>
+                                <select id="day-select" name="day">
+                                    <option value="monday">Monday</option>
+                                    <option value="tuesday">Tuesday</option>
+                                    <option value="wednesday">Wednesday</option>
+                                    <option value="thursday">Thursday</option>
+                                    <option value="friday">Friday</option>
+                                    <option value="saturday">Saturday</option>
+                                    <option value="sunday">Sunday</option>
+                                </select>
+                                <br>
+                                <input type="submit" value="UPDATE"/>
+                            </form>
+                        </div>
+                    </div>`);
+
+                    $("input[type='submit']").click(function(event){
+                        event.preventDefault();
+                        let data = new FormData(document.getElementById("addRestDayForm"));
+                        var formDataObject = {};
+                        let isNotEmpty = true;
+                        data.forEach(function(value, key){
+                            formDataObject[key] = value;
+                            if (value === '') {
+                                isNotEmpty = false;
+                            }
+                        });
+
+                        $.ajax({
+                            type: 'POST',
+                            url: '../php/add_rest.php',
+                            data: {
+                                serial: snumber,
+                                day: formDataObject.day,
+                            }, success: function(res){
+                              
+                                try {
+                                 
+                                    if (res.includes('success')) {
+                                        successNotification("Rest day added.", "success");
+                                        $(".fourth-layer-overlay").remove();
+                                    }
+    
+                                } catch(err) {
+                                    console.log(err);
+                                }
+                            }
+                        })
+                        
+                    })
+
+                    $(".folo-wrapper").on("click", function(event){
+                        event.stopImmediatePropagation();
+                    })
+
+                    $(".fourth-layer-overlay").on("click", function(){
+                        $(this).remove();
+                    })
+                })
+
+                $("#edit-rest").click(function(event){
+                    event.stopImmediatePropagation();
+                    document.body.insertAdjacentHTML("afterbegin", `
+                    <div class="fourth-layer-overlay">
+                        <div class="folo-wrapper pt-5" style="min-width:20vw;">
+                            <p class="text-white text-center" style="font-size:20px;">REMOVE DAY (REST)</p>
+                            <hr>
+                            <form id="removeRestDayForm">
+                                <span>SELECT DAY:</span>
+                                <select id="day-select" name="day">
+                                    <option value="monday">Monday</option>
+                                    <option value="tuesday">Tuesday</option>
+                                    <option value="wednesday">Wednesday</option>
+                                    <option value="thursday">Thursday</option>
+                                    <option value="friday">Friday</option>
+                                    <option value="saturday">Saturday</option>
+                                    <option value="sunday">Sunday</option>
+                                </select>
+                                <br>
+                                <input type="submit" value="UPDATE"/>
+                            </form>
+                        </div>
+                    </div>`);
+
+                    $("input[type='submit']").click(function(event){
+                        event.preventDefault();
+                        let data = new FormData(document.getElementById("removeRestDayForm"));
+                        var formDataObject = {};
+                        let isNotEmpty = true;
+                        data.forEach(function(value, key){
+                            formDataObject[key] = value;
+                            if (value === '') {
+                                isNotEmpty = false;
+                            }
+                        });
+
+                        $.ajax({
+                            type: 'POST',
+                            url: '../php/remove_rest.php',
+                            data: {
+                                serial: snumber,
+                                day: formDataObject.day,
+                            }, success: function(res){
+                              
+                                try {
+                                 
+                                    if (res.includes('success')) {
+                                        successNotification("Removed selected rest day.", "success");
+                                        $(".fourth-layer-overlay").remove();
+                                    }
+    
+                                } catch(err) {
+                                    console.log(err);
+                                }
+                            }
+                        })
+                        
+                    })
+
+                    $(".folo-wrapper").on("click", function(event){
+                        event.stopImmediatePropagation();
+                    })
+                    $(".fourth-layer-overlay").on("click", function(event){
+                        $(this).remove();
+                    })
+                })
+
+                $("#edit-leave").click(function(event){
+                    event.stopImmediatePropagation();
+                    document.body.insertAdjacentHTML("afterbegin", `
+                    <div class="fourth-layer-overlay">
+                        <div class="folo-wrapper pt-5" style="min-width:20vw;">
+                            <p class="text-white text-center" style="font-size:20px;">SELECT DATE LEAVE</p>
+                            <hr>
+                            <form id="requestLeaveForm">
+                                <span>DATE START:</span>
+                                <input type="date" name="start">
+
+                                <span>DATE END:</span>
+                                <input type="date" name="end">
+                               
+                                <span style="display:flex;align-items:center;">
+                                    <input type="checkbox" id="pd" name="paid_leave" value="paid" style="margin: 0 10px;width:17px;height:17px;cursor:pointer;">
+                                    <label for="pd" style="margin-top:7px;cursor:pointer;"> Paid leave</label><br>
+                                </span>
+                                <br>
+                                <input type="submit" value="UPDATE"/>
+                            </form>
+                        </div>
+                    </div>`);
+
+                    $("input[type='submit']").click(function(event){
+                        event.preventDefault();
+                        let data = new FormData(document.getElementById("requestLeaveForm"));
+                        var formDataObject = {};
+                        let isNotEmpty = true;
+                        data.forEach(function(value, key){
+                            formDataObject[key] = value;
+                            if (value === '') {
+                                isNotEmpty = false;
+                            }
+                        });
+
+                        if (!isNotEmpty) {
+                            successNotification("Fields must be filled out.", "warning");
+                        } else {
+                            $.ajax({
+                                type: 'POST',
+                                url: '../php/req_leave.php',
+                                data: {
+                                    serial: snumber,
+                                    start: formDataObject.start,
+                                    paid_leave: formDataObject.paid_leave,
+                                    end: formDataObject.end
+                                }, success: function(res){
+                                    try {
+                                        
+                                        if (res.includes('success')) {
+                                            successNotification("Leave request done.", "success");
+                                            $(".fourth-layer-overlay").remove();
+                                        }
+        
+                                    } catch(err) {
+                                        console.log(err);
+                                    }
+                                }
+                            })
+                        }
+                    })
+
+                    $(".folo-wrapper").on("click", function(event){
+                        event.stopImmediatePropagation();
+                    })
+
+                    $(".fourth-layer-overlay").on("click", function(event){
+                        $(this).remove();
+                    })
+                })
+
+                $("#cancel-leave").click(function(event){
+                    event.stopImmediatePropagation();
+                    document.body.insertAdjacentHTML("afterbegin", `
+                    <div class="fourth-layer-overlay">
+                        <div class="folo-wrapper pt-5" style="min-width:20vw;">
+                            <p class="text-white text-center" style="font-size:20px;">CANCEL LEAVE</p>
+                            <hr>
+                            <form>
+                                <input type="submit" value="CONFIRM"/>
+                            </form>
+                        </div>
+                    </div>`);
+
+                    $("input[type='submit']").on("click", function(event){
+                        event.preventDefault();
+
+ 
+                      
+                        $.ajax({
+                            type: 'POST',
+                            url: '../php/cancel_leave.php',
+                            data: {
+                                serial: snumber,
+                                
+                            }, success: function(res){
+                                try {
+                                    
+                                    if (res.includes('success')) {
+                                        successNotification("Leave request cancelled.", "success");
+                                        $(".fourth-layer-overlay").remove();
+                                    }
+    
+                                } catch(err) {
+                                    console.log(err);
+                                }
+                            }
+                        })
+                        
+                    })
+
+                    $(".folo-wrapper").on("click", function(event){
+                        event.stopImmediatePropagation();
+                    })
+
+                    $(".fourth-layer-overlay").on("click", function(event){
+                        $(this).remove();
+                    })
+                })
+
+                $(".third-layer-overlay").on("click", function(event){
+                    $(this).remove();
+                })
+
+                $(".tlo-wrapper").on("click", function(event){
+                    event.stopImmediatePropagation();
+                })
+
+            })
 
             $(".add-deductions").on("click", function(event){
                 event.stopImmediatePropagation();
@@ -671,80 +1228,83 @@ $(".view-staffs").on("click", function(event){
                 let id = $(this).data("id");
                 let name = $(this).data("name");
                 let pos = $(this).data("pos");
-                let age = $(this).data("age");
+                let dept = $(this).data("dept");
                 
-                OPEN(snumber, id, name, age, pos);
+                OPEN(snumber, id, name, dept, pos);
             })
+            
 
-            $(".view-records").on("click", function(event){
-                event.stopImmediatePropagation();
+            // $(".view-records").on("click", function(event){
+            //     event.stopImmediatePropagation();
 
-                let content = "";
+            //     let content = "";
 
-                $.ajax({
-                    type: 'POST',
-                    url: '../php/fetch_records.php',
-                    data: {
-                        serialnumber: `${$(this).data("snumber")}`,
-                    },
-                    success: function(res){
+            //     $.ajax({
+            //         type: 'POST',
+            //         url: '../php/fetch_records.php',
+            //         data: {
+            //             serialnumber: `${$(this).data("snumber")}`,
+            //         },
+            //         success: function(res){
 
-                        try {
-                            res = JSON.parse(res);
+            //             try {
+            //                 res = JSON.parse(res);
 
-                            for (let i = 0; i < res.length; i++) {
-                                content += `
-                                <tr>
-                                    <td>${res[i].name}</td>
-                                    <td>${parseFloat(res[i].hours_worked).toFixed(2)} hrs</td>
-                                    <td>${res[i].start_time}</td>
-                                    <td>${res[i].end_time}</td>
-                                    <td>${res[i].ot_total}</td>
-                                    <td>${res[i].ut_total}</td>
-                                    <td>${res[i].date}</td>
-                                </tr>`;
-                            }
-                            
-                            document.body.insertAdjacentHTML("afterbegin", `
-                            <div class="third-layer-overlay">
-                                <div class="tlo-wrapper pt-5">
-                                    <p class="text-white text-center" style="font-size:20px;">RECORDS</p>
-                                    <hr>
-                                    <div class="table-container" style="max-height:60vh;overflow:auto;max-width:50vw;min-width:25vw;">
-                                        <table>
-                                            <thead>
-                                                <tr>
-                                                    <td>NAME</td>
-                                                    <td>HOURS WORKED</td>
-                                                    <td>START TIME</td>
-                                                    <td>END TIME</td>
-                                                    <td>OT (TOTAL)</td>
-                                                    <td>UT (TOTAL)</td>
-                                                    <td>DATE</td>
-                                                </tr>
-                                            </thead>
-                                            <tbody id="tbody">
-                                                ${content}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>`);
-                            $(".third-layer-overlay").on("click", function(event){
-                                $(this).remove();
-                            })
-                            $(".tlo-wrapper").on("click", function(event){
-                                event.stopImmediatePropagation();
-    
-                            })
-                        } catch(err){
-                            errorNotification("No records.", "warning");
-                        }
+            //                 for (let i = 0; i < res.length; i++) {
+            //                     content += `                                                    
+            //                     <tr>
+            //                         <td>${res[i].name}</td>
+            //                         <td>${parseFloat(res[i].hours_worked).toFixed(2)} hrs</td>
+            //                         <td>${res[i].start_time}</td>
+            //                         <td>${res[i].end_time}</td>
+            //                         <td>${res[i].ot_total}</td>
+            //                         <td>${res[i].ut_total}</td>
+            //                         <td>${res[i].date}</td>
+            //                     </tr>`;
+            //                 }
+
+            //                 document.body.insertAdjacentHTML("afterbegin", `
+            //                 <div class="third-layer-overlay">
+            //                     <div class="tlo-wrapper pt-5">
+            //                         <p class="text-white text-center" style="font-size:20px;">RECORDS</p>
+            //                         <hr>
+            //                         <div class="table-container" style="max-height:60vh;overflow:auto;max-width:50vw;min-width:25vw;">
+            //                             <table>
+            //                                 <thead>
+            //                                     <tr>
+            //                                         <td>NAME</td>
+            //                                         <td>HOURS WORKED</td>
+            //                                         <td>START TIME</td>
+            //                                         <td>END TIME</td>
+            //                                         <td>OT (TOTAL)</td>
+            //                                         <td>UT (TOTAL)</td>
+            //                                         <td>DATE</td>
+            //                                     </tr>
+            //                                 </thead>
+            //                                 <tbody id="tbody">
+            //                                     ${content}
+            //                                 </tbody>
+            //                             </table>
+            //                         </div>
+            //                     </div>
+            //                 </div>`);
+
+            //                 $(".third-layer-overlay").on("click", function(event){
+            //                     $(this).remove();
+            //                 })
+
+            //                 $(".tlo-wrapper").on("click", function(event){
+            //                     event.stopImmediatePropagation();
+            //                 })
+
+            //             } catch(err){
+            //                 errorNotification("No records.", "warning");
+            //             }
                         
-                    }
-                })
+            //         }
+            //     })
                 
-            })
+            // })
 
         }
     })
@@ -753,34 +1313,58 @@ $(".view-staffs").on("click", function(event){
 $(".settings").on("click", function(event){
     event.stopImmediatePropagation();
     document.body.insertAdjacentHTML("afterbegin", `
-    <div class="pop-up-window">
+    <div class="pop-up-window" style="overflow:auto;">
         <div class="window-content pt-5">
-            <div style="display: flex;align-items: center;margin-top:10px;margin-bottom:10px;">
+            <div style="display: flex;align-items: center;margin-top:10px;margin-bottom:30px;">
                 <div style="flex:1;height:1px;background:rgba(0,0,0,0.1);"></div>
-                <div style="flex:1;display:grid;place-items:center;color:#fff;font-size:20px;">PAYROLL SETTINGS</div>
+                <div style="flex:1;display:grid;place-items:center;color:#fff;font-size:20px;">COMPANY SETUP</div>
                 <div style="flex:1;height:1px;background:rgba(0,0,0,0.1);"></div>
             </div>
             <form style="width:100%;" id="companySettingsForm">
                 <div class="company-details-wrapper">
                     <div>
-                        <p class="text-center text-white">DEDUCTIONS</p>
+                        <p class="text-center text-white">PAY SCHEDULE</p>
                         <div>
-                            <span>SSS:</span>
-                            <input type="number" placeholder="SSS deduction" name="sss"/>
-                            <span>PhilHealth:</span>
-                            <input type="number" placeholder="PhilHealth deduction" name="phil"/>
-                            <span>Pag-IBIG:</span>
-                            <input type="number" placeholder="Pag-IBIG deduction" name="pbig"/>
-                            <br>
+                            <select id="payroll-sched" name="pay_sched">
+                                <option value="twice-monthly">Twice monthly</option>
+                                <option value="monthly">Monthly</option>
+                            </select>
+
+                            <span class="twice-mon-sched">Day of the month (1st half):</span>
+                            <input class="twice-mon-sched" name="day1" type="number" placeholder="1st half"/>
+                            <span class="twice-mon-sched">Day of the month (2nd half):</span>
+                            <input class="twice-mon-sched" type="number" name="day2" placeholder="2nd half"/>
+                            
                         </div>
                     </div>
                     <div>
-                        <p class="text-center text-white">COMPENSATIONS</p>
+                        <p class="text-center text-white">EMPLOYEES CLASSIFICATION</p>
                         <div>
-                            <span>Allowance:</span>
-                            <input type="number" placeholder="Allowance" name="allowance"/>
-                            <span>Holidays:</span>
-                            <input type="button" id="add-holiday" value="ADD HOLIDAY"/>
+                            <input type="button" id="add-class"  value="ADD"/>
+                        </div>
+                    </div>
+                    <div>
+                        <p class="text-center text-white">ALLOWANCE</p>
+                        <div>
+                            <input type="button" id="add-allowance"  value="ADD"/>
+                        </div>
+                    </div>
+                    <div>
+                        <p class="text-center text-white">ALLOWANCE PENALTY</p>
+                        <div>
+                            <input type="button" id="add-penalties"  value="ADD"/>
+                        </div>
+                    </div>
+                    <div>
+                        <p class="text-center text-white">HOLIDAYS RATE</p>
+                        <div>
+                            <input type="button" id="add-holiday"  value="ADD"/>
+                        </div>
+                    </div>
+                    <div>
+                        <p class="text-center text-white">OFF AND REST DAY RATE</p>
+                        <div>
+                            <input type="button" id="add-odrd"  value="ADD"/>
                         </div>
                     </div>
                     <div class="deductions">
@@ -790,6 +1374,14 @@ $(".settings").on("click", function(event){
             </form>
         </div>
     </div>`);
+
+    $("#payroll-sched").on("change", function(){
+        if ($(this).val().includes("twice")) {
+            $(".twice-mon-sched").css("visibility", "visible");
+        } else {
+            $(".twice-mon-sched").css("visibility", "hidden");
+        }
+    })
 
     $.ajax({
         type: 'GET',
@@ -814,6 +1406,7 @@ $(".settings").on("click", function(event){
 
         let data = new FormData(document.getElementById("companySettingsForm"));
         var formDataObject = {};
+
         data.forEach(function(value, key){
             formDataObject[key] = value;
         });
@@ -822,12 +1415,12 @@ $(".settings").on("click", function(event){
             type: 'POST',
             url: '../php/update_company_settings.php',
             data: {
-                allowance: formDataObject.allowance,
-                sss: formDataObject.sss,
-                phil: formDataObject.phil,
-                pbig: formDataObject.pbig
+                pay_sched: formDataObject.pay_sched,
+                day1: formDataObject.day1,
+                day2: formDataObject.day2,
 
             }, success: function(res){
+                console.log(res);
                 if (res == 'success') {
                     successNotification("Payroll settings updated.", "success");
                     
@@ -843,133 +1436,106 @@ $(".settings").on("click", function(event){
         })
     })
 
-    $("#add-holiday").on("click", function(event){
+    $("#add-class").on("click", function(event){
         event.stopImmediatePropagation();
         document.body.insertAdjacentHTML("afterbegin", `
         <div class="third-layer-overlay">
             <div class="tlo-wrapper pt-5">
-                <p class="text-white text-center" style="font-size:20px;">HOLIDAYS</p>
+                <p class="text-white text-center" style="font-size:20px;">EMPLOYEES CLASSIFICATION</p>
                 <button id="add" style="padding: 5px 15px;
                 border-radius: 4px;
                 background: var(--teal);
                 color: #fff;
                 border: none;
-                font-size: 15px;">ADD</button>
+                font-size: 15px;">ADD CLASS</button>
                 <hr>
-                <div class="table-container" style="max-height:60vh;overflow:auto;max-width:30vw;min-width:25vw;">
+                <div class="table-container" style="max-height:60vh;overflow:auto;max-width:45vw;min-width:40vw;">
                     <table>
                         <thead>
                             <tr>
-                                <td>DATE</td>
-                                <td>PERCENTAGE<td>
+                                <td>CLASS</td>
+                                <td>HOUR PER DAY</td>
+                                <td>CLOCK IN SCHEDULE</td>
+                                <td>RATE</td>
+                                <td>OT PAY</td>
+                                <td>HOLIDAY PAY</td>
                                 <td>ACTION</td>
                             </tr>
                         </thead>
                         <tbody id="tbody">
-                            
+                            <tr>
+                                <td>Regular Employee</td>
+                                <td>8 hrs</td>
+                                <td>7:00 AM</td>
+                                <td>45 (hourly)</td>
+                                <td>Eligible</td>
+                                <td>Eligible</td>
+                                <td><input type="button" value="DELETE"></td>
+                            </tr>
+                            <tr>
+                                <td>Regular Employee</td>
+                                <td>8 hrs</td>
+                                <td>7:00 AM</td>
+                                <td>450 (daily)</td>
+                                <td>Eligible</td>
+                                <td>Eligible</td>
+                                <td><input type="button" value="DELETE"></td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
             </div>
         </div>`);
 
-        let container = document.getElementById("tbody");
-        var deleted = false;
-
-        $.ajax({
-            type: 'GET',
-            url: '../php/fetch_holidays.php',
-            success: function(res){
-                try{
-                    let data = JSON.parse(res);
-                    let content = "";
-
-                    while (container.firstChild) {
-                        container.removeChild(container.firstChild);
-                    }
-
-                    for (let i = 0; i < data.length; i++) {
-                        let date = new Date(data[i].holiday_date);
-                        let day = date.getDate();
-                        let month = date.getMonth(); // Note: Months are zero-based in JavaScript
-                        let year = date.getFullYear();
-
-                        // Formatted date string
-                        let formattedDate = `${months[month]} ${day}, ${year}`;
-                        content += `
-                        <tr class="holi-row-${data[i].id}">
-                            <td>${formattedDate}</td>
-                            <td>${data[i].percentage}%</td>
-                            <td>
-                                
-                            </td>
-                            <td>
-                                <button data-id="${data[i].id}" id="delete" class="text-right" style="padding: 5px 15px;
-                                border-radius: 4px;
-                                background: var(--teal);
-                                color: #fff;
-                                border: none;
-                                font-size: 15px;">DELETE</button>
-                            </td>
-                        </tr>`;
-                    }
-
-                    container.insertAdjacentHTML("afterbegin", `${content}`);
-                    deleted = true;
-
-                    $("#delete").on("click", function(event){
-                        event.stopImmediatePropagation();
-                        let id = $(this).data("id");
-
-                        $.ajax({
-                            type: 'POST',
-                            url: '../php/delete_holiday.php',
-                            data: {
-                                id: id,
-                            }, success: function(res){
-                                console.log(res);
-                                if (res == 'deleted') {
-                                    $(`.holi-row-${id}`).remove();
-                                }
-                            }
-                        })
-                    })
-
-                } catch(err){
-                    container.insertAdjacentHTML("afterbegin", `
-                    <tr>
-                        <td colspan="4" class="text-center p-5">No holiday</td>
-                    </tr>`);
-                }
-                
-            }
-        })
-
         $("#add").on("click", function(event){
             event.stopImmediatePropagation();
             document.body.insertAdjacentHTML("afterbegin", `
             <div class="fourth-layer-overlay">
                 <div class="folo-wrapper pt-5" style="min-width:20vw;">
-                    <p class="text-white text-center" style="font-size:20px;">ADD HOLIDAY</p>
+                    <p class="text-white text-center" style="font-size:20px;">ADD CLASS</p>
                     <hr>
-                    <form id="addHolidayForm">
-                        <div style="display:flex;flex-direction:column;color:#fff;">
-                            <span>SELECT DATE:</span>
-                            <input type="date" name="date" required>
-                            <span>PERCENTAGE:  <span id="percentage">0%</span></span>
-                            <input type="number" name="percentage" placeholder="Percentage" required>
-                            <input type="submit" value="ADD" style="width:100%;margin-top:10px;"/>
-                        </div>
+                    <form id="addClassForm">
+                        <span>EMPLOYEE TYPE:</span>
+                        <input type="text" placeholder="Enter class" name="class"/>
+                        <span>HOUR PER DAY:</span>
+                        <select name="hour">
+                            <option value="4">4 hours</option>
+                            <option value="5">5 hours</option>
+                            <option value="6">6 hours</option>
+                            <option value="7">7 hours</option>
+                            <option value="8">8 hours</option>
+                            <option value="9">9 hours</option>
+                            <option value="10">10 hours</option>
+                        </select>
+                        <span>CLOCK IN SCHEDULE:</span>
+                        <input type="time" name="clock_in"/>
+                        <span>RATE:</span>
+                        <input type="number" name="rate" placeholder="Enter rate"/>
+                        <span>RATE TYPE:</span>
+                        <select name="rate_type">
+                            <option value="daily">Daily</option>
+                            <option value="hourly">Hourly</option>
+                            <option value="monthly">Monthly</option>
+                        </select>
+                        <span>OT PAY:</span>
+                        <select name="ot_pay">
+                            <option value="eligible">Eligible</option>
+                            <option value="not-eligible">Not Eligible</option>
+                        </select>
+                        <span>HOLIDAY PAY:</span>
+                        <select name="holi_pay">
+                            <option value="eligible">Eligible</option>
+                            <option value="not-eligible">Not Eligible</option>
+                        </select>
+                        <br>
+                        <input type="submit" value="ADD CLASS"/>
                     </form>
                 </div>
             </div>`);
 
-            $("input[type='submit']").on("click", function(event){
-                
+            $("input[type='submit']").click(function(event){
                 event.preventDefault();
-                event.stopImmediatePropagation();
-                
-                let data = new FormData(document.getElementById("addHolidayForm"));
+                let data = new FormData(document.getElementById("addClassForm"));
                 var formDataObject = {};
                 let isNotEmpty = true;
                 data.forEach(function(value, key){
@@ -979,69 +1545,35 @@ $(".settings").on("click", function(event){
                     }
                 });
 
-                if (isNotEmpty)  {
+
+                if (!isNotEmpty) {
+                    errorNotification("Input fields must be filled out.", "warning");
+                } else {
                     $.ajax({
                         type: 'POST',
-                        url: '../php/add_holiday.php',
+                        url: '../php/add_class.php',
                         data: {
-                            date: formDataObject.date,
-                            percentage: formDataObject.percentage
+                            class: formDataObject.class,
+                            hour: formDataObject.hour,
+                            clock_in: formDataObject.clock_in,
+                            rate: formDataObject.rate,
+                            rate_type: formDataObject.rate_type,
+                            ot_pay: formDataObject.ot_pay,
+                            holi_pay: formDataObject.holi_pay
                         }, success: function(res){
-                            console.log(res);
-                            try{
+                            try {
                                 res = JSON.parse(res);
                                 if (res.message == 'success') {
-                                    let date = new Date(formDataObject.date);
-                                    let day = date.getDate();
-                                    let month = date.getMonth(); // Note: Months are zero-based in JavaScript
-                                    let year = date.getFullYear();
-    
-                                    // Formatted date string
-                                    let formattedDate = `${months[month]} ${day}, ${year}`;
-                                    
-                                    if (!deleted) {
-                                        while (container.firstChild) {
-                                            container.removeChild(container.firstChild);
-                                        }
-                                        deleted = true;
-                                    }
-                                   
-    
-                                    container.insertAdjacentHTML("afterbegin", `
-                                        <tr class="holi-row-${res.id}">
-                                            <td>${formattedDate}</td>
-                                            <td>${formDataObject.percentage}%</td>
-                                            <td>
-                                                
-                                            </td>
-                                            <td>
-                                                <button data-id="${res.id}" class="text-right" style="padding: 5px 15px;
-                                                border-radius: 4px;
-                                                background: var(--teal);
-                                                color: #fff;
-                                                border: none;
-                                                font-size: 15px;">DELETE</button>
-                                            </td>
-                                        </tr>
-                                    `);
+                                    successNotification("New class added.", "success");
                                     $(".fourth-layer-overlay").remove();
                                 }
-                            } catch(err){
+
+                            } catch(err) {
                                 console.log(err);
                             }
-                            
                         }
                     })
-                } else {
-                    errorNotification("Input fields must be filled out.", "warning");
                 }
-
-                
-            })
-
-            $("input[type='number']").on("keyup", function(event){
-                event.stopImmediatePropagation();
-                $("#percentage").html(" (" + $("input[type='number']").val() + "%)");
             })
 
             $(".folo-wrapper").on("click", function(event){
@@ -1053,7 +1585,162 @@ $(".settings").on("click", function(event){
                 $(this).remove();
             })
         })
+       
+        $(".tlo-wrapper").on("click", function(event){
+            event.stopImmediatePropagation();
+        })
+    
+        $(".third-layer-overlay").on("click", function(event){
+            event.stopImmediatePropagation();
+            $(this).remove();
+        })
+    })
 
+
+
+    $("#add-allowance").on("click", function(event){
+        event.stopImmediatePropagation();
+        document.body.insertAdjacentHTML("afterbegin", `
+        <div class="third-layer-overlay">
+            <div class="tlo-wrapper pt-5">
+                <p class="text-white text-center" style="font-size:20px;">ALLOWANCE</p>
+                <button id="add" style="padding: 5px 15px;
+                border-radius: 4px;
+                background: var(--teal);
+                color: #fff;
+                border: none;
+                font-size: 15px;">ADD ALLOWANCE</button>
+                <hr>
+                <div class="table-container" style="max-height:60vh;overflow:auto;max-width:30vw;min-width:25vw;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <td>NAME</td>
+                                <td>AMOUNT</td>
+                                <td>DETAIL</td>
+                                <td>CLASS</td>
+                                <td>ACTION</td>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody">
+                            <tr>
+                                <td>Meal allowance</td>
+                                <td>100</td>
+                                <td>Daily</td>
+                                <td>Regular</td>
+                                <td><input type="button" value="DELETE"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>`);
+
+        $("#add").on("click", function(event){
+            event.stopImmediatePropagation();
+
+            $.ajax({
+                type: 'GET',
+                url: '../php/fetch_classes.php',
+                success: function(res){
+              
+                    try {
+                        res = JSON.parse(res);
+                        
+                        let ops = "";
+
+                        for (let i = 0; i < res.length ; i++) {
+                            ops += `
+                            <option value="${res[i].id}">${res[i].class_name}</option>
+                            `;
+                        }
+                        
+                        document.body.insertAdjacentHTML("afterbegin", `
+                        <div class="fourth-layer-overlay">
+                            <div class="folo-wrapper pt-5" style="min-width:20vw;">
+                                <p class="text-white text-center" style="font-size:20px;">ADD ALLOWANCE</p>
+                                <hr>
+                                <form id="addAllowanceForm">
+                                    <span>ALLOWANCE NAME:</span>
+                                    <input type="text" placeholder="Enter name" name="name"/>
+                                    <span>AMOUNT</span>
+                                    <input type="number" name="amount" placeholder="Enter amount"/>
+                                    <span>ALLOWANCE TYPE:</span>
+                                    <select name="type">
+                                        <option value="daily">Daily</option>
+                                        <option value="every pay">Twice monthly</option>
+                                        <option value="monthly">Monthly</option>
+                                    </select>
+                                    <span>SELECT CLASS:</span>
+                                    <select name="class">
+                                        ${ops}
+                                    </select>
+                                    <br>
+                                    <input type="submit" value="ADD ALLOWANCE"/>
+                                </form>
+                            </div>
+                        </div>`);
+
+                        $("input[type='submit']").click(function(event){
+                            event.preventDefault();
+                            let data = new FormData(document.getElementById("addAllowanceForm"));
+                            var formDataObject = {};
+                            let isNotEmpty = true;
+                            data.forEach(function(value, key){
+                                formDataObject[key] = value;
+                                if (value === '') {
+                                    isNotEmpty = false;
+                                }
+                            });
+
+                            if (!isNotEmpty) {
+                                errorNotification("Input fields must be filled out.", "warning");
+                            } else {
+                                $.ajax({
+                                    type: 'POST',
+                                    url: '../php/add_allowance.php',
+                                    data: {
+                                        name: formDataObject.name,
+                                        amount: formDataObject.amount,
+                                        type: formDataObject.type,
+                                        class: formDataObject.class,
+                                        
+                                    }, success: function(res){
+                                        console.log(res);
+                                        try {
+                                            res = JSON.parse(res);
+                                          
+                                            if (res.message == 'success') {
+                                                successNotification("Allowance added.", "success");
+                                                $(".fourth-layer-overlay").remove();
+                                            }
+                                            
+                                        } catch(err) {
+                                            console.log(err);
+                                        }
+                                    }
+                                })
+                            }
+                        })
+
+                        $(".folo-wrapper").on("click", function(event){
+                            event.stopImmediatePropagation();
+                        })
+                    
+                        $(".fourth-layer-overlay").on("click", function(event){
+                            event.stopImmediatePropagation();
+                            $(this).remove();
+                        })
+
+                    } catch (err) {
+                        errorNotification("Error fetching classes.", "warning");
+                    }
+                } 
+            })
+
+            
+        })
+       
         $(".tlo-wrapper").on("click", function(event){
             event.stopImmediatePropagation();
         })
@@ -1070,6 +1757,540 @@ $(".settings").on("click", function(event){
 
     $(".pop-up-window").on("click", function(event){
         $(this).remove();
+    })
+
+    $("#add-penalties").on("click", function(event){
+        event.stopImmediatePropagation();
+        document.body.insertAdjacentHTML("afterbegin", `
+        <div class="third-layer-overlay">
+            <div class="tlo-wrapper pt-5">
+                <p class="text-white text-center" style="font-size:20px;">ALLOWANCE PENALTIES</p>
+                <button id="add" style="padding: 5px 15px;
+                border-radius: 4px;
+                background: var(--teal);
+                color: #fff;
+                border: none;
+                font-size: 15px;">ADD PENALTY</button>
+                <hr>
+                <div class="table-container" style="max-height:60vh;overflow:auto;max-width:30vw;min-width:30vw;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <td>TYPE</td>
+                                <td>DETAIL</td>
+                                <td>ALLOWANCE DEDUC.</td>
+                                <td>CLASS</td>
+                                <td>ACTION</td>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody">
+                            <tr>
+                                <td>Late</td>
+                                <td>About 30 min(s)</td>
+                                <td>-50 (Meal allowance)</td>
+                                <td>Regular Employee</td>
+                                <td><input type="button" value="DELETE"></td>
+                            </tr>
+                            <tr>
+                                <td>Absent</td>
+                                <td>Every 1 day(s)</td>
+                                <td>-10% (COLA)</td>
+                                <td>Regular Employee</td>
+                                <td><input type="button" value="DELETE"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>`);
+
+        $("#add").on("click", function(event){
+            event.stopImmediatePropagation();
+            $.ajax({
+                type: 'GET',
+                url: '../php/fetch_classes.php',
+                success: function(res){
+               
+                    try {
+                        res = JSON.parse(res);
+                        
+                        let ops = "";
+
+                        for (let i = 0; i < res.length ; i++) {
+                            ops += `
+                            <option value="${res[i].id}">${res[i].class_name}</option>
+                            `;
+                        }
+
+                        document.body.insertAdjacentHTML("afterbegin", `
+                        <div class="fourth-layer-overlay">
+                            <div class="folo-wrapper pt-5" style="min-width:20vw;">
+                                <p class="text-white text-center" style="font-size:20px;">ADD PENALTY</p>
+                                <hr>
+                                <form id="addPenaltyForm">
+                                    <span>SELECT TYPE:</span>
+                                    <select id="type-select" name="type">
+                                        <option value="late">Late</option>
+                                        <option value="absent">Absent</option>
+                                    </select>
+
+                                    <span>DETAIL:</span>
+                                    <select name="detail">
+                                        <option value="">Select detail</option>
+                                        <option value="about">About</option>
+                                        <option value="every" style="display:none;" class="absent">Every</option>
+                                    </select>
+
+                                    <span class="late">TIME (minutes):</span>
+                                    <input class="late" type="number" placeholder="Enter minutes" name="minutes">
+
+                                    <span class="absent"  style="display:none;">NUM OF DAYS:</span>
+                                    <input class="absent" type="number" placeholder="Enter number of days" name="days"  style="display:none;">
+
+                                    <span>DEDUCTION (fixed or percentage):</span>
+                                    <input type="text" placeholder="Enter deduction" name="deduction">
+
+                                    <span>SELECT CLASS:</span>
+                                    <select name="class">
+                                        ${ops}
+                                    </select>
+
+                                    <br>
+                                    <input type="submit" value="ADD PENALTY"/>
+                                </form>
+                            </div>
+                        </div>`);
+
+                        $("#type-select").on("change", function(event){
+                            event.stopImmediatePropagation();
+                            if ($(this).val() === "late") {
+                                $("option.absent").hide();
+                                $("span.absent").hide();
+                                $("input.absent").hide();
+                                $("span.late").show();
+                                $("input.late").show();
+                            } else {
+                                $("option.absent").show();
+                                $("span.late").hide();
+                                $("input.late").hide();
+                                $("span.absent").show();
+                                $("input.absent").show();
+                                
+                            }
+                        })
+
+
+                        $("input[type='submit']").click(function(event){
+                            event.preventDefault();
+                            let data = new FormData(document.getElementById("addPenaltyForm"));
+                            var formDataObject = {};
+                            let isNotEmpty = true;
+                            data.forEach(function(value, key){
+                                formDataObject[key] = value;
+                                if (value === '') {
+                                    isNotEmpty = false;
+                                }
+                            });
+
+                            
+                            $.ajax({
+                                type: 'POST',
+                                url: '../php/add_allowance_penalty.php',
+                                data: {
+                                    detail: formDataObject.detail,
+                                    mins: formDataObject.minutes,
+                                    days: formDataObject.days,
+                                    deduction: formDataObject.deduction,
+                                    type: formDataObject.type,
+                                    class: formDataObject.class,
+                                    
+                                }, success: function(res){
+                                    try {
+                                        res = JSON.parse(res);
+                                        
+                                        if (res.message == 'success') {
+                                            successNotification("Penalty added.", "success");
+                                            $(".fourth-layer-overlay").remove();
+                                        }
+                                        
+                                    } catch(err) {
+                                        console.log(err);
+                                    }
+                                }
+                            })
+                            
+                        })
+
+                        $(".folo-wrapper").on("click", function(event){
+                            event.stopImmediatePropagation();
+                        })
+                    
+                        $(".fourth-layer-overlay").on("click", function(event){
+                            event.stopImmediatePropagation();
+                            $(this).remove();
+                        })
+
+                    } catch (err) {
+                        errorNotification("Error fetching classes.", "warning");
+                    }
+                }
+            });
+
+        })
+       
+        $(".tlo-wrapper").on("click", function(event){
+            event.stopImmediatePropagation();
+        })
+    
+        $(".third-layer-overlay").on("click", function(event){
+            event.stopImmediatePropagation();
+            $(this).remove();
+        })
+    })
+
+    $("#add-holiday").on("click", function(event){
+        event.stopImmediatePropagation();
+        document.body.insertAdjacentHTML("afterbegin", `
+        <div class="third-layer-overlay">
+            <div class="tlo-wrapper pt-5">
+                <p class="text-white text-center" style="font-size:20px;">HOLIDAYS RATE</p>
+                <button id="add" style="padding: 5px 15px;
+                border-radius: 4px;
+                background: var(--teal);
+                color: #fff;
+                border: none;
+                font-size: 15px;">ADD HOLIDAY</button>
+                <hr>
+                <div class="table-container" style="max-height:60vh;overflow:auto;max-width:40vw;min-width:40vw;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <td>HOLIDAY</td>
+                                <td>WORKED</td>
+                                <td>DID NOT WORK</td>
+                                <td>CLASS</td>
+                                <td>EXCLUDE IF</td>
+                                <td>ACTION</td>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody">
+                            <tr>
+                                <td>Regular</td>
+                                <td>200%</td>
+                                <td>100%</td>
+                                <td>Regular Employee</td>
+                                <td>Absent before and after holiday</td>
+                                <td><input type="button" value="DELETE"></td>
+                            </tr>
+                            <tr>
+                                <td>Special</td>
+                                <td>100%</td>
+                                <td>0%</td>
+                                <td>Regular Employee</td>
+                                <td>Absent before and after holiday</td>
+                                <td><input type="button" value="DELETE"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>`);
+
+        $("#add").on("click", function(event){
+            event.stopImmediatePropagation();
+
+            $.ajax({
+                type: 'GET',
+                url: '../php/fetch_classes.php',
+                success: function(res){
+               
+                    try {
+                        res = JSON.parse(res);
+                        
+                        let ops = "";
+
+                        for (let i = 0; i < res.length ; i++) {
+                            ops += `
+                            <option value="${res[i].id}">${res[i].class_name}</option>
+                            `;
+                        }
+
+                        document.body.insertAdjacentHTML("afterbegin", `
+                        <div class="fourth-layer-overlay">
+                            <div class="folo-wrapper pt-5" style="min-width:20vw;">
+                                <p class="text-white text-center" style="font-size:20px;">ADD HOLIDAY</p>
+                                <hr>
+                                <form id="addHolidayForm">
+                                    <span>HOLIDAY:</span>
+                                    <input type="text" placeholder="Enter holiday" name="holiday">
+
+                                    <span>RATE IF WORKED (percentage):</span>
+                                    <input type="number" placeholder="Enter rate if worked" name="worked" />
+
+                                    <span>RATE IF DID NOT WORK (percentage):</span>
+                                    <input type="number" placeholder="Enter rate if did not work" name="didnotwork" />
+
+                                    <span>SELECT CLASS:</span>
+                                    <select name="class">
+                                        ${ops}
+                                    </select>
+
+                                    <span>EXCLUDE IF EMPLOYEE IS:</span>
+                                    <select name="holiday_policy">
+                                        <option value="aoh">Absent on holiday</option>
+                                        <option value="abh">Absent before holiday</option>
+                                        <option value="aah">Absent after holiday</option>
+                                        <option value="abaah">Absent before and after holiday</option>
+                                    </select>
+
+                                    <br>
+                                    <input type="submit" value="ADD HOLIDAY RATE"/>
+                                </form>
+                            </div>
+                        </div>`);
+
+                        $("input[type='submit']").click(function(event){
+                            event.preventDefault();
+                            let data = new FormData(document.getElementById("addHolidayForm"));
+                            var formDataObject = {};
+                            let isNotEmpty = true;
+                            data.forEach(function(value, key){
+                                formDataObject[key] = value;
+                                if (value === '') {
+                                    isNotEmpty = false;
+                                }
+                            });
+
+                            if (!isNotEmpty) {
+
+                            } else {
+                                $.ajax({
+                                    type: 'POST',
+                                    url: '../php/add_holiday_setting.php',
+                                    data: {
+                                        holiday: formDataObject.holiday,
+                                        worked: formDataObject.worked,
+                                        didnotwork: formDataObject.didnotwork,
+                                        policy: formDataObject.holiday_policy,
+                                        class: formDataObject.class,
+                                        
+                                    }, success: function(res){
+                                        console.log(res);
+                                        try {
+                                            res = JSON.parse(res);
+                                            
+                                            if (res.message == 'success') {
+                                                successNotification("Holiday rate added.", "success");
+                                                $(".fourth-layer-overlay").remove();
+                                            }
+                                            
+                                        } catch(err) {
+                                            console.log(err);
+                                        }
+                                    }
+                                })
+                            }
+                            
+                            
+                        })
+
+                        $(".folo-wrapper").on("click", function(event){
+                            event.stopImmediatePropagation();
+                        })
+                    
+                        $(".fourth-layer-overlay").on("click", function(event){
+                            event.stopImmediatePropagation();
+                            $(this).remove();
+                        })
+
+                    } catch (err) {
+                        errorNotification("Error fetching classes.", "warning");
+                    }
+                }
+            });
+
+            
+        })
+       
+        $(".tlo-wrapper").on("click", function(event){
+            event.stopImmediatePropagation();
+        })
+    
+        $(".third-layer-overlay").on("click", function(event){
+            event.stopImmediatePropagation();
+            $(this).remove();
+        })
+    })
+
+    $("#add-odrd").on("click", function(event){
+        event.stopImmediatePropagation();
+        document.body.insertAdjacentHTML("afterbegin", `
+        <div class="third-layer-overlay">
+            <div class="tlo-wrapper pt-5">
+                <p class="text-white text-center" style="font-size:20px;">OFF AND REST DAY RATE</p>
+                <button id="add" style="padding: 5px 15px;
+                border-radius: 4px;
+                background: var(--teal);
+                color: #fff;
+                border: none;
+                font-size: 15px;">ADD OFF OR REST DAY</button>
+                <hr>
+                <div class="table-container" style="max-height:60vh;overflow:auto;max-width:40vw;min-width:40vw;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <td>NAME</td>
+                                <td>WORKED</td>
+                                <td>DID NOT WORK</td>
+                                <td>CLASS</td>
+                                <td>ACTION</td>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody">
+                            <tr>
+                                <td>REST DAY</td>
+                                <td>130%</td>
+                                <td>100%</td>
+                                <td>Regular Employee</td>
+                                <td><input type="button" value="DELETE"></td>
+                            </tr>
+                            <tr>
+                                <td>OFF DAY</td>
+                                <td>100%</td>
+                                <td>100%</td>
+                                <td>Regular Employee</td>
+                                <td><input type="button" value="DELETE"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>`);
+
+        $("#add").on("click", function(event){
+            event.stopImmediatePropagation();
+
+            $.ajax({
+                type: 'GET',
+                url: '../php/fetch_classes.php',
+                success: function(res){
+               
+                    try {
+                        res = JSON.parse(res);
+                        
+                        let ops = "";
+
+                        for (let i = 0; i < res.length ; i++) {
+                            ops += `
+                            <option value="${res[i].id}">${res[i].class_name}</option>
+                            `;
+                        }
+
+                        document.body.insertAdjacentHTML("afterbegin", `
+                        <div class="fourth-layer-overlay">
+                            <div class="folo-wrapper pt-5" style="min-width:20vw;">
+                                <p class="text-white text-center" style="font-size:20px;">ADD OFF AND REST DAY POLICY</p>
+                                <hr>
+                                <form id="addOARDForm">
+                                    <span>SELECT TYPE:</span>
+                                    <select id="type-select" name="type">
+                                        <option value="off">OFF DAY</option>
+                                        <option value="rest">REST DAY</option>
+                                    </select>
+
+                                    <span>RATE IF WORKED (percentage):</span>
+                                    <input type="number" placeholder="Enter rate if worked" name="worked" />
+
+                                    <span>RATE IF DID NOT WORK (percentage):</span>
+                                    <input type="number" placeholder="Enter rate if did not work" name="didnotwork" />
+
+                                    <span>SELECT CLASS:</span>
+                                    <select name="class">
+                                        ${ops}
+                                    </select>
+
+                                    <br>
+                                    <input type="submit" value="ADD POLICY"/>
+                                </form>
+                            </div>
+                        </div>`);
+
+                        $("input[type='submit']").click(function(event){
+                            event.preventDefault();
+                            let data = new FormData(document.getElementById("addOARDForm"));
+                            var formDataObject = {};
+                            let isNotEmpty = true;
+                            data.forEach(function(value, key){
+                                formDataObject[key] = value;
+                                if (value === '') {
+                                    isNotEmpty = false;
+                                }
+                            });
+
+                            if (!isNotEmpty) {
+                                errorNotification("Input fields must be filled out.", "warning");
+
+                            } else {
+                                $.ajax({
+                                    type: 'POST',
+                                    url: '../php/add_oard_setting.php',
+                                    data: {
+                                        type: formDataObject.type,
+                                        worked: formDataObject.worked,
+                                        didnotwork: formDataObject.didnotwork,
+                                        class: formDataObject.class,
+                                        
+                                    }, success: function(res){
+                                        console.log(res);
+                                        try {
+                                            res = JSON.parse(res);
+                                            
+                                            if (res.message == 'success') {
+                                                if ($("#type-select").val() == 'off') {
+                                                    successNotification("Off day rate added.", "success");
+                                                } else {
+                                                    successNotification("Rest day rate added.", "success");
+                                                }
+                                                
+                                                $(".fourth-layer-overlay").remove();
+                                            }
+                                            
+                                        } catch(err) {
+                                            console.log(err);
+                                        }
+                                    }
+                                })
+                                
+                            }
+                        })
+                        
+
+                        $(".folo-wrapper").on("click", function(event){
+                            event.stopImmediatePropagation();
+                        })
+                    
+                        $(".fourth-layer-overlay").on("click", function(event){
+                            event.stopImmediatePropagation();
+                            $(this).remove();
+                        })
+
+                    } catch(err) {
+                        errorNotification("Error fetching classes.", "warning");
+                    }
+                }
+            });
+
+            
+        })
+       
+        $(".tlo-wrapper").on("click", function(event){
+            event.stopImmediatePropagation();
+        })
+    
+        $(".third-layer-overlay").on("click", function(event){
+            event.stopImmediatePropagation();
+            $(this).remove();
+        })
     })
 })
 
@@ -1165,11 +2386,6 @@ function OPEN(snumber, id, name, age, position) {
             }
         }
     })
-
-    
-
-
-    
 }
 
 
@@ -1197,8 +2413,9 @@ function addStaff(){
                 position: formDataObject.position,
                 department: formDataObject.department,
                 serialnumber: formDataObject.serialnumber,
-                rate: formDataObject.rate,
+                class: formDataObject.class,
                 phone: formDataObject.phone,
+
             },
             success: function(res){
                 console.log(res);
@@ -1254,6 +2471,7 @@ function successNotification(message, alertLevel){
         ${message}
     </div>
     `);
+
     clearTimeout(timeout);
     
     timeout = setTimeout(() => {

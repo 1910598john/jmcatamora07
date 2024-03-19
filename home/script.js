@@ -42,6 +42,7 @@ function onMessage(event) {
                         let pos = data[0].position;
                         let department = data[0].department;
                         let status = data[0].status;
+                        let _class = data[0].class;
                         
                         if (status == 'Not set' || status == 'NOT SET') {
                             $.ajax({
@@ -52,10 +53,11 @@ function onMessage(event) {
                                     name: name,
                                     pos: pos,
                                     dept: department,
-                                    status: "IN",   
+                                    status: "IN",
+                                    class: _class,
                                 },success: function(res){
                                     console.log(res);
-                                    if (res == 'success') {
+                                    if (res.includes('success')) {
                                         setTimeout(() => {
                                             location.reload();
                                         }, 1000);
@@ -75,10 +77,11 @@ function onMessage(event) {
                                         pos: pos,
                                         dept: department,
                                         status: "OUT",
+                                        class: _class,
                                         
                                     },success: function(res){
                                         console.log(res);
-                                        if (res == 'success') {
+                                        if (res.includes('success')) {
                                             setTimeout(() => {
                                                 location.reload();
                                             }, 1000);
@@ -95,10 +98,11 @@ function onMessage(event) {
                                         pos: pos,
                                         dept: department,
                                         status: "IN",
+                                        class: _class,
                                         
                                     },success: function(res){
                                         console.log(res);
-                                        if (res == 'success') {
+                                        if (res.includes('success')) {
                                             setTimeout(() => {
                                                 location.reload();
                                             }, 1000);

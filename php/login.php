@@ -30,7 +30,7 @@ if (isset($_POST['username']) && isset($_POST['password'])) {
         $ciphering = "AES-128-CTR";
         $option = 0;
         $decryption_iv = "1234567890123456";
-        $decryption_key = "12345";
+        $decryption_key = "1910598";
         $decrypted_data = openssl_decrypt($entered_password, $ciphering, $decryption_key, $option, $decryption_iv);
 
         if ($row['username'] == $user_name && $decrypted_data == $pass) {

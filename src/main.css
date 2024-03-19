@@ -3,6 +3,7 @@
     margin: 0;
     box-sizing: border-box;
     text-decoration: none;
+    outline: none;
 }
 
 :root{
@@ -195,13 +196,14 @@
     overflow: auto;
 }
 
-.window-content form{
+.window-content form, .tlo-wrapper form, .folo-wrapper form{
     display: flex;
     flex-direction: column;
     width: 400px;
+    color: #fff;
 }
 
-.window-content input, .tlo-wrapper input, .folo-wrapper input{
+.window-content input, .tlo-wrapper input, .folo-wrapper input, select{
     padding: 5px 10px;
     margin-bottom: 5px;
     border-radius: 4px;
@@ -245,10 +247,11 @@ input[type='submit'], input[type='button']{
     row-gap: 30px;
     column-gap: 30px;
 }
-.window-content .company-details-wrapper > div{
+.window-content .company-details-wrapper > div:not(div:nth-last-child(1)){
     min-width: 300px;
     min-height: 150px;
     padding: 10px;
+    border: 1px solid rgba(255,255,255,0.5);
 }
 .window-content .company-details-wrapper > div.deductions{
     grid-column: 1 / span 2;
@@ -260,7 +263,6 @@ input[type='submit'], input[type='button']{
 .window-content .company-details-wrapper > div > div{
     display: flex;
     flex-direction: column;
-    
 }
 
 #notice{

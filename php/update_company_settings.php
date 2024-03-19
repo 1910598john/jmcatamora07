@@ -13,25 +13,26 @@ if ($conn->connect_error) {
 
 session_start();
 
-if (isset($_POST['sss'])) {
+if (isset($_POST['pay_sched'])) {
     $exists = checkIfExists($conn);
-    $SSS = $_POST['sss'];
-    $PBIG = $_POST['pbig'];
-    $Phil = $_POST['phil'];
-    $allowance = $_POST['allowance'];
+    
+    $pay_sched = $_POST['pay_sched'];
+    $day1 = $_POST['day1'];
+    $day2 = $_POST['day2'];
+
     $company_id = $_SESSION['companyid'];
 
     if ($exists) {
-        $sql = "UPDATE company_settings SET sss_deduction = '$SSS', philhealth_deduction = '$Phil', pag_ibig_deduction = '$PBIG', allowance = '$allowance' WHERE company_id = '$company_id'";
+        $sql = "UPDATE company_settings SET pay_sched = '$pay_sched', day1 = '$day1', day2 = '$day2' WHERE company_id = '$company_id'";
         
         if ($conn->query($sql) === TRUE) {
             echo "success";
         } 
     } else {
-        $stmt = $conn->prepare("INSERT INTO company_settings (company_id, allowance, sss_deduction, philhealth_deduction, pag_ibig_deduction)
-        VALUES (?, ?, ?, ?, ?)");
+        $stmt = $conn->prepare("INSERT INTO company_settings (company_id, pay_sched, day1, day2)
+        VALUES (?, ?, ?, ?)");
 
-        $stmt->bind_param("iisss", $company_id, $allowance, $SSS, $Phil, $PBIG);
+        $stmt->bind_param("ssii", $company_id, $pay_sched, $day1, $day2);
 
         if ($stmt->execute()) {
             echo "success";
@@ -65,7 +66,6 @@ function checkTable($conn){
         return $row['total'];
     }
 }
-
 
 $conn->close();
 

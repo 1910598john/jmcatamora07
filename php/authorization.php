@@ -20,7 +20,7 @@ if (isset($_POST['password'])) {
     $ciphering = "AES-128-CTR";
     $option = 0;
     $encryption_iv = "1234567890123456";
-    $encryption_key = "12345";
+    $encryption_key = "1910598";
     $encrypted_data = openssl_encrypt($pass, $ciphering, $encryption_key, $option, $encryption_iv);
 
     $sql = "SELECT username, password, company_id FROM payroll_admin WHERE username = '". $username . "' AND password = '". $encrypted_data . "' AND company_id = '". $company_id . "'";

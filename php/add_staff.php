@@ -19,15 +19,16 @@ if (isset($_POST['name'])) {
     $position = $_POST['position'];
     $dept = $_POST['department'];
     $company_id = $_SESSION['companyid'];
-    $rate = $_POST['rate'];
     $serialnumber = $_POST['serialnumber'];
     $phone = $_POST['phone'];
+    $class = $_POST['class'];
     $str = "Not set";
+    $str2 = "None";
 
-    $stmt = $conn->prepare("INSERT INTO staffs (name, age, position, department, company_id, rate, serialnumber, status, contact_number)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt = $conn->prepare("INSERT INTO staffs (name, class, age, position, department, company_id, serialnumber, status, contact_number, off_day, rest_day)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
-    $stmt->bind_param("sissiiiss", $name,$age, $position,$dept, $company_id, $rate, $serialnumber, $str, $phone);
+    $stmt->bind_param("sssssiissss", $name, $class, $age, $position,$dept, $company_id, $serialnumber, $str, $phone, $str2, $str2);
 
     if ($stmt->execute()) {
         echo "success";

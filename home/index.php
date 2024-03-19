@@ -188,6 +188,7 @@ if (isset($_SESSION["time_logged"])) {
 </div>
 <script src="./script.js"></script>
 <script src="../src/notice.js"></script>
+
 </body>
 </html>
 
