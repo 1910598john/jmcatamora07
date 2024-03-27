@@ -12,22 +12,23 @@ if ($conn->connect_error) {
 }
 
 session_start();
-if (isset($_POST['serial'])) {
-    $serial = $_POST['serial'];
-
-    $sql = "SELECT off_day FROM staffs WHERE company_id = '". $_SESSION['companyid'] . "' AND serialnumber = '$serial'";
+if (isset($_POST['class'])) {
+    $id = $_POST['class'];
+    
+    $sql = "SELECT name, date FROM holidays WHERE company_id = '". $_SESSION['companyid'] . "' AND paid_status = 'not paid'";
     $result = $conn->query($sql);
 
     if ($result->num_rows > 0) {
     // output data of each row
-       
-        $row = $result->fetch_assoc();
-       
-        echo $row['off_day'];
+        $data = array();
+        while ($row = $result->fetch_assoc()) {
+            $data[] = $row;
+        }
         
-    } else {
-        echo "none";
+        echo json_encode($data);
     }
 }
+
+
 $conn->close();
 ?>

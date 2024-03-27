@@ -40,7 +40,7 @@
 	$sql = "CREATE TABLE IF NOT EXISTS staffs (
 		id int(6) NOT NULL AUTO_INCREMENT PRIMARY KEY,
 		name varchar(30) NOT NULL,
-		class varchar(100) NOT NULL,
+		class varchar(5) NOT NULL,
 		age int(2) NOT NULL,
 		position varchar(30) NOT NULL,
 		department varchar(30) NOT NULL,
@@ -57,11 +57,8 @@
 		days_worked float(10) NOT NULL,
 		hours_worked_today float(10) NOT NULL,
 		status varchar(10) NOT NULL,
-		off_day varchar(200) NOT NULL,
-		rest_day varchar(200) NOT NULL,
 		leave_start DATE,
 		leave_end DATE,
-		paid_leave TINYINT(1) NOT NULL DEFAULT 0,
 		date DATE
 	)";
 
@@ -76,7 +73,9 @@
 		company_id int(11) NOT NULL,
 		pay_sched varchar(30) NOT NULL,
 		day1 int(2) NOT NULL,
-		day2 int(2) NOT NULL
+		day2 int(2) NOT NULL,
+		name varchar(100) NOT NULL,
+		address varchar(100) NOT NULL
 	)";
 
 	if ($conn->query($sql) === TRUE) {
@@ -109,7 +108,7 @@
 		allowance_name varchar(30) NOT NULL,
 		amount int(10) NOT NULL,
 		detail varchar(20),
-		class varchar(50) NOT NULL
+		class varchar(5) NOT NULL
 	)";
 
 	if ($conn->query($sql) === TRUE) {
@@ -121,12 +120,24 @@
 	$sql = "CREATE TABLE IF NOT EXISTS allowance_penalty (
 		id int(6) NOT NULL AUTO_INCREMENT PRIMARY KEY,
 		company_id int(11) NOT NULL,
+		allowance varchar(10) NOT NULL,
+		allowance_name varchar(100) NOT NULL,
 		type varchar(30) NOT NULL,
-		detail varchar(20),
-		time int(10) NOT NULL,
-		days int(2) NOT NULL,
 		deduction varchar(10) NOT NULL,
-		class varchar(50) NOT NULL
+		class varchar(5) NOT NULL
+	)";
+
+	if ($conn->query($sql) === TRUE) {
+	    echo "<br>Table created successfully";
+	} else {
+	    echo "Error creating table: " . $conn->error;
+	}
+
+	$sql = "CREATE TABLE IF NOT EXISTS holidays (
+		id int(6) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+		company_id int(11) NOT NULL,
+		name varchar(30) NOT NULL,
+		date DATE
 	)";
 
 	if ($conn->query($sql) === TRUE) {
@@ -141,7 +152,7 @@
 		holiday_name varchar(30) NOT NULL,
 		worked varchar(10) NOT NULL,
 		didnotwork varchar(10) NOT NULL,
-		class varchar(50) NOT NULL,
+		class varchar(5) NOT NULL,
 		exclusion varchar(200) NOT NULL
 	)";
 
@@ -151,26 +162,12 @@
 	    echo "Error creating table: " . $conn->error;
 	}
 
-	$sql = "CREATE TABLE IF NOT EXISTS off_rest(
-		id int(6) NOT NULL AUTO_INCREMENT PRIMARY KEY,
-		company_id int(11) NOT NULL,
-		name varchar(30) NOT NULL,
-		worked varchar(10) NOT NULL,
-		didnotwork varchar(10) NOT NULL,
-		class varchar(50) NOT NULL
-	)";
-
-	if ($conn->query($sql) === TRUE) {
-	    echo "<br>Table created successfully";
-	} else {
-	    echo "Error creating table: " . $conn->error;
-	}
 
 	$sql = "CREATE TABLE IF NOT EXISTS staffs_trail (
 		id int(6) NOT NULL AUTO_INCREMENT PRIMARY KEY,
 		company_id int(11) NOT NULL,
 		name varchar(30) NOT NULL,
-		class varchar(30) NOT NULL,
+		class varchar(5) NOT NULL,
 		serialnumber int(11) NOT NULL,
 		hours_worked float(10) NOT NULL,
 		start_time DATETIME,
@@ -182,9 +179,7 @@
 		ut_mins float(10) NOT NULL,
 		late_mins float(10) NOT NULL,
 		paid_status varchar(30) NOT NULL,
-		rest_day TINYINT(1) NOT NULL DEFAULT 0,
-		off_day TINYINT(1) NOT NULL DEFAULT 0,
-		leave TINYINT(1) NOT NULL DEFAULT 0,
+		leave_status TINYINT(1) DEFAULT 0,
 		date DATE
 	)";
 
@@ -193,6 +188,7 @@
 	} else {
 	    echo "Error creating table: " . $conn->error;
 	}
+
 
 	$sql = "CREATE TABLE IF NOT EXISTS notice (
 		id int(6) NOT NULL AUTO_INCREMENT PRIMARY KEY,

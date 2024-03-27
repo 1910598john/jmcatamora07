@@ -12,22 +12,19 @@ if ($conn->connect_error) {
 }
 
 session_start();
-if (isset($_POST['serial'])) {
-    $serial = $_POST['serial'];
-
-    $sql = "SELECT rest_day FROM staffs WHERE company_id = '". $_SESSION['companyid'] . "' AND serialnumber = '$serial'";
+if (isset($_POST['date'])) {
+    $date= $_POST['date'];
+    $snumber = $_POST['snumber'];
+    
+    $sql = "SELECT date FROM staffs_trail WHERE company_id = '". $_SESSION['companyid'] . "' AND date = '$date' AND serialnumber = '$snumber'";
     $result = $conn->query($sql);
 
     if ($result->num_rows > 0) {
     // output data of each row
-       
-        $row = $result->fetch_assoc();
-       
-        echo $row['rest_day'];
-        
-    } else {
-        echo "none";
+        echo 'worked';
     }
 }
+
+
 $conn->close();
 ?>

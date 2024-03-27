@@ -105,6 +105,8 @@ if (isset($_POST['serialnumber'], $_POST['name'], $_POST['pos'], $_POST['dept'],
   } 
 }
 
+
+
 function isRestDay($conn, $company_id, $serialnumber){
   $currentWeekday = strtolower(date('l'));
 
@@ -130,7 +132,6 @@ function isOffDay($conn, $company_id, $serialnumber){
 }
 
 function onLeave($conn, $company_id, $serialnumber){
-
   $sql = "SELECT leave_start FROM staffs WHERE serialnumber = '$serialnumber' AND company_id = '$company_id'";
   $result = $conn->query($sql);
   if ($result->num_rows > 0) {
@@ -141,7 +142,7 @@ function onLeave($conn, $company_id, $serialnumber){
       return 1;
     }
   }
-
+  
   return 0;
 }
 

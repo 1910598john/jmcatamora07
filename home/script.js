@@ -170,7 +170,15 @@ $(document).ready(function(){
 
     document.body.insertAdjacentHTML("afterbegin", `
     <div id="notifications" class="notifications">
-    </div>`)
+    </div>`);
+
+    $.ajax({
+        type: 'POST',
+        url: '../php/staffs_on_leave.php',
+        success: function(res) {
+
+        }
+    })
 
     displayCurrentTime();
     initWebSocket();

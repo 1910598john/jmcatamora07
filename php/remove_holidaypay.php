@@ -13,14 +13,12 @@ if ($conn->connect_error) {
 
 session_start();
 
-if (isset($_POST['day'])) {
-  $day = $_POST['day'];
-  $serialnumber = $_POST['serial'];
+if (isset($_POST['id'])) {
+  $id = $_POST['id'];
 
   $company_id = $_SESSION['companyid'];
 
-  
-  $sql = "UPDATE staffs SET rest_day = REPLACE(rest_day, '$day','') WHERE company_id = '$company_id' AND serialnumber = '$serialnumber'";
+  $sql = "DELETE FROM holidays WHERE id = '$id' AND company_id = '$company_id'";
   
   if ($conn->query($sql) === TRUE) {
     echo "success";

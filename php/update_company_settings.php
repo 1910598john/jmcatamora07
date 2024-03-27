@@ -19,11 +19,13 @@ if (isset($_POST['pay_sched'])) {
     $pay_sched = $_POST['pay_sched'];
     $day1 = $_POST['day1'];
     $day2 = $_POST['day2'];
+    $name = $_POST['name'];
+    $address = $_POST['address'];
 
     $company_id = $_SESSION['companyid'];
 
     if ($exists) {
-        $sql = "UPDATE company_settings SET pay_sched = '$pay_sched', day1 = '$day1', day2 = '$day2' WHERE company_id = '$company_id'";
+        $sql = "UPDATE company_settings SET pay_sched = '$pay_sched', day1 = '$day1', day2 = '$day2', name = '$name', address = '$address' WHERE company_id = '$company_id'";
         
         if ($conn->query($sql) === TRUE) {
             echo "success";

@@ -186,7 +186,7 @@ function notAuhorized() {
                 <p class='text-center text-white' style='font-size:20px;'>AUTHORIZATION</p>
                 <div style='display: flex;align-items: center;margin-bottom:10px;'>
                     <div style='flex:1;height:1px;background:rgba(0,0,0,0.1);'></div>
-                    <div style='flex:5;display:grid;place-items:center;color:#fff;'>Confirm password or Scan fingerprint</div>
+                    <div style='flex:2;display:grid;place-items:center;color:#fff;'>Confirm Password</div>
                     <div style='flex:1;height:1px;background:rgba(0,0,0,0.1);'></div>
                 </div>
                 <form id='authorizationForm'>

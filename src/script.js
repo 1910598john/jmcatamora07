@@ -6,6 +6,7 @@ var gateway = `ws://192.168.10.147/management`;
 var websocket;
 var SERIAL_NUMBER;
 var timeout;
+var details = [];
 
 function initWebSocket() {
     websocket = new WebSocket(gateway);
@@ -22,6 +23,9 @@ function onClose(event) {
     console.log('Connection closed');
     setTimeout(initWebSocket, 1000);
 }
+
+var deductions = {};
+var CLASSES = {};
 
 function onMessage(event) {
     try {
@@ -61,6 +65,22 @@ $(document).ready(function(){
     document.body.insertAdjacentHTML("afterbegin", `
     <div id="notifications" class="notifications">
     </div>`);
+
+    $.ajax({
+        type: 'POST',
+        url: '../php/fetch_classes.php',
+        success: function(res){
+            try {
+                res = JSON.parse(res);
+                for (let i = 0; i < res.length; i++) {
+                    CLASSES[`${res[i].id}`] = res[i].class_name;
+                }
+                
+            } catch (err) {
+                console.log(err);
+            }
+        }
+    })
 })
 
 
@@ -80,8 +100,6 @@ function computeSalary(id) {
                 res = JSON.parse(res);
                 responseBody = res;
 
-               
-
                 //fetch class
                 $.ajax({
                     type: 'POST',
@@ -94,18 +112,18 @@ function computeSalary(id) {
                         try {
                             res = JSON.parse(res);
 
-                            
-                            
-                            let className, in_sched, holiday_pay, hour_perday, ot_pay, rate, rateType;
+                            var className, in_sched, holiday_pay, hour_perday, ot_pay, rate, rateType, PAYDeductions;
 
                             className =  res.class_name;
                             holiday_pay = res.holi_pay;
                             ot_pay = res.ot_pay;
                             hour_perday = res.hour_perday;
                             rate = res.rate;
+                            PAYDeductions = res.deductions.split(" ");
+
                             rateType = res.rate_type;
                             
-                            let name, pos, department, adjustment, CA, charges, sss_loan, pbig_loan, company_loan, days_worked;
+                            var name, pos, department, adjustment, CA, charges, sss_loan, pbig_loan, company_loan, days_worked;
 
                             name = responseBody.name;
                             pos = responseBody.position;
@@ -120,48 +138,1089 @@ function computeSalary(id) {
 
                             $.ajax({
                                 type: 'POST',
-                                url: '../php/fetch_staffs_trail.php',
-                                data: {
-                                    serialnumber: responseBody.serialnumber,
-                                },
-
-                                success: function(res){
+                                url: '../php/fetch_company_settings.php',
+                                success: function(sched){
                                     try {
-                                        res = JSON.parse(res);
-
-                                        let ot_total = 0;
-                                        let ut_total = 0;
-                                        let ot_mins = 0;
-                                        let ut_mins = 0;
-                                        let late_mins = 0;
-                                        
-                                        for (let i = 0; i < res.length; i++) {
-                                            ot_total += parseFloat(res[i].ot_total);
-                                            ut_total += parseFloat(res[i].ut_total);
-                                            ot_mins += parseFloat(res[i].ot_mins);
-                                            ut_mins += parseFloat(res[i].ut_mins);
-
-                                            late_mins += parseInt(res[i].late_mins);
-                                        }
-
-                                        let salaryRate = rate * parseInt($(`#cal${id}`).val());
-                                        let basic = rate * parseInt(days_worked);
-                                        let absent = salaryRate - basic;
-
-                                        console.log("RATE: " + rate);
-                                        console.log("SALARY RATE: " + salaryRate);
-                                        console.log("BASIC: " + basic);
-                                        console.log("ABSENT: " + absent);
-                                        
-                                        console.log("OT TOTAL: " + ot_total);
-                                        console.log("UT TOTAL: " + ut_total);
-                                        console.log("OT MINS: " + ot_mins);
-                                        console.log("UT MINS: " + ut_mins);
-                                        console.log("LATE: (minutes)" + late_mins);
-                                        
-                                    } catch(err) {
-                                        console.log(err);
+                                        sched = JSON.parse(sched);
+                                    } catch (err) {
+                                        sched = 'None';
                                     }
+
+                                    $.ajax({
+                                        type: 'POST',
+                                        url: '../php/fetch_staffs_trail.php',
+                                        data: {
+                                            serialnumber: responseBody.serialnumber,
+                                        },
+        
+                                        success: function(trail){
+                                            try {
+                                                trail = JSON.parse(trail);
+        
+                                                let ot_total = 0;
+                                                let ut_total = 0;
+                                                let ot_mins = 0;
+                                                let ut_mins = 0;
+                                                let late_mins = 0;
+        
+                                                var allowanceResponseBody, allowancePenalty, holidays;
+        
+                                                $.ajax({
+                                                    type: 'POST',
+                                                    url: '../php/fetch_allowance.php',
+                                                    data: {
+                                                        class: responseBody.class,
+                                                    }, success: function(res){
+
+                                                        try {
+                                                            allowanceResponseBody = JSON.parse(res);
+                                                        } catch (err) {
+                                                            allowanceResponseBody = 'None';
+                                                        }
+        
+                                                        $.ajax({
+                                                            type: 'POST',
+                                                            url: '../php/fetch_allowancePenaltyByClass.php',
+                                                            data: {
+                                                                class: responseBody.class,
+                                                            }, success: function(res){
+        
+                                                                try {
+                                                                    allowancePenalty = JSON.parse(res);
+                                                                } catch (err) {
+                                                                    allowancePenalty = 'None';
+                                                                }
+
+                                                                $.ajax({
+                                                                    type: 'POST',
+                                                                    url: '../php/fetchHolidaysByClass.php',
+                                                                    data: {
+                                                                        class: responseBody.class,
+                
+                                                                    }, success: function(res) {
+                                                                        
+                                                                        try {
+                                                                            holidays = JSON.parse(res);
+                                                                            
+                                                                        } catch (err) {
+                                                                            holidays = "None";
+                                                                        }
+                        
+                                                                        if (holidays != 'None') {
+                                                                            
+                                                                            for (let i = 0; i < holidays.length; i++) {
+                                                                                let date = holidays[i].date;
+                                                                                startFetching(holidays[i].name, responseBody.class, date);
+                                                                            }
+
+                                                                        } else {
+        
+                                                                            days_worked = parseFloat(days_worked);
+                                                                            
+                                                                            let secondHalf = false;
+
+                                                                            for (let i = 0; i < trail.length; i++) {
+                                                                                ot_total += parseFloat(trail[i].ot_total);
+                                                                                ut_total += parseFloat(trail[i].ut_total);
+                                                                                ot_mins += parseFloat(trail[i].ot_mins);
+                                                                                ut_mins += parseFloat(trail[i].ut_mins);
+                                                                                
+                                                                                let HOURPERDAY = parseInt(hour_perday);
+                                                                                HOURPERDAY = HOURPERDAY / 2;
+                                                                                
+                                                                                let OnLeave = false;
+
+                                                                                if (parseInt(trail[i].leave_status) == 1) {
+                                                                                    OnLeave = true;
+                                                                                    days_worked += 1;
+                                                                                }
+
+                                                                                if (!OnLeave) {
+                                                                                    if (trail[i].total_hours <= HOURPERDAY) {
+                                                                                        days_worked -= 0.5;
+                                                                                    }
+                                                                                }
+                                                                                
+                                                                                late_mins += parseInt(trail[i].late_mins);
+                                                                            }
+        
+                                                                            ///////////// COMPUTATION
+                                                                            let salaryRate = rate * parseInt($(`#cal${id}`).val());
+                                                                            
+
+                                                                           
+                                                                            let basic = rate * parseInt(days_worked);
+                                                                            let absent = salaryRate - basic;
+                                                            
+        
+                                                                            let earned = 0;
+                                                                            let net = 0;
+                                                                            let total_deductions = 0;
+                                                                            earned = salaryRate - absent;
+
+                                                                            if (ot_pay == 'eligible') {
+
+                                                                                if (PAYDeductions.includes('undertime')) {
+                                                                                    earned = earned - ut_total;
+                                                                                }
+                                                                               
+                                                                            }
+                                                                            
+                                                                            earned = earned + 0;
+
+                                                                            if (ot_pay == 'eligible') {
+                                                                                earned = earned + ot_total;
+                                                                            }
+        
+                                                                            console.log("EARNED: " + earned.toLocaleString());
+        
+                                                                            net = earned;
+        
+                                                                            if (deductions.hasOwnProperty(`deduc${id}`)) {
+                                                                                total_deductions = total_deductions + parseFloat(deductions[`deduc${id}`].sss);
+                                                                                total_deductions = total_deductions + parseFloat(deductions[`deduc${id}`].phil);
+                                                                                total_deductions = total_deductions + parseFloat(deductions[`deduc${id}`].pbig);
+                                                                            }
+                                                                            
+                                                                            total_deductions = total_deductions + parseInt(adjustment);
+                                                                            total_deductions = total_deductions + parseInt(CA);
+                                                                            total_deductions = total_deductions + parseInt(charges);
+                                                                            total_deductions = total_deductions + parseInt(sss_loan);
+                                                                            total_deductions = total_deductions + parseInt(pbig_loan);
+                                                                            total_deductions = total_deductions + parseInt(company_loan);
+        
+                                                                            net = net - total_deductions;
+                                                                            console.log("TOTAL DEDUCTIONS: " + total_deductions);
+
+                                                                            if (sched != 'None') {
+                                                                            
+                                                                                let amount = 0;
+                                                                                let penalty = 0;
+                                                                                
+                                                                                if (sched[0].pay_sched == 'twice-monthly') {
+                                                                                    let firstHalfSched = sched[0].day1;
+                                                                                    let secondHalfSched = sched[0].day2;
+
+                                                                                    for (let i = 0; i < allowanceResponseBody.length; i++) {
+
+                                                                                        if (allowanceResponseBody[i].detail == 'twice monthly') { //twice monthly allowance
+                                                                                            amount += parseInt(allowanceResponseBody[i].amount);
+                                                                                        }
+
+                                                                                        if (secondHalf) {
+                                                                                            amount += parseInt(allowanceResponseBody[i].amount);
+                                                                                        }
+                                                                                        
+                                                                                        let allowanceID = parseInt(allowanceResponseBody[i].id);
+
+                                                                                        if (allowancePenalty != 'None') {
+                                                                                            
+                                                                                            for (let k = 0; k < allowancePenalty.length; k++) {
+                                                                                                
+                                                                                                if (parseInt(allowancePenalty[k].allowance) == allowanceID) {
+                                                                                                    
+                                                                                                    let deduction = allowancePenalty[k].deduction;
+    
+                                                                                                    //percentage
+                                                                                                    if (deduction.includes("%")) {
+                                                                                                        deduction = deduction.replace(/%/g, '');
+                                                                                                        deduction = parseFloat(deduction);
+    
+                                                                                                        if (allowancePenalty[k].type == 'absent') {
+                                                                                                            let numOfAbsent = parseInt($(`#cal${id}`).val()) - days_worked;
+    
+                                                                                                            deduction = deduction * numOfAbsent;
+                                                                                                            deduction = deduction / 100;
+    
+                                                                                                            let deducted = amount * deduction;
+                                                                                                            penalty = deducted;
+                                                                                                            amount = amount - deducted;
+    
+                                                                                                        } else {
+                                                                                                            let type = allowancePenalty[k].type.split("|");
+                                                                                                            let lateMins = parseInt(type[1]);
+                                                                                                            let numOfLate = 0;
+                                                                                                            for (let j = 0; j < trail.length; j++) {
+                                                                                                                if (parseInt(trail[j].late_mins) >= lateMins) {
+                                                                                                                    numOfLate += 1;
+                                                                                                                }
+                                                                                                            }
+                                                                                                            deduction = deduction * numOfLate;
+                                                                                                            deduction = deduction / 100;
+    
+                                                                                                            let deducted = amount * deduction;
+                                                                                                            penalty = deducted;
+                                                                                                            amount = amount - deducted;
+                                                                                                        }
+    
+                                                                                                    } else {
+                                                                                                        deduction = parseFloat(deduction);
+    
+                                                                                                        if (allowancePenalty[k].type == 'absent') {
+                                                                                                            let numOfAbsent = parseInt($(`#cal${id}`).val()) - days_worked;
+    
+                                                                                                            deduction = deduction * numOfAbsent;
+                                                                                                            amount = amount - deduction;
+    
+                                                                                                        } else {
+                                                                                                            let type = allowancePenalty[k].type.split("|");
+                                                                                                            let lateMins = parseInt(type[1]);
+                                                                                                            let numOfLate = 0;
+                                                                                                            for (let j = 0; j < trail.length; j++) {
+                                                                                                                if (parseInt(trail[j].late_mins) >= lateMins) {
+                                                                                                                    numOfLate += 1;
+                                                                                                                }
+                                                                                                            }
+                                                                                                            deduction = deduction * numOfLate;
+                                                                                                            penalty = deduction;
+                                                                                                            amount = amount - deduction;
+                                                                                                        }
+                                                                                                    }
+                                                                                                
+                                                                                                }
+                                                                                            }
+                                                                                        }
+                                                                                        
+                                                                                    }
+
+                                                                                    
+
+                                                                                } else if (sched[0].pay_sched == 'monthly') {
+                                                                                    for (let i = 0; i < allowanceResponseBody.length; i++) {
+                                                                                        if (allowanceResponseBody[i].detail == 'monthly') {
+                                                                                            amount += parseInt(allowanceResponseBody[i].amount);
+                                                                                        }
+
+                                                                                        let allowanceID = parseInt(allowanceResponseBody[i].id);
+
+                                                                                        if (allowancePenalty != 'None') {
+                                                                                            for (let k = 0; k < allowancePenalty.length; k++) {
+                                                                                                if (parseInt(allowancePenalty[k].allowance) == allowanceID) {
+                                                                                                    let deduction = allowancePenalty[k].deduction;
+    
+                                                                                                    //percentage
+                                                                                                    if (deduction.includes("%")) {
+                                                                                                        deduction = deduction.replace(/%/g, '');
+                                                                                                        deduction = parseFloat(deduction);
+    
+                                                                                                        if (allowancePenalty[k].type == 'absent') {
+                                                                                                            let numOfAbsent = parseInt($(`#cal${id}`).val()) - days_worked;
+    
+                                                                                                            deduction = deduction * numOfAbsent;
+                                                                                                            deduction = deduction / 100;
+    
+                                                                                                            let deducted = amount * deduction;
+                                                                                                            penalty = deducted;
+                                                                                                            amount = amount - deducted;
+    
+                                                                                                        } else {
+                                                                                                            let type = allowancePenalty[k].type.split("|");
+                                                                                                            let lateMins = parseInt(type[1]);
+                                                                                                            let numOfLate = 0;
+                                                                                                            for (let j = 0; j < trail.length; j++) {
+                                                                                                                if (parseInt(trail[j].late_mins) >= lateMins) {
+                                                                                                                    numOfLate += 1;
+                                                                                                                }
+                                                                                                            }
+                                                                                                            deduction = deduction * numOfLate;
+                                                                                                            deduction = deduction / 100;
+    
+                                                                                                            let deducted = amount * deduction;
+                                                                                                            penalty = deducted;
+                                                                                                            amount = amount - deducted;
+                                                                                                        }
+    
+                                                                                                    } else {
+                                                                                                        deduction = parseFloat(deduction);
+    
+                                                                                                        if (allowancePenalty[k].type == 'absent') {
+                                                                                                            let numOfAbsent = parseInt($(`#cal${id}`).val()) - days_worked;
+    
+                                                                                                            deduction = deduction * numOfAbsent;
+                                                                                                            amount = amount - deduction;
+    
+                                                                                                        } else {
+                                                                                                            let type = allowancePenalty[k].type.split("|");
+                                                                                                            let lateMins = parseInt(type[1]);
+                                                                                                            let numOfLate = 0;
+                                                                                                            for (let j = 0; j < trail.length; j++) {
+                                                                                                                if (parseInt(trail[j].late_mins) >= lateMins) {
+                                                                                                                    numOfLate += 1;
+                                                                                                                }
+                                                                                                            }
+                                                                                                            deduction = deduction * numOfLate;
+                                                                                                            penalty = deduction;
+                                                                                                            amount = amount - deduction;
+                                                                                                        }
+                                                                                                    }
+                                                                                                
+                                                                                                }
+                                                                                            }
+                                                                                        }
+
+                                                                                    }
+
+                                                                                }
+
+                                                                                net = net + amount;
+
+                                                                                if (deductions.hasOwnProperty(`deduc${id}`)) {
+                                                                                    if (ot_pay == 'eligible') {
+                                                                                        details[`det${id}`] = [{'RATE': rate}, {'RATE TYPE' : rateType}, {'WORKING DAYS': $(`#cal${id}`).val()}, {'SALARY RATE': salaryRate}, {'DAYS WORKED' : days_worked}, {'ABSENT (Total)': absent}, {'UNDERTIME (Total)': ut_total}, {'BASIC' : basic}, {'HOLIDAY (Total)' : 0}, {'OVERTIME (Total)' : ot_total}, {'EARNED' : {'value' : earned, 'highlight' : ''}}, {'SSS': deductions[`deduc${id}`].sss}, {'PhilHealth' : deductions[`deduc${id}`].phil}, {'Pag-IBIG' : deductions[`deduc${id}`].pbig}, {'ADJUSTMENT' : adjustment}, {'CASH ADVANCE' : CA}, {'CHARGES' : charges}, {'SSS LOAN' : sss_loan}, {'Pag-IBIG LOAN' : pbig_loan}, {'COMPANY LOAN' : company_loan}, {'TOTAL DEDUCTIONS' : {'value' : total_deductions, 'highlight' : ''}}, {'ALLOWANCE' : amount}, {'ALLOWANCE PENALTY' : penalty}, {'NET PAY' : {'value': net, 'highlight': ''}}];
+                                                                                    } else {
+                                                                                        details[`det${id}`] = [{'RATE': rate}, {'RATE TYPE' : rateType}, {'WORKING DAYS': $(`#cal${id}`).val()}, {'SALARY RATE': salaryRate}, {'DAYS WORKED' : days_worked}, {'ABSENT (Total)': absent}, {'BASIC' : basic}, {'HOLIDAY (Total)' : 0},  {'EARNED' : {'value' : earned, 'highlight' : ''}}, {'SSS': deductions[`deduc${id}`].sss}, {'PhilHealth' : deductions[`deduc${id}`].phil}, {'Pag-IBIG' : deductions[`deduc${id}`].pbig}, {'ADJUSTMENT' : adjustment}, {'CASH ADVANCE' : CA}, {'CHARGES' : charges}, {'SSS LOAN' : sss_loan}, {'Pag-IBIG LOAN' : pbig_loan}, {'COMPANY LOAN' : company_loan}, {'TOTAL DEDUCTIONS' : {'value' : total_deductions, 'highlight' : ''}}, {'ALLOWANCE' : amount}, {'ALLOWANCE PENALTY' : penalty}, {'NET PAY' : {'value': net, 'highlight': ''}}];
+                                                                                    }
+                                                                                } else {
+                                                                                    if (ot_pay == 'eligible') {
+                                                                                        details[`det${id}`] = [{'RATE': rate}, {'RATE TYPE' : rateType}, {'WORKING DAYS': $(`#cal${id}`).val()}, {'SALARY RATE': salaryRate}, {'DAYS WORKED' : days_worked}, {'ABSENT (Total)': absent}, {'UNDERTIME (Total)': ut_total}, {'BASIC' : basic}, {'HOLIDAY (Total)' : 0}, {'OVERTIME (Total)' : ot_total}, {'EARNED' : {'value' : earned, 'highlight' : ''}}, {'SSS': 0}, {'PhilHealth' : 0}, {'Pag-IBIG' : 0}, {'ADJUSTMENT' : adjustment},{ 'CASH ADVANCE' : CA}, {'CHARGES' : charges}, {'SSS LOAN' : sss_loan}, {'Pag-IBIG LOAN' : pbig_loan}, {'COMPANY LOAN' : company_loan}, {'TOTAL DEDUCTIONS' : {'value' : total_deductions, 'highlight' : ''}}, {'ALLOWANCE' : amount}, {'ALLOWANCE PENALTY' : penalty}, {'NET PAY' : {'value': net, 'highlight': ''}}];
+                                                                                    } else {
+                                                                                        details[`det${id}`] = [{'RATE': rate}, {'RATE TYPE' : rateType}, {'WORKING DAYS': $(`#cal${id}`).val()}, {'SALARY RATE': salaryRate}, {'DAYS WORKED' : days_worked}, {'ABSENT (Total)': absent},  {'BASIC' : basic}, {'HOLIDAY (Total)' : 0},  {'EARNED' : {'value' : earned, 'highlight' : ''}}, {'SSS': 0}, {'PhilHealth' : 0}, {'Pag-IBIG' : 0}, {'ADJUSTMENT' : adjustment},{ 'CASH ADVANCE' : CA}, {'CHARGES' : charges}, {'SSS LOAN' : sss_loan}, {'Pag-IBIG LOAN' : pbig_loan}, {'COMPANY LOAN' : company_loan}, {'TOTAL DEDUCTIONS' : {'value' : total_deductions, 'highlight' : ''}}, {'ALLOWANCE' : amount}, {'ALLOWANCE PENALTY' : penalty}, {'NET PAY' : {'value': net, 'highlight': ''}}];
+                                                                                    }
+                                                                                    
+                                                                                }
+                                                                                
+                                                                                $(`#gross-pay${id}`).html(earned.toLocaleString());
+                                                                                $(`#net-pay${id}`).html(net.toLocaleString());
+
+                                                                                console.log(details);
+
+                                                                            } else {
+                                                                                errorNotification("Please update your settings.", "warning");
+                                                                            }
+                                                                            
+                                                                            console.log("OT MINS: " + ot_mins);
+                                                                            console.log("UT MINS: " + ut_mins);
+                                                                            console.log("LATE: (minutes)" + late_mins);
+        
+                                                                            //////////////
+        
+                                                                        }
+                        
+                                                                        async function startFetching(id, _class, date) {
+                                                                            await fetchHolidays(id, _class, date);
+                                                                        }
+                        
+                                                                        async function fetchHolidays(id, _class, date) {
+                                                                            
+                                                                            $.ajax({
+                                                                                type: 'POST',
+                                                                                url: '../php/fetchCompanyHolidays.php',
+                                                                                data: {
+                                                                                    id: id,
+                                                                                    class: _class,
+                
+                                                                                }, success: function(h) {
+                                                                                    console.log('holidays for this class');
+                                                                                
+                                                                                    try {
+                                                                                        h = JSON.parse(h);
+                                                                                        let excluded = false;
+                        
+                                                                                        let promise;
+                                                                                        
+                                                                                        if (h.exclusion == 'abh') {
+
+                                                                                            let DATE = new Date(date);
+                                                                                            DATE.setDate(DATE.getDate() - 1);
+                                                                                            
+                                                                                            let year = DATE.getFullYear();
+                                                                                            let month = String(DATE.getMonth() + 1).padStart(2, '0'); // Adding 1 because months are zero-based
+                                                                                            let day = String(DATE.getDate()).padStart(2, '0');
+                        
+                                                                                            // Format the date as "YYYY-MM-DD"
+                                                                                            let dateString = `${year}-${month}-${day}`;
+                                                                                        
+                                                                                            promise = new Promise(function(resolve, reject){
+                                                                                                $.ajax({
+                                                                                                    type: 'POST',
+                                                                                                    url: '../php/checkDateTrail.php',
+                                                                                                    data: {
+                                                                                                        type: h.exclusion,
+                                                                                                        date: `${dateString}`,
+                                                                                                        serial: responseBody.serialnumber
+                                                                                                        
+                                                                                                    }, success: function(res1){
+                                                                                                        resolve(res1);
+                                                                                                    }
+                                                                                                })
+                                                                                            })
+                                                                                        
+                                                                                        } else if (h.exclusion == 'aah') {
+                        
+                                                                                            let DATE = new Date(date);
+                                                                                            DATE.setDate(DATE.getDate() + 1);
+                                                                                            
+                                                                                            let year = DATE.getFullYear();
+                                                                                            let month = String(DATE.getMonth() + 1).padStart(2, '0'); // Adding 1 because months are zero-based
+                                                                                            let day = String(DATE.getDate()).padStart(2, '0');
+                        
+                                                                                            // Format the date as "YYYY-MM-DD"
+                                                                                            let dateString = `${year}-${month}-${day}`;
+                                                                                        
+                                                                                            promise = new Promise(function(resolve, reject){
+                                                                                                $.ajax({
+                                                                                                    type: 'POST',
+                                                                                                    url: '../php/checkDateTrail.php',
+                                                                                                    data: {
+                                                                                                        type: h.exclusion,
+                                                                                                        date: `${dateString}`,
+                                                                                                        serial: responseBody.serialnumber
+                                                                                                        
+                                                                                                    }, success: function(res1){
+                                                                                                        resolve(res1);
+                                                                                                    }
+                                                                                                })
+                                                                                            })
+                                                                                            
+                                                                                        } else if (h.exclusion == 'abaah') {
+                                                                                            
+                                                                                            let DATE = new Date(date);
+                                                                                            let DATE2 = new Date(date);
+                                                                                            DATE.setDate(DATE.getDate() - 1);
+                                                                                            DATE2.setDate(DATE2.getDate() + 1);
+                                                                                            
+                                                                                            let year = DATE.getFullYear();
+                                                                                            let month = String(DATE.getMonth() + 1).padStart(2, '0'); // Adding 1 because months are zero-based
+                                                                                            let day = String(DATE.getDate()).padStart(2, '0');
+                        
+                                                                                            let year2 = DATE2.getFullYear();
+                                                                                            let month2 = String(DATE2.getMonth() + 1).padStart(2, '0'); // Adding 1 because months are zero-based
+                                                                                            let day2 = String(DATE2.getDate()).padStart(2, '0');
+                        
+                                                                                            // Format the date as "YYYY-MM-DD"
+                                                                                            let dateString1 = `${year}-${month}-${day}`;
+                                                                                            let dateString2 = `${year2}-${month2}-${day2}`;
+                                                                                        
+                                                                                            promise = new Promise(function(resolve, reject){
+                                                                                                $.ajax({
+                                                                                                    type: 'POST',
+                                                                                                    url: '../php/checkDateTrail.php',
+                                                                                                    data: {
+                                                                                                        type: h.exclusion,
+                                                                                                        date: dateString1,
+                                                                                                        date1: `${dateString1}`,
+                                                                                                        date2: `${dateString2}`,
+                                                                                                        serial: responseBody.serialnumber
+                                                                                                        
+                                                                                                    }, success: function(res1){
+                                                                                                    
+                                                                                                        resolve(res1);
+                                                                                                    }
+                                                                                                })
+                                                                                            });
+                                                                                        }
+                        
+                                                                                        promise.then(
+
+                                                                                            function(value) {
+                                                                                                
+
+                                                                                                if (!value.includes("worked")) {
+                                                                                                    excluded = true;
+                                                                                                }
+
+                                                                                                days_worked = parseFloat(days_worked);
+                                                                            
+                                                                                                    let secondHalf = false;
+
+                                                                                                    for (let i = 0; i < trail.length; i++) {
+                                                                                                        ot_total += parseFloat(trail[i].ot_total);
+                                                                                                        ut_total += parseFloat(trail[i].ut_total);
+                                                                                                        ot_mins += parseFloat(trail[i].ot_mins);
+                                                                                                        ut_mins += parseFloat(trail[i].ut_mins);
+                                                                                                        
+                                                                                                        let HOURPERDAY = parseInt(hour_perday);
+                                                                                                        HOURPERDAY = HOURPERDAY / 2;
+                                                                                                        
+                                                                                                        let OnLeave = false;
+
+                                                                                                        if (parseInt(trail[i].leave_status) == 1) {
+                                                                                                            OnLeave = true;
+                                                                                                            days_worked += 1;
+                                                                                                        }
+
+                                                                                                        if (!OnLeave) {
+                                                                                                            if (trail[i].total_hours <= HOURPERDAY) {
+                                                                                                                days_worked -= 0.5;
+                                                                                                            }
+                                                                                                        }
+                                                                                                        
+                                                                                                        late_mins += parseInt(trail[i].late_mins);
+                                                                                                    }
+                                
+                                                                                                    ///////////// COMPUTATION
+                                
+                                                                                                    let salaryRate = rate * parseInt($(`#cal${_class}`).val());
+                                                                                                    
+                                                                                                    let basic = rate * parseInt(days_worked);
+                                                                                                    let absent = salaryRate - basic;
+                                                                                                    // console.log("WORKING DAYS: " + $(`#cal${_class}`).val());
+                                                                                                    // console.log("DAYS WORKED: " + days_worked);
+                                                                                                    // console.log("RATE: " + rate);
+                                                                                                    // console.log("SALARY RATE: " + salaryRate);
+                                                                                                    // console.log("ABSENT: " + absent);
+                                                                                                    // console.log("UNDERTIME TOTAL: " + ut_total);
+                                                                                                    // console.log("BASIC: " + basic);
+                                                                                                    // console.log("HOLIDAY: " + 0);
+                                                                                                    // console.log("OVERTIME TOTAL: " + ot_total);
+                                
+                                                                                                    let earned = 0;
+                                                                                                    let net = 0;
+                                                                                                    let holidayPay = 0;
+                                                                                                    let total_deductions = 0;
+                                                                                                    
+                                                                                                        if (holiday_pay == 'eligible') {
+
+                                                                                                            for (let x = 0; x < holidays.length; x++) {
+                                                                                                                console.log(x + "x");
+                                                                                                                $.ajax({
+                                                                                                                    type: 'POST',
+                                                                                                                    url: '../php/fetch_class_holidays.php',
+                                                                                                                    data: {
+                                                                                                                        id: holidays[x].name,
+                                                                                                                    }, success: function(res) {
+                                                                                                                        
+                                                                                                                        try {
+                                                                                                                            res = JSON.parse(res);
+                                                                                                                           
+                                                                                                                            $.ajax({
+                                                                                                                                type: 'POST',
+                                                                                                                                url: '../php/workedOnHoliday.php',
+                                                                                                                                data: {
+                                                                                                                                    date: date,
+                                                                                                                                    snumber: responseBody.serialnumber,
+
+                                                                                                                                }, success: function(resp) {
+                                                                                                                                    let worked = false;
+                                                                                                                                    
+
+                                                                                                                                    if (resp.includes("worked")) {
+                                                                                                                                        worked = true;
+                                                                                                                                    }
+
+                                                                                                                                    if (worked) {
+                                                                                                                                        let percentage = parseInt(res[0].worked);
+                                                                                                                                        
+                                                                                                                                        percentage = percentage / 100;
+                                                                                                                                        holidayPay = holidayPay + (parseInt(rate) * percentage);
+                                                                                                                                    } else {
+                                                                                                                                        let percentage = parseInt(res[0].didnotwork);
+                                                                                                                                        
+                                                                                                                                        percentage = percentage / 100;
+                                                                                                                                        holidayPay = holidayPay + (parseInt(rate) * percentage);
+                                                                                                                                    }
+
+                                                                                                                                    earned = salaryRate - absent;
+
+                                                                                                                                    if (ot_pay == 'eligible') {
+                                                                                                                                        if (PAYDeductions.includes('undertime')) {
+                                                                                                                                            earned = earned - ut_total;
+                                                                                                                                        }
+                                                                                                                                        
+                                                                                                                                    }
+
+                                                                                                                                    if (excluded) {
+                                                                                                                                        holidayPay = 0;
+                                                                                                                                    }
+
+                                                                                                                                    console.log(holidayPay);
+
+                                                                                                                                    earned = earned + holidayPay;
+
+                                                                                                                                    if (ot_pay == 'eligible') {
+                                                                                                                                        earned = earned + ot_total;
+                                                                                                                                    }
+
+                                                                                                                                    // console.log("EARNED: " + earned.toLocaleString());
+                                                                
+                                                                                                                                    net = earned;
+                                                                
+                                                                                                                                    if (deductions.hasOwnProperty(`deduc${_class}`)) {
+                                                                                                                                        total_deductions = total_deductions + parseFloat(deductions[`deduc${_class}`].sss);
+                                                                                                                                        total_deductions = total_deductions + parseFloat(deductions[`deduc${_class}`].phil);
+                                                                                                                                        total_deductions = total_deductions + parseFloat(deductions[`deduc${_class}`].pbig);
+                                                                                                                                    }
+                                                                                                                                    
+                                                                                                                                    total_deductions = total_deductions + parseInt(adjustment);
+                                                                                                                                    total_deductions = total_deductions + parseInt(CA);
+                                                                                                                                    total_deductions = total_deductions + parseInt(charges);
+                                                                                                                                    total_deductions = total_deductions + parseInt(sss_loan);
+                                                                                                                                    total_deductions = total_deductions + parseInt(pbig_loan);
+                                                                                                                                    total_deductions = total_deductions + parseInt(company_loan);
+                                                                
+                                                                                                                                    net = net - total_deductions;
+                                                                                                                                    // console.log("TOTAL DEDUCTIONS: " + total_deductions);
+
+                                                                                                                                    if (sched != 'None') {
+                                                                                                                                    
+                                                                                                                                        let amount = 0;
+                                                                                                                                        let penalty = 0;
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        if (sched[0].pay_sched == 'twice-monthly') {
+                                                                                                                                            let firstHalfSched = sched[0].day1;
+                                                                                                                                            let secondHalfSched = sched[0].day2;
+
+                                                                                                                                            for (let i = 0; i < allowanceResponseBody.length; i++) {
+
+                                                                                                                                                if (allowanceResponseBody[i].detail == 'twice monthly') { //twice monthly allowance
+                                                                                                                                                    amount += parseInt(allowanceResponseBody[i].amount);
+                                                                                                                                                }
+
+                                                                                                                                                if (secondHalf) {
+                                                                                                                                                    amount += parseInt(allowanceResponseBody[i].amount);
+                                                                                                                                                }
+                                                                                                                                                
+                                                                                                                                                let allowanceID = parseInt(allowanceResponseBody[i].id);
+
+                                                                                                                                                if (allowancePenalty != 'None') {
+                                                                                                                                                    
+                                                                                                                                                    for (let k = 0; k < allowancePenalty.length; k++) {
+                                                                                                                                                        
+                                                                                                                                                        if (parseInt(allowancePenalty[k].allowance) == allowanceID) {
+                                                                                                                                                            
+                                                                                                                                                            let deduction = allowancePenalty[k].deduction;
+                                                            
+                                                                                                                                                            //percentage
+                                                                                                                                                            if (deduction.includes("%")) {
+                                                                                                                                                                deduction = deduction.replace(/%/g, '');
+                                                                                                                                                                deduction = parseFloat(deduction);
+                                                            
+                                                                                                                                                                if (allowancePenalty[k].type == 'absent') {
+                                                                                                                                                                    let numOfAbsent = parseInt($(`#cal${_class}`).val()) - days_worked;
+                                                            
+                                                                                                                                                                    deduction = deduction * numOfAbsent;
+                                                                                                                                                                    deduction = deduction / 100;
+                                                            
+                                                                                                                                                                    let deducted = amount * deduction;
+                                                                                                                                                                    penalty = deducted;
+                                                                                                                                                                    amount = amount - deducted;
+                                                            
+                                                                                                                                                                } else {
+                                                                                                                                                                    let type = allowancePenalty[k].type.split("|");
+                                                                                                                                                                    let lateMins = parseInt(type[1]);
+                                                                                                                                                                    let numOfLate = 0;
+                                                                                                                                                                    for (let j = 0; j < trail.length; j++) {
+                                                                                                                                                                        if (parseInt(trail[j].late_mins) >= lateMins) {
+                                                                                                                                                                            numOfLate += 1;
+                                                                                                                                                                        }
+                                                                                                                                                                    }
+                                                                                                                                                                    deduction = deduction * numOfLate;
+                                                                                                                                                                    deduction = deduction / 100;
+                                                            
+                                                                                                                                                                    let deducted = amount * deduction;
+                                                                                                                                                                    penalty = deducted;
+                                                                                                                                                                    amount = amount - deducted;
+                                                                                                                                                                }
+                                                            
+                                                                                                                                                            } else {
+                                                                                                                                                                deduction = parseFloat(deduction);
+                                                            
+                                                                                                                                                                if (allowancePenalty[k].type == 'absent') {
+                                                                                                                                                                    let numOfAbsent = parseInt($(`#cal${_class}`).val()) - days_worked;
+                                                            
+                                                                                                                                                                    deduction = deduction * numOfAbsent;
+                                                                                                                                                                    amount = amount - deduction;
+                                                            
+                                                                                                                                                                } else {
+                                                                                                                                                                    let type = allowancePenalty[k].type.split("|");
+                                                                                                                                                                    let lateMins = parseInt(type[1]);
+                                                                                                                                                                    let numOfLate = 0;
+                                                                                                                                                                    for (let j = 0; j < trail.length; j++) {
+                                                                                                                                                                        if (parseInt(trail[j].late_mins) >= lateMins) {
+                                                                                                                                                                            numOfLate += 1;
+                                                                                                                                                                        }
+                                                                                                                                                                    }
+                                                                                                                                                                    deduction = deduction * numOfLate;
+                                                                                                                                                                    penalty = deduction;
+                                                                                                                                                                    amount = amount - deduction;
+                                                                                                                                                                }
+                                                                                                                                                            }
+                                                                                                                                                        
+                                                                                                                                                        }
+                                                                                                                                                    }
+                                                                                                                                                }
+                                                                                                                                                
+                                                                                                                                            }
+
+                                                                                                                                            
+
+                                                                                                                                        } else if (sched[0].pay_sched == 'monthly') {
+                                                                                                                                            for (let i = 0; i < allowanceResponseBody.length; i++) {
+                                                                                                                                                if (allowanceResponseBody[i].detail == 'monthly') {
+                                                                                                                                                    amount += parseInt(allowanceResponseBody[i].amount);
+                                                                                                                                                }
+
+                                                                                                                                                let allowanceID = parseInt(allowanceResponseBody[i].id);
+
+                                                                                                                                                if (allowancePenalty != 'None') {
+                                                                                                                                                    for (let k = 0; k < allowancePenalty.length; k++) {
+                                                                                                                                                        if (parseInt(allowancePenalty[k].allowance) == allowanceID) {
+                                                                                                                                                            let deduction = allowancePenalty[k].deduction;
+                                                            
+                                                                                                                                                            //percentage
+                                                                                                                                                            if (deduction.includes("%")) {
+                                                                                                                                                                deduction = deduction.replace(/%/g, '');
+                                                                                                                                                                deduction = parseFloat(deduction);
+                                                            
+                                                                                                                                                                if (allowancePenalty[k].type == 'absent') {
+                                                                                                                                                                    let numOfAbsent = parseInt($(`#cal${_class}`).val()) - days_worked;
+                                                            
+                                                                                                                                                                    deduction = deduction * numOfAbsent;
+                                                                                                                                                                    deduction = deduction / 100;
+                                                            
+                                                                                                                                                                    let deducted = amount * deduction;
+                                                                                                                                                                    penalty = deducted;
+                                                                                                                                                                    amount = amount - deducted;
+                                                            
+                                                                                                                                                                } else {
+                                                                                                                                                                    let type = allowancePenalty[k].type.split("|");
+                                                                                                                                                                    let lateMins = parseInt(type[1]);
+                                                                                                                                                                    let numOfLate = 0;
+                                                                                                                                                                    for (let j = 0; j < trail.length; j++) {
+                                                                                                                                                                        if (parseInt(trail[j].late_mins) >= lateMins) {
+                                                                                                                                                                            numOfLate += 1;
+                                                                                                                                                                        }
+                                                                                                                                                                    }
+                                                                                                                                                                    deduction = deduction * numOfLate;
+                                                                                                                                                                    deduction = deduction / 100;
+                                                            
+                                                                                                                                                                    let deducted = amount * deduction;
+                                                                                                                                                                    penalty = deducted;
+                                                                                                                                                                    amount = amount - deducted;
+                                                                                                                                                                }
+                                                            
+                                                                                                                                                            } else {
+                                                                                                                                                                deduction = parseFloat(deduction);
+                                                            
+                                                                                                                                                                if (allowancePenalty[k].type == 'absent') {
+                                                                                                                                                                    let numOfAbsent = parseInt($(`#cal${_class}`).val()) - days_worked;
+                                                            
+                                                                                                                                                                    deduction = deduction * numOfAbsent;
+                                                                                                                                                                    amount = amount - deduction;
+                                                            
+                                                                                                                                                                } else {
+                                                                                                                                                                    let type = allowancePenalty[k].type.split("|");
+                                                                                                                                                                    let lateMins = parseInt(type[1]);
+                                                                                                                                                                    let numOfLate = 0;
+                                                                                                                                                                    for (let j = 0; j < trail.length; j++) {
+                                                                                                                                                                        if (parseInt(trail[j].late_mins) >= lateMins) {
+                                                                                                                                                                            numOfLate += 1;
+                                                                                                                                                                        }
+                                                                                                                                                                    }
+                                                                                                                                                                    deduction = deduction * numOfLate;
+                                                                                                                                                                    penalty = deduction;
+                                                                                                                                                                    amount = amount - deduction;
+                                                                                                                                                                }
+                                                                                                                                                            }
+                                                                                                                                                        
+                                                                                                                                                        }
+                                                                                                                                                    }
+                                                                                                                                                }
+
+                                                                                                                                            }
+
+                                                                                                                                        }
+
+                                                                                                                                        net = net + amount;
+                                                                                                                                        
+                                                                                                                                        // console.log("NET PAY: " + net.toLocaleString());
+                                                                                                                                        if (deductions.hasOwnProperty(`deduc${_class}`)) {
+                                                                                                                                            if (ot_pay == 'eligible') {
+                                                                                                                                                details[`det${_class}`] = [{'RATE': rate}, {'RATE TYPE' : rateType}, {'WORKING DAYS': $(`#cal${_class}`).val()}, {'SALARY RATE': salaryRate}, {'DAYS WORKED' : days_worked}, {'ABSENT (Total)': absent}, {'UNDERTIME (Total)': ut_total}, {'BASIC' : basic}, {'HOLIDAY (Total)' : holidayPay}, {'OVERTIME (Total)' : ot_total}, {'EARNED' : {'value' : earned, 'highlight' : ''}}, {'SSS': deductions[`deduc${_class}`].sss}, {'PhilHealth' : deductions[`deduc${_class}`].phil} ,{'Pag-IBIG' : deductions[`deduc${_class}`].pbig}, {'ADJUSTMENT' : adjustment}, {'CASH ADVANCE' : CA}, {'CHARGES' : charges}, {'SSS LOAN' : sss_loan}, {'Pag-IBIG LOAN' : pbig_loan}, {'COMPANY LOAN' : company_loan}, {'TOTAL DEDUCTIONS' : {'value' : total_deductions, 'highlight' : ''}}, {'ALLOWANCE' : amount},{ 'ALLOWANCE PENALTY' : penalty}, {'NET PAY' : {'value': net, 'highlight': ''}}];
+                                                                                                                                            } else {
+                                                                                                                                                details[`det${_class}`] = [{'RATE': rate}, {'RATE TYPE' : rateType}, {'WORKING DAYS': $(`#cal${_class}`).val()}, {'SALARY RATE': salaryRate}, {'DAYS WORKED' : days_worked}, {'ABSENT (Total)': absent}, {'BASIC' : basic}, {'HOLIDAY (Total)' : holidayPay},  {'EARNED' : {'value' : earned, 'highlight' : ''}}, {'SSS': deductions[`deduc${_class}`].sss}, {'PhilHealth' : deductions[`deduc${_class}`].phil} ,{'Pag-IBIG' : deductions[`deduc${_class}`].pbig}, {'ADJUSTMENT' : adjustment}, {'CASH ADVANCE' : CA}, {'CHARGES' : charges}, {'SSS LOAN' : sss_loan}, {'Pag-IBIG LOAN' : pbig_loan}, {'COMPANY LOAN' : company_loan}, {'TOTAL DEDUCTIONS' : {'value' : total_deductions, 'highlight' : ''}}, {'ALLOWANCE' : amount},{ 'ALLOWANCE PENALTY' : penalty}, {'NET PAY' : {'value': net, 'highlight': ''}}];
+                                                                                                                                            }
+                                                                                                                                            
+                                                                                                                                        } else {
+                                                                                                                                            if (ot_pay == 'eligible') {
+                                                                                                                                                details[`det${_class}`] = [{'RATE': rate}, {'RATE TYPE' : rateType}, {'WORKING DAYS': $(`#cal${_class}`).val()}, {'SALARY RATE': salaryRate}, {'DAYS WORKED' : days_worked}, {'ABSENT (Total)': absent}, {'UNDERTIME (Total)': ut_total}, {'BASIC' : basic}, {'HOLIDAY (Total)' : holidayPay}, {'OVERTIME (Total)' : ot_total}, {'EARNED' : {'value' : earned, 'highlight' : ''}}, {'SSS': 0}, {'PhilHealth' : 0}, {'Pag-IBIG' : 0}, {'ADJUSTMENT' : adjustment}, {'CASH ADVANCE' : CA}, {'CHARGES' : charges}, {'SSS LOAN' : sss_loan}, {'Pag-IBIG LOAN' : pbig_loan}, {'COMPANY LOAN' : company_loan}, {'TOTAL DEDUCTIONS' : {'value' : total_deductions, 'highlight' : ''}}, {'ALLOWANCE' : amount}, {'ALLOWANCE PENALTY' : penalty}, {'NET PAY' : {'value': net, 'highlight': ''}}];
+                                                                                                                                            } else {
+                                                                                                                                                details[`det${_class}`] = [{'RATE': rate}, {'RATE TYPE' : rateType}, {'WORKING DAYS': $(`#cal${_class}`).val()}, {'SALARY RATE': salaryRate}, {'DAYS WORKED' : days_worked}, {'ABSENT (Total)': absent}, {'BASIC' : basic}, {'HOLIDAY (Total)' : holidayPay},  {'EARNED' : {'value' : earned, 'highlight' : ''}}, {'SSS': 0}, {'PhilHealth' : 0}, {'Pag-IBIG' : 0}, {'ADJUSTMENT' : adjustment}, {'CASH ADVANCE' : CA}, {'CHARGES' : charges}, {'SSS LOAN' : sss_loan}, {'Pag-IBIG LOAN' : pbig_loan}, {'COMPANY LOAN' : company_loan}, {'TOTAL DEDUCTIONS' : {'value' : total_deductions, 'highlight' : ''}}, {'ALLOWANCE' : amount}, {'ALLOWANCE PENALTY' : penalty}, {'NET PAY' : {'value': net, 'highlight': ''}}];
+                                                                                                                                            }
+                                                                                                                                        }
+
+                                                                                                                                        console.log(details);
+                                                                                                                                        
+
+                                                                                                                                        $(`#gross-pay${_class}`).html(earned.toLocaleString());
+                                                                                                                                        $(`#net-pay${_class}`).html(net.toLocaleString());
+
+                                                                                                                                    }
+                                                                                                                                }
+                                                                                                                            })
+
+                                                                                                                        } catch (err) {
+                                                                                                                            console.log(err);
+                                                                                                                        }
+                                                                                                                    }
+                                                                                                                })
+                                                                                                            }
+
+                                                                                                        } else {
+                                                                                                            
+                                                                                                            earned = salaryRate - absent;
+
+                                                                                                            if (ot_pay == 'eligible') {
+                                                                                                                if (PAYDeductions.includes('undertime')) {
+                                                                                                                    earned = earned - ut_total;
+                                                                                                                }
+                                                                                                            }
+
+                                                                                                            earned = earned + holidayPay;
+
+                                                                                                            if (ot_pay == 'eligible') {
+                                                                                                                earned = earned + ot_total;
+                                                                                                            }
+
+                                                                                                            // console.log("EARNED: " + earned.toLocaleString());
+                                        
+                                                                                                            net = earned;
+                                        
+                                                                                                            if (deductions.hasOwnProperty(`deduc${_class}`)) {
+                                                                                                                total_deductions = total_deductions + parseFloat(deductions[`deduc${_class}`].sss);
+                                                                                                                total_deductions = total_deductions + parseFloat(deductions[`deduc${_class}`].phil);
+                                                                                                                total_deductions = total_deductions + parseFloat(deductions[`deduc${_class}`].pbig);
+                                                                                                            }
+                                                                                                            
+                                                                                                            total_deductions = total_deductions + parseInt(adjustment);
+                                                                                                            total_deductions = total_deductions + parseInt(CA);
+                                                                                                            total_deductions = total_deductions + parseInt(charges);
+                                                                                                            total_deductions = total_deductions + parseInt(sss_loan);
+                                                                                                            total_deductions = total_deductions + parseInt(pbig_loan);
+                                                                                                            total_deductions = total_deductions + parseInt(company_loan);
+                                        
+                                                                                                            net = net - total_deductions;
+                                                                                                            // console.log("TOTAL DEDUCTIONS: " + total_deductions);
+
+                                                                                                            if (sched != 'None') {
+                                                                                                            
+                                                                                                                let amount = 0;
+                                                                                                                let penalty = 0;
+                                                                                                                
+                                                                                                                
+                                                                                                                if (sched[0].pay_sched == 'twice-monthly') {
+                                                                                                                    let firstHalfSched = sched[0].day1;
+                                                                                                                    let secondHalfSched = sched[0].day2;
+
+                                                                                                                    for (let i = 0; i < allowanceResponseBody.length; i++) {
+
+                                                                                                                        if (allowanceResponseBody[i].detail == 'twice monthly') { //twice monthly allowance
+                                                                                                                            amount += parseInt(allowanceResponseBody[i].amount);
+                                                                                                                        }
+
+                                                                                                                        if (secondHalf) {
+                                                                                                                            amount += parseInt(allowanceResponseBody[i].amount);
+                                                                                                                        }
+                                                                                                                        
+                                                                                                                        let allowanceID = parseInt(allowanceResponseBody[i].id);
+
+                                                                                                                        if (allowancePenalty != 'None') {
+                                                                                                                            
+                                                                                                                            for (let k = 0; k < allowancePenalty.length; k++) {
+                                                                                                                                
+                                                                                                                                if (parseInt(allowancePenalty[k].allowance) == allowanceID) {
+                                                                                                                                    
+                                                                                                                                    let deduction = allowancePenalty[k].deduction;
+                                    
+                                                                                                                                    //percentage
+                                                                                                                                    if (deduction.includes("%")) {
+                                                                                                                                        deduction = deduction.replace(/%/g, '');
+                                                                                                                                        deduction = parseFloat(deduction);
+                                    
+                                                                                                                                        if (allowancePenalty[k].type == 'absent') {
+                                                                                                                                            let numOfAbsent = parseInt($(`#cal${_class}`).val()) - days_worked;
+                                    
+                                                                                                                                            deduction = deduction * numOfAbsent;
+                                                                                                                                            deduction = deduction / 100;
+                                    
+                                                                                                                                            let deducted = amount * deduction;
+                                                                                                                                            penalty = deducted;
+                                                                                                                                            amount = amount - deducted;
+                                    
+                                                                                                                                        } else {
+                                                                                                                                            let type = allowancePenalty[k].type.split("|");
+                                                                                                                                            let lateMins = parseInt(type[1]);
+                                                                                                                                            let numOfLate = 0;
+                                                                                                                                            for (let j = 0; j < trail.length; j++) {
+                                                                                                                                                if (parseInt(trail[j].late_mins) >= lateMins) {
+                                                                                                                                                    numOfLate += 1;
+                                                                                                                                                }
+                                                                                                                                            }
+                                                                                                                                            deduction = deduction * numOfLate;
+                                                                                                                                            deduction = deduction / 100;
+                                    
+                                                                                                                                            let deducted = amount * deduction;
+                                                                                                                                            penalty = deducted;
+                                                                                                                                            amount = amount - deducted;
+                                                                                                                                        }
+                                    
+                                                                                                                                    } else {
+                                                                                                                                        deduction = parseFloat(deduction);
+                                    
+                                                                                                                                        if (allowancePenalty[k].type == 'absent') {
+                                                                                                                                            let numOfAbsent = parseInt($(`#cal${_class}`).val()) - days_worked;
+                                    
+                                                                                                                                            deduction = deduction * numOfAbsent;
+                                                                                                                                            amount = amount - deduction;
+                                    
+                                                                                                                                        } else {
+                                                                                                                                            let type = allowancePenalty[k].type.split("|");
+                                                                                                                                            let lateMins = parseInt(type[1]);
+                                                                                                                                            let numOfLate = 0;
+                                                                                                                                            for (let j = 0; j < trail.length; j++) {
+                                                                                                                                                if (parseInt(trail[j].late_mins) >= lateMins) {
+                                                                                                                                                    numOfLate += 1;
+                                                                                                                                                }
+                                                                                                                                            }
+                                                                                                                                            deduction = deduction * numOfLate;
+                                                                                                                                            penalty = deduction;
+                                                                                                                                            amount = amount - deduction;
+                                                                                                                                        }
+                                                                                                                                    }
+                                                                                                                                
+                                                                                                                                }
+                                                                                                                            }
+                                                                                                                        }
+                                                                                                                        
+                                                                                                                    }
+
+                                                                                                                    
+
+                                                                                                                } else if (sched[0].pay_sched == 'monthly') {
+                                                                                                                    for (let i = 0; i < allowanceResponseBody.length; i++) {
+                                                                                                                        if (allowanceResponseBody[i].detail == 'monthly') {
+                                                                                                                            amount += parseInt(allowanceResponseBody[i].amount);
+                                                                                                                        }
+
+                                                                                                                        let allowanceID = parseInt(allowanceResponseBody[i].id);
+
+                                                                                                                        if (allowancePenalty != 'None') {
+                                                                                                                            for (let k = 0; k < allowancePenalty.length; k++) {
+                                                                                                                                if (parseInt(allowancePenalty[k].allowance) == allowanceID) {
+                                                                                                                                    let deduction = allowancePenalty[k].deduction;
+                                    
+                                                                                                                                    //percentage
+                                                                                                                                    if (deduction.includes("%")) {
+                                                                                                                                        deduction = deduction.replace(/%/g, '');
+                                                                                                                                        deduction = parseFloat(deduction);
+                                    
+                                                                                                                                        if (allowancePenalty[k].type == 'absent') {
+                                                                                                                                            let numOfAbsent = parseInt($(`#cal${_class}`).val()) - days_worked;
+                                    
+                                                                                                                                            deduction = deduction * numOfAbsent;
+                                                                                                                                            deduction = deduction / 100;
+                                    
+                                                                                                                                            let deducted = amount * deduction;
+                                                                                                                                            penalty = deducted;
+                                                                                                                                            amount = amount - deducted;
+                                    
+                                                                                                                                        } else {
+                                                                                                                                            let type = allowancePenalty[k].type.split("|");
+                                                                                                                                            let lateMins = parseInt(type[1]);
+                                                                                                                                            let numOfLate = 0;
+                                                                                                                                            for (let j = 0; j < trail.length; j++) {
+                                                                                                                                                if (parseInt(trail[j].late_mins) >= lateMins) {
+                                                                                                                                                    numOfLate += 1;
+                                                                                                                                                }
+                                                                                                                                            }
+                                                                                                                                            deduction = deduction * numOfLate;
+                                                                                                                                            deduction = deduction / 100;
+                                    
+                                                                                                                                            let deducted = amount * deduction;
+                                                                                                                                            penalty = deducted;
+                                                                                                                                            amount = amount - deducted;
+                                                                                                                                        }
+                                    
+                                                                                                                                    } else {
+                                                                                                                                        deduction = parseFloat(deduction);
+                                    
+                                                                                                                                        if (allowancePenalty[k].type == 'absent') {
+                                                                                                                                            let numOfAbsent = parseInt($(`#cal${_class}`).val()) - days_worked;
+                                    
+                                                                                                                                            deduction = deduction * numOfAbsent;
+                                                                                                                                            amount = amount - deduction;
+                                    
+                                                                                                                                        } else {
+                                                                                                                                            let type = allowancePenalty[k].type.split("|");
+                                                                                                                                            let lateMins = parseInt(type[1]);
+                                                                                                                                            let numOfLate = 0;
+                                                                                                                                            for (let j = 0; j < trail.length; j++) {
+                                                                                                                                                if (parseInt(trail[j].late_mins) >= lateMins) {
+                                                                                                                                                    numOfLate += 1;
+                                                                                                                                                }
+                                                                                                                                            }
+                                                                                                                                            deduction = deduction * numOfLate;
+                                                                                                                                            penalty = deduction;
+                                                                                                                                            amount = amount - deduction;
+                                                                                                                                        }
+                                                                                                                                    }
+                                                                                                                                
+                                                                                                                                }
+                                                                                                                            }
+                                                                                                                        }
+
+                                                                                                                    }
+
+                                                                                                                }
+
+                                                                                                                net = net + amount;
+                                                                                                                
+                                                                                                                // console.log("NET PAY: " + net.toLocaleString());
+                                                                                                                if (deductions.hasOwnProperty(`deduc${_class}`)) {
+                                                                                                                    if (ot_pay == 'eligible') {
+                                                                                                                        details[`det${_class}`] = [{'RATE': rate}, {'RATE TYPE' : rateType}, {'WORKING DAYS': $(`#cal${_class}`).val()}, {'SALARY RATE': salaryRate}, {'DAYS WORKED' : days_worked}, {'ABSENT (Total)': absent}, {'UNDERTIME (Total)': ut_total}, {'BASIC' : basic}, {'HOLIDAY (Total)' : holidayPay}, {'OVERTIME (Total)' : ot_total}, {'EARNED' : {'value' : earned, 'highlight' : ''}}, {'SSS': deductions[`deduc${_class}`].sss}, {'PhilHealth' : deductions[`deduc${_class}`].phil} ,{'Pag-IBIG' : deductions[`deduc${_class}`].pbig}, {'ADJUSTMENT' : adjustment}, {'CASH ADVANCE' : CA}, {'CHARGES' : charges}, {'SSS LOAN' : sss_loan}, {'Pag-IBIG LOAN' : pbig_loan}, {'COMPANY LOAN' : company_loan}, {'TOTAL DEDUCTIONS' : {'value' : total_deductions, 'highlight' : ''}}, {'ALLOWANCE' : amount},{ 'ALLOWANCE PENALTY' : penalty}, {'NET PAY' : {'value': net, 'highlight': ''}}];
+                                                                                                                    } else {
+                                                                                                                        details[`det${_class}`] = [{'RATE': rate}, {'RATE TYPE' : rateType}, {'WORKING DAYS': $(`#cal${_class}`).val()}, {'SALARY RATE': salaryRate}, {'DAYS WORKED' : days_worked}, {'ABSENT (Total)': absent}, , {'BASIC' : basic}, {'HOLIDAY (Total)' : holidayPay}, {'EARNED' : {'value' : earned, 'highlight' : ''}}, {'SSS': deductions[`deduc${_class}`].sss}, {'PhilHealth' : deductions[`deduc${_class}`].phil} ,{'Pag-IBIG' : deductions[`deduc${_class}`].pbig}, {'ADJUSTMENT' : adjustment}, {'CASH ADVANCE' : CA}, {'CHARGES' : charges}, {'SSS LOAN' : sss_loan}, {'Pag-IBIG LOAN' : pbig_loan}, {'COMPANY LOAN' : company_loan}, {'TOTAL DEDUCTIONS' : {'value' : total_deductions, 'highlight' : ''}}, {'ALLOWANCE' : amount},{ 'ALLOWANCE PENALTY' : penalty}, {'NET PAY' : {'value': net, 'highlight': ''}}];
+                                                                                                                    }
+                                                                                                                    
+                                                                                                                } else {
+                                                                                                                    if (ot_pay == 'eligible') {
+                                                                                                                        details[`det${_class}`] = [{'RATE': rate}, {'RATE TYPE' : rateType}, {'WORKING DAYS': $(`#cal${_class}`).val()}, {'SALARY RATE': salaryRate}, {'DAYS WORKED' : days_worked}, {'ABSENT (Total)': absent}, {'UNDERTIME (Total)': ut_total}, {'BASIC' : basic}, {'HOLIDAY (Total)' : holidayPay}, {'OVERTIME (Total)' : ot_total}, {'EARNED' : {'value' : earned, 'highlight' : ''}}, {'SSS': 0}, {'PhilHealth' : 0}, {'Pag-IBIG' : 0}, {'ADJUSTMENT' : adjustment}, {'CASH ADVANCE' : CA}, {'CHARGES' : charges}, {'SSS LOAN' : sss_loan}, {'Pag-IBIG LOAN' : pbig_loan}, {'COMPANY LOAN' : company_loan}, {'TOTAL DEDUCTIONS' : {'value' : total_deductions, 'highlight' : ''}}, {'ALLOWANCE' : amount}, {'ALLOWANCE PENALTY' : penalty}, {'NET PAY' : {'value': net, 'highlight': ''}}];
+                                                                                                                    } else {
+                                                                                                                        details[`det${_class}`] = [{'RATE': rate}, {'RATE TYPE' : rateType}, {'WORKING DAYS': $(`#cal${_class}`).val()}, {'SALARY RATE': salaryRate}, {'DAYS WORKED' : days_worked}, {'ABSENT (Total)': absent},  {'BASIC' : basic}, {'HOLIDAY (Total)' : holidayPay}, {'EARNED' : {'value' : earned, 'highlight' : ''}}, {'SSS': 0}, {'PhilHealth' : 0}, {'Pag-IBIG' : 0}, {'ADJUSTMENT' : adjustment}, {'CASH ADVANCE' : CA}, {'CHARGES' : charges}, {'SSS LOAN' : sss_loan}, {'Pag-IBIG LOAN' : pbig_loan}, {'COMPANY LOAN' : company_loan}, {'TOTAL DEDUCTIONS' : {'value' : total_deductions, 'highlight' : ''}}, {'ALLOWANCE' : amount}, {'ALLOWANCE PENALTY' : penalty}, {'NET PAY' : {'value': net, 'highlight': ''}}];
+                                                                                                                    }
+                                                                                                                    
+                                                                                                                }
+
+                                                                                                                console.log(details);
+                                                                                                                
+
+                                                                                                                $(`#gross-pay${_class}`).html(earned.toLocaleString());
+                                                                                                                $(`#net-pay${_class}`).html(net.toLocaleString());
+                                                                                                        }
+                                                                                                    }
+
+                                                                                            }
+                                                                                            
+                                                                                        )
+                                                                                        
+                                                                                    } catch (err) {
+                                                                                        console.log(err);
+                                                                                    }
+                                                                                }
+                                                                            })
+                                                                        }
+        
+                                                                        
+                                                                    }
+                                                                });
+        
+                                                               
+                                                            } 
+        
+                                                        })
+                                                        
+                                                    }
+                                                })
+                                                
+                                                
+                                                
+                                            } catch(err) {
+                                                console.log(err);
+                                            }
+                                        }
+                                    })
                                 }
                             })
 
@@ -203,9 +1262,10 @@ $(".payroll").on("click", function(event){
                         <td><input type="number" id="cal${res[i].serialnumber}" style="margin-bottom:-1px;" placeholder="Enter calendar working days"/></td>
                         <td id="gross-pay${res[i].serialnumber}">0</td>
                         <td id="net-pay${res[i].serialnumber}">0</td>
+                        <td id="paid${res[i].serialnumber}">Not paid</td>
                         <td><button class="action-button mr-1 compute-salary" data-id="${res[i].serialnumber}">COMPUTE SALARY</button>
-                        <button class="action-button mr-1 payslip${res[i].serialnumber} generate-payslip" data-id="${res[i].serialnumber}" style="background:orange;display:none;">GENERATE PAYSLIP</button>
-                        <button class="action-button view-details" data-id="${res[i].serialnumber}" data-name="${res[i].name}" data-age="${res[i].age}" data-position="${res[i].position}">VIEW DETAILS</button></td>
+                        <button class="action-button mr-1 payslip${res[i].serialnumber} view-details" data-id="${res[i].serialnumber}" data-name="${res[i].name}" data-position="${res[i].position}" style="background:orange;display:none;">VIEW DETAILS</button>
+                        <button class="action-button add-deductions" data-id="${res[i].serialnumber}">ADD DEDUCTIONS</button></td>
                     </tr>`;
                 }
                 
@@ -217,16 +1277,17 @@ $(".payroll").on("click", function(event){
             <div class="pop-up-window">
                 <div class="window-content pt-5">
                     <p class="text-center text-white" style="font-size:20px;">PAYROLL</p>
-                    <div class="payroll-header-buttons" style="display:flex;justify-content:space-between;"><div style="color:#fff;display:flex;flex-direction:column;">Add holiday</div><div style="color:#fff;display:flex;flex-direction:column;">No. of Employees: <span class="text-center">${staffs_len}</span></div></div>
+                    <div class="payroll-header-buttons" style="display:flex;justify-content:space-between;align-items:end;"><div style="color:#fff;display:flex;"><button class="action-button add-holiday mr-2">ADD HOLIDAY</button><button class="action-button remove-holiday mr-2">REMOVE HOLIDAY</button><button class="action-button contribution-tables">CONTRIBUTION TABLES</button></div><div style="color:#fff;display:flex;flex-direction:column;">No. of Employees: <span class="text-center">${staffs_len}</span></div></div>
                     <hr>
-                    <div class="table-container" style="max-height:60vh;overflow:auto;max-width:70vw;">
+                    <div class="table-container" style="max-height:60vh;overflow:auto;max-width:70vw;min-width:50vw;">
                         <table>
                             <thead>
                                 <tr>
                                     <td>NAME OF EMPLOYEE</td>
-                                    <td>CALENDAR WORKING DAYS</td>
-                                    <td>GROSS PAY</td>
+                                    <td>WORKING DAYS</td>
+                                    <td>EARNED</td>
                                     <td>NET PAY</td>
+                                    <td>STATUS</td>
                                     <td class="text-center">ACTION</td>
                                 </tr>
                             </thead>
@@ -238,25 +1299,408 @@ $(".payroll").on("click", function(event){
                 </div>
             </div>`);
 
+            //CONTRIBUTION TABLES
+            $(".contribution-tables").on("click", function(event){
+                event.stopImmediatePropagation();
+                document.body.insertAdjacentHTML("afterbegin", `
+                <div class="third-layer-overlay">
+                    <div class="tlo-wrapper pt-5">
+                        <p class="text-white text-center" style="font-size:20px;">CONTRIBUTION TABLES</p>
+                        <br>
+                        <hr>
+                        <div class="contribution-tables-wrapper">
+                            <div>
+                                <p>SSS</p>
+                                <div class="sss">
+                                    <img src="../src/images/sss_thumbnail.PNG" style="width:100%;height:100%;object-fit:contain;"/>
+                                </div>
+                            </div>
+                            <div>
+                                <p>PhilHealth</p>
+                                <div class="phil">
+                                    <img src="../src/images/phil_thumbnail.PNG" style="width:100%;height:100%;object-fit:contain;"/>
+                                </div>
+                            </div>
+                            <div>
+                                <p>Pag-IBIG</p>
+                                <div class="pbig">
+                                    <img src="../src/images/pbig_thumbnail.PNG" style="width:100%;height:100%;object-fit:contain;"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                `);
+
+                $(".sss").on("click", function(event){
+                    event.stopImmediatePropagation();
+                    document.body.insertAdjacentHTML("afterbegin", `
+                    <div class="fourth-layer-overlay">
+                        <div class="folo-wrapper pt-5">
+                            <p class="text-white text-center" style="font-size:20px;">SSS CONTRIBUTION TABLE</p>
+                            <br>
+                            <hr>
+                            <div style="min-width:70vw;max-height:80vh;min-height:70vh;overflow:auto;background:rgba(0,0,0,0.3);">
+                                <p id="iframe-notice" style="position:absolute;top:50%;left:50%;transform:translate(-50%, -50%);color:#fff;font-size:20px;">Please wait a moment..</p>
+                                <iframe src="../src/images/sss.pdf" style="width:100%;height:70vh;border:none;" title="SSS Contribution table"></iframe>
+                            </div>
+                        </div>
+                    </div>`);
+
+                    $("iframe").on("load", function(event){
+                        $("#iframe-notice").remove();
+                    })
+
+                    $(".fourth-layer-overlay").click(function(event){
+                        $(this).remove();
+                    })
+
+                    $(".folo-wrapper").on("click", function(event){
+                        event.stopImmediatePropagation();
+                    })
+                })
+
+                $(".phil").on("click", function(event){
+                    event.stopImmediatePropagation();
+                    document.body.insertAdjacentHTML("afterbegin", `
+                    <div class="fourth-layer-overlay">
+                        <div class="folo-wrapper pt-5">
+                            <p class="text-white text-center" style="font-size:20px;">PHILHEALTH CONTRIBUTION TABLE</p>
+                            <br>
+                            <hr>
+                            <div style="min-width:70vw;max-height:80vh;min-height:70vh;overflow:auto;background:rgba(0,0,0,0.3);">
+                                <p id="iframe-notice" style="position:absolute;top:50%;left:50%;transform:translate(-50%, -50%);color:#fff;font-size:20px;">Please wait a moment..</p>
+                                <iframe src="../src/images/phil.pdf" style="width:100%;height:70vh;border:none;" title="SSS Contribution table"></iframe>
+                            </div>
+                        </div>
+                    </div>`);
+
+                    $("iframe").on("load", function(event){
+                        $("#iframe-notice").remove();
+                    })
+
+                    $(".fourth-layer-overlay").click(function(event){
+                        $(this).remove();
+                    })
+
+                    $(".folo-wrapper").on("click", function(event){
+                        event.stopImmediatePropagation();
+                    })
+                })
+
+                $(".pbig").on("click", function(event){
+                    event.stopImmediatePropagation();
+                    document.body.insertAdjacentHTML("afterbegin", `
+                    <div class="fourth-layer-overlay">
+                        <div class="folo-wrapper pt-5">
+                            <p class="text-white text-center" style="font-size:20px;">PAG-IBIG CONTRIBUTION TABLE</p>
+                            <br>
+                            <span style="margin-bottom:-10px;">Source: <span style="text-decoration:underline;color:blue;">https://pagibiginquiries.online/pag-ibig-contribution-table/</span></span>
+                            <hr>
+                            <div style="min-width:70vw;max-height:80vh;min-height:70vh;overflow:auto;background:var(--teal);">
+                                <p id="iframe-notice" style="position:absolute;top:50%;left:50%;transform:translate(-50%, -50%);color:#fff;font-size:20px;">Please wait a moment..</p>
+                                <iframe src="https://pagibiginquiries.online/pag-ibig-contribution-table/" style="width:100%;height:70vh;border:none;" title="SSS Contribution table"></iframe>
+                            </div>
+                        </div>
+                    </div>`);
+
+                    $("iframe").on("load", function(event){
+                        $("#iframe-notice").remove();
+                    })
+
+                    $(".fourth-layer-overlay").click(function(event){
+                        $(this).remove();
+                    })
+
+                    $(".folo-wrapper").on("click", function(event){
+                        event.stopImmediatePropagation();
+                    })
+                })
+
+                $(".tlo-wrapper").click(function(event){
+                    event.stopImmediatePropagation();
+                })
+                $(".third-layer-overlay").click(function(event){
+                    $(this).remove();
+                })
+            })
+
+
+            $(".add-deductions").on("click", function(event){
+                event.stopImmediatePropagation();
+
+                let serialID = $(this).data("id");
+
+
+                if (deductions.hasOwnProperty(`deduc${serialID}`)) {
+                    document.body.insertAdjacentHTML("afterbegin", `
+                    <div class="third-layer-overlay">
+                        <div class="tlo-wrapper pt-5">
+                            <p class="text-white text-center" style="font-size:20px;">DEDUCTIONS</p>
+                            <br>
+                            <hr>
+                            <form id="addDeductionForm">
+                                <span>SSS:</span>
+                                <input type="number" placeholder="SSS Deduction" value="${deductions[`deduc${serialID}`].sss}" name="sss"/>
+                                <span>Pag-IBIG:</span>
+                                <input type="number" placeholder="Pag-IBIG Deduction" value="${deductions[`deduc${serialID}`].pbig}" name="pbig"/>
+                                <span>PhilHealth:</span>
+                                <input type="number" placeholder="PhilHealth Deduction" value="${deductions[`deduc${serialID}`].phil}" name="phil"/>
+                                <br>
+                                <input type="submit" value="ADD DEDUCTIONS"/>
+                            </form>
+                        </div>
+                    </div>
+                    `);
+                } else {
+                    document.body.insertAdjacentHTML("afterbegin", `
+                    <div class="third-layer-overlay">
+                        <div class="tlo-wrapper pt-5">
+                            <p class="text-white text-center" style="font-size:20px;">DEDUCTIONS</p>
+                            <br>
+                            <hr>
+                            <form id="addDeductionForm">
+                                <span>SSS:</span>
+                                <input type="number" placeholder="SSS Deduction" name="sss"/>
+                                <span>Pag-IBIG:</span>
+                                <input type="number" placeholder="Pag-IBIG Deduction" name="pbig"/>
+                                <span>PhilHealth:</span>
+                                <input type="number" placeholder="PhilHealth Deduction" name="phil"/>
+                                <br>
+                                <input type="submit" value="ADD DEDUCTIONS"/>
+                            </form>
+                        </div>
+                    </div>
+                    `);
+                }
+
+                $("input[type='submit']").click(function(event){
+                    event.preventDefault();
+                    let data = new FormData(document.getElementById("addDeductionForm"));
+                    var formDataObject = {};
+                    let isNotEmpty = true;
+                    data.forEach(function(value, key){
+                        formDataObject[key] = value;
+                        if (value === '') {
+                            formDataObject[key] = 0;
+                        }
+                    });
+                       
+                    deductions[`deduc${serialID}`] = {"sss" : formDataObject.sss, "pbig" : formDataObject.pbig, "phil" : formDataObject.phil}
+                    successNotification("Deductions added.", "success");
+                    $(".third-layer-overlay").remove();
+                        
+                })
+
+                $(".tlo-wrapper").click(function(event){
+                    event.stopImmediatePropagation();
+                })
+
+                $(".third-layer-overlay").click(function(){
+                    $(this).remove();
+                })
+            })
+
+            $(".remove-holiday").on("click", function(event){
+                event.stopImmediatePropagation();
+
+                let ops = "";
+
+                $.ajax({
+                    type: 'POST',
+                    url: '../php/fetchHolidaysDate.php',
+                    success: function(res){
+                        try {
+                            res = JSON.parse(res);
+                            console.log(res);
+
+                            for (let i = 0; i < res.length; i++) {
+                                const date = new Date(res[i].date);
+
+                                // Get month, day, and year components
+                                const month = months[date.getMonth()];
+                                const day = date.getDate();
+                                const year = date.getFullYear();
+
+                                // Construct the formatted date string
+                                const formattedDate = `${month} ${day}, ${year}`;
+
+                                ops += `
+                                <option value="${res[i].id}">${formattedDate}</option>
+                                `;
+                            }
+
+                        } catch(err) {
+                            console.log(err);
+                        }
+
+                        document.body.insertAdjacentHTML("afterbegin", `
+                            <div class="third-layer-overlay">
+                                <div class="tlo-wrapper pt-5">
+                                    <p class="text-white text-center" style="font-size:20px;">REMOVE HOLIDAY BY DATE</p>
+                                    <hr>
+                                    <form id="removeHolidayForm">
+                                        <span>SELECT DATE</span>
+                                        <select name="id">
+                                            <option value="">Select date</option>
+                                            ${ops}
+                                        </select>
+                                        
+                                        <br>
+                                        <input type="submit" value="REMOVE HOLIDAY"/>
+                                    </form>
+                                </div>
+                            </div>
+                        `);
+
+                        $("input[type='submit']").click(function(event){
+                            event.preventDefault();
+                            let data = new FormData(document.getElementById("removeHolidayForm"));
+                            var formDataObject = {};
+                            let isNotEmpty = true;
+                            data.forEach(function(value, key){
+                                formDataObject[key] = value;
+                                if (value === '') {
+                                    isNotEmpty = false;
+                                }
+                            });
+
+                            if (!isNotEmpty) {
+                                errorNotification("Fields must be filled out.", "warning");
+                            } else {
+                                $.ajax({
+                                    type: 'POST',
+                                    url: '../php/remove_holidaypay.php',
+                                    data: {
+                                        id: formDataObject.id,
+                                    }, success: function(res){
+                                        console.log(res);
+                                        if (res.includes('success')) {
+                                            successNotification("Selected holiday removed.", "success");
+                                            $(".third-layer-overlay").remove();
+                                        }
+                                    }
+                                })
+                            }
+                            
+                        })
+
+                        $(".tlo-wrapper").click(function(event){
+                            event.stopImmediatePropagation();
+                        })
+
+                        $(".third-layer-overlay").click(function(){
+                            $(this).remove();
+                        })
+
+                        
+                    }
+                })
+            })
+
+            $(".add-holiday").on("click", function(event){
+                event.stopImmediatePropagation();
+
+                let ops = "";
+
+                $.ajax({
+                    type: 'POST',
+                    url: '../php/fetchHolidays.php',
+                    success: function(res){
+                        
+                        try {
+                            res = JSON.parse(res);
+                            
+                            for (let i = 0; i < res.length; i++) {
+                                ops += `
+                                <option value="${res[i].id}">${res[i].holiday_name}</option>
+                                `;
+                            }
+
+                        } catch(err) {
+                            console.log(err);
+                        }
+
+                        document.body.insertAdjacentHTML("afterbegin", `
+                            <div class="third-layer-overlay">
+                                <div class="tlo-wrapper pt-5">
+                                    <p class="text-white text-center" style="font-size:20px;">ADD HOLIDAY</p>
+                                    <hr>
+                                    <form id="addHolidayForm">
+                                        <span>SELECT HOLIDAY</span>
+                                        <select name="holiday">
+                                            <option value="">Select holiday</option>
+                                            ${ops}
+                                        </select>
+                                        <span>SELECT DATE</span>
+                                        <input type="date" name="date"/>
+                                        <br>
+                                        <input type="submit" value="ADD HOLIDAY"/>
+                                    </form>
+                                </div>
+                            </div>
+                        `);
+
+                        $("input[type='submit']").click(function(event){
+                            event.preventDefault();
+                            let data = new FormData(document.getElementById("addHolidayForm"));
+                            var formDataObject = {};
+                            let isNotEmpty = true;
+                            data.forEach(function(value, key){
+                                formDataObject[key] = value;
+                                if (value === '') {
+                                    isNotEmpty = false;
+                                }
+                            });
+
+                            if (!isNotEmpty) {
+                                errorNotification("Fields must be filled out.", "warning");
+                            } else {
+                                $.ajax({
+                                    type: 'POST',
+                                    url: '../php/add_holidaypay.php',
+                                    data: {
+                                        holiday: formDataObject.holiday,
+                                        date: formDataObject.date,
+                                    }, success: function(res){
+   
+                                        if (res.includes('success')) {
+                                            successNotification("Holiday added.", "success");
+                                            $(".third-layer-overlay").remove();
+                                        }
+                                    }
+                                })
+                            }
+
+                            
+                        })
+
+                        $(".tlo-wrapper").click(function(event){
+                            event.stopImmediatePropagation();
+                        })
+
+                        $(".third-layer-overlay").click(function(){
+                            $(this).remove();
+                        })
+                    }
+                })
+            })
+
             $(".compute-salary").on("click", function(event){
                 event.stopImmediatePropagation();
                 let id = $(this).data("id");
 
                 
                 if ($(`#cal${id}`).val() === '') {
-                    errorNotification("Please enter calendar working days.", "warning");
+                    errorNotification("Please enter working days.", "warning");
                 }
 
                 else {
                     computeSalary(id);
+                    
                     $(this).remove();
                     $(`.payslip${id}`).css("display", "inline");
                 }
-            })
-
-            $(".generate-payslip").on("click", function(event){
-                event.stopImmediatePropagation();
-                alert('test');
             })
 
             $(".view-details").on("click", function(event){
@@ -264,205 +1708,104 @@ $(".payroll").on("click", function(event){
                 let id = $(this).data("id");
                 let name = $(this).data("name");
                 let position = $(this).data("position");
-                let age = $(this).data("age");
 
-                if ($(`#cal${id}`).val() === '') {
-                    errorNotification("Please enter calendar working days.", "warning");
-                } else {
-                    computeSalary(id);
-                    document.body.insertAdjacentHTML("afterbegin", `
-                    <div class="third-layer-overlay">
-                        <div class="tlo-wrapper pt-5">
-                            <p class="text-white text-center" style="font-size:20px;">${name}</p>
-                            <p class="text-white text-center"  style="font-size:13px;margin-top:-20px;">${age} | ${position}</p>
-                            <div class="payroll-header-buttons" style="display:flex;justify-content:space-between;"><button class="action-button m-1 view-holidays">VIEW HOLIDAYS</button></div>
-                            <hr>
-                            <div class="table-container" style="max-height:40vh;overflow:auto;max-width:60vw;min-width:30vw;">
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <td>NAME</td>
-                                            <td>VALUE</td>
-                                        </tr>
-                                    </thead>
-                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
-                                        <td>DAILY RATE</td>
-                                        <td>${parseFloat(salary_details.rate).toLocaleString()}</td>
-                                    </tr>
-                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
-                                        <td>SALARY RATE</td>
-                                        <td>${parseFloat(salary_details.salary_rate).toLocaleString()}</td>
-                                    </tr>
-                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
-                                        <td>CALENDAR WORKING DAYS</td>
-                                        <td>${salary_details.calendarWorkingDays}</td>
-                                    </tr>
-                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
-                                        <td>TOTAL HOURS</td>
-                                        <td>${salary_details.total_hours}</td>
-                                    </tr>
-                                    
-                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
-                                        <td>DAYS WORKED</td>
-                                        <td>${parseFloat(salary_details.days_worked).toFixed(2)}</td>
-                                    </tr>
-                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
-                                        <td>ABSENT (TOTAL)</td>
-                                        <td>- ${salary_details.absent}</td>
-                                    </tr>
-                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
-                                        <td>UT (TOTAL)</td>
-                                        <td>- ${salary_details.ut_total}</td>
-                                    </tr>
-                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
-                                        <td>HOLIDAYS (TOTAL)</td>
-                                        <td>+ ${salary_details.holidays_total}</td>
-                                    </tr>
-                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
-                                        <td>OT (TOTAL)</td>
-                                        <td>+ ${salary_details.ot_total}</td>
-                                    </tr>
-                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);background:#fff;">
-                                        <td style="color:var(--dark-teal) !important;">GROSS PAY</td>
-                                        <td style="color:var(--dark-teal) !important;">${parseFloat(salary_details.grossPay).toLocaleString()}</td>
-                                    </tr>
-                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
-                                        <td>SSS DEDUC.</td>
-                                        <td>- ${salary_details.sss_deduction}</td>
-                                    </tr>
-                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
-                                        <td>PhilHealth DEDUC.</td>
-                                        <td>- ${salary_details.philhealth_deduction}</td>
-                                    </tr>
-                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
-                                        <td>Pag-IBIG DEDUC.</td>
-                                        <td>- ${salary_details.pag_ibig_deduction}</td>
-                                    </tr>
-                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
-                                        <td>ADJUSTMENT</td>
-                                        <td>- ${salary_details.adjustment}</td>
-                                    </tr>
-                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
-                                        <td>CASH ADVANCE</td>
-                                        <td>- ${salary_details.cash_advance}</td>
-                                    </tr>
-                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
-                                        <td>CHARGES</td>
-                                        <td>- ${salary_details.charges}</td>
-                                    </tr>
-                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
-                                        <td>SSS LOAN</td>
-                                        <td>- ${salary_details.sss_loan}</td>
-                                    </tr>
-                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
-                                        <td>Pag-IBIG LOAN</td>
-                                        <td>- ${salary_details.pbig_loan}</td>
-                                    </tr>
-                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
-                                        <td>COMPANY LOAN</td>
-                                        <td>- ${salary_details.company_loan}</td>
-                                    </tr>
-                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
-                                        <td>ALLOWANCE</td>
-                                        <td>+ ${salary_details.allowance}</td>
-                                    </tr>
-                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);background:#fff;">
-                                        <td style="color:var(--dark-teal) !important;">NET PAY</td>
-                                        <td style="color:var(--dark-teal) !important;">${parseFloat(salary_details.netPay).toLocaleString()}</td>
-                                    </tr>
-                                </table>
-                            </div>
-                        </div>
-                    </div>`);
+                let content = "";
 
-                    $(".view-holidays").on("click", function(event){
-                        event.stopImmediatePropagation();
-                        document.body.insertAdjacentHTML("afterbegin", `
-                        <div class="fourth-layer-overlay">
-                            <div class="folo-wrapper pt-5" style="min-width:20vw;">
-                                <p class="text-white text-center" style="font-size:20px;">HOLIDAYS RATE</p>
-                                <hr>
-                                <div class="table-container" style="max-height:60vh;overflow:auto;max-width:30vw;min-width:25vw;">
-                                    <table>
-                                        <thead>
-                                            <tr>
-                                                <td>DATE</td>
-                                                <td>PERCENTAGE<td>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="tbody">
-                                            
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>`);
-
-                        let container = document.getElementById("tbody");
-
-
-                        $.ajax({
-                            type: 'GET',
-                            url: '../php/fetch_holidays.php',
-                            success: function(res){
-                                try{
-                                    let data = JSON.parse(res);
-                                    let content = "";
-
-                                    while (container.firstChild) {
-                                        container.removeChild(container.firstChild);
-                                    }
-
-                                    for (let i = 0; i < data.length; i++) {
-                                        let date = new Date(data[i].holiday_date);
-                                        let day = date.getDate();
-                                        let month = date.getMonth(); // Note: Months are zero-based in JavaScript
-                                        let year = date.getFullYear();
-
-                                        // Formatted date string
-                                        let formattedDate = `${months[month]} ${day}, ${year}`;
-                                        content += `
-                                        <tr class="holi-row-${data[i].id}">
-                                            <td>${formattedDate}</td>
-                                            <td>${data[i].percentage}%</td>
-                                            <td>
-                                            </td>
-                                        </tr>`;
-                                    }
-
-                                    container.insertAdjacentHTML("afterbegin", `${content}`);
-
-                                } catch(err){
-                                    container.insertAdjacentHTML("afterbegin", `
-                                    <tr>
-                                        <td colspan="4" class="text-center p-5 text-white">No holiday</td>
-                                    </tr>`);
-                                }
-                            }
-                        });
-
-                        $(".fourth-layer-overlay").on("click", function(event){
-                            event.stopImmediatePropagation();
-                            $(this).remove();
-                        })
-    
-                        $(".folo-wrapper").on("click", function(event){
-                            event.stopImmediatePropagation();
-                        })
-                    })
-
-                    $(".third-layer-overlay").on("click", function(event){
-                        event.stopImmediatePropagation();
-                        $(this).remove();
-                    })
-
-                    $(".tlo-wrapper").on("click", function(event){
-                        event.stopImmediatePropagation();
-                    })
-
-                }
+                console.log(deductions[`deduc${id}`])
 
                 
+                for (let i = 0; i < details[`det${id}`].length; i++) {
+                    for (let key in details[`det${id}`][i]) {
+                        if (details[`det${id}`][i].hasOwnProperty(key)) {
+                            let value = details[`det${id}`][i][key];
+                            if (details[`det${id}`][i][key].hasOwnProperty('value')) {
+                                try {
+                                   
+                                    value = parseFloat(details[`det${id}`][i][key].value);
+                                   
+                                    
+                                    value = value.toLocaleString();
+                                } catch (err) {
+                                    value = details[`det${id}`][i][key].value;
+                                }
+                            }
+                            if (details[`det${id}`][i][key].hasOwnProperty('highlight')) {
+                                content += `
+                                <tr style="background:rgba(255,255,255,0.2);color: #000;border-bottom:1px solid rgba(0,0,0,0.1);">
+                                    <td>${key}</td>
+                                    <td>${value}</td>
+                                </tr>`;
+                            } else {
+                                content += `
+                                <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                                    <td>${key}</td>
+                                    <td>${value}</td>
+                                </tr>`;
+                            }
+                        }
+                    }
+
+                }
+                
+                document.body.insertAdjacentHTML("afterbegin", `
+                <div class="third-layer-overlay">
+                    <div class="tlo-wrapper pt-5">
+                        <p class="text-white text-center" style="font-size:20px;">${name}</p>
+                        <p class="text-white text-center"  style="font-size:13px;margin-top:-20px;">${position}</p>
+                        <hr>
+                        <div class="table-container" style="max-height:40vh;overflow:auto;max-width:60vw;min-width:30vw;">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <td>NAME</td>
+                                        <td>VALUE</td>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody">
+                                    ${content}
+                                </tbody>
+                            </table>
+                        </div>
+                        <br>
+                        <br>
+                        <div style="text-align:center;">
+                            <input type="button" data-name="${name}" data-id="${id}" style="width:80%;background:var(--teal);color:#fff !important;" class="paid" value="PAID"/>
+                        </div>
+                    </div>
+                </div>`);
+
+                $(".paid").click(function(event){
+                    event.stopImmediatePropagation();
+                    let name = $(this).data("name");
+                    let id = $(this).data("id");
+
+                    $.ajax({
+                        type: 'POST',
+                        url: '../php/employee_paid.php',
+                        data: {
+                            id: id,
+                        },
+                        success: function(res) {
+                            
+                            if (res.includes("paid")) {
+                                successNotification(`${name} is paid.`, "success");
+                                $(`#paid${id}`).html("Paid");
+                                $(".third-layer-overlay").remove();
+                            }
+                        }
+                    })
+
+                    
+                })
+
+                $(".third-layer-overlay").on("click", function(event){
+                    event.stopImmediatePropagation();
+                    $(this).remove();
+                })
+
+                $(".tlo-wrapper").on("click", function(event){
+                    event.stopImmediatePropagation();
+                })
             })
 
             $(".pop-up-window").on("click", function(event){
@@ -578,6 +1921,7 @@ $(".view-staffs").on("click", function(event){
                             <thead>
                                 <tr>
                                     <td>NAME OF EMPLOYEE</td>
+                                    <td>CLASS</td>
                                     <td>STATUS</td>
                                     <td>ADJUSTMENT</td>
                                     <td>CHARGES</td>
@@ -606,9 +1950,11 @@ $(".view-staffs").on("click", function(event){
             for (let i = 0; i < data.length; i++) {
                 let totalHours = parseFloat(data[i].total_hours);
                 totalHours = totalHours.toFixed(2);
+
                 content += `
                 <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
                     <td>${data[i].name}</td>
+                    <td>${CLASSES[data[i].class]}</td>
                     <td>${data[i].status}</td>
                     <td>${data[i].adjustment}</td>
                     <td>${data[i].charges}</td>
@@ -640,33 +1986,9 @@ $(".view-staffs").on("click", function(event){
                 let pos = $(this).data("pos");
                 let dept = $(this).data("dept");
 
-                var offdays;
-                var restdays;
                 var leave_start;
                 var leave_end;
-                var paid_leave;
 
-                $.ajax({
-                    type: 'POST',
-                    url: '../php/fetch_offdays.php',
-                    data: {
-                        serial: snumber,
-                    },
-                    success: function(res) {
-                        offdays = res;
-                    }
-                })
-
-                $.ajax({
-                    type: 'POST',
-                    url: '../php/fetch_restdays.php',
-                    data: {
-                        serial: snumber,
-                    },
-                    success: function(res) {
-                         restdays = res;
-                    }
-                })
 
                 $.ajax({
                     type: 'POST',
@@ -679,8 +2001,6 @@ $(".view-staffs").on("click", function(event){
                             res = JSON.parse(res);
                             leave_start = res[0].leave_start;
                             leave_end = res[0].leave_end;
-                            paid_leave = parseInt(res[0].paid_leave);
-
                         } catch(err) {
                             console.log("");
                         }
@@ -706,24 +2026,7 @@ $(".view-staffs").on("click", function(event){
                                 </thead>
                                 <tbody>
                                     <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
-                                        <td>OFF DAY</td>
-                                        <td id="offdays"></td>
-                                        <td style="display:grid;grid-template-columns: auto auto;column-gap:5px;">
-                                            <input type="button" id="add-off" value="ADD DAY"/>
-                                            <input type="button" id="edit-off" value="REMOVE"/>
-                                            
-                                        </td>
-                                    </tr>
-                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
-                                        <td>REST DAY</td>
-                                        <td id="restdays"></td>
-                                        <td style="display:grid;grid-template-columns: auto auto;column-gap:5px;">
-                                            <input type="button" id="add-rest" value="ADD DAY"/>
-                                            <input type="button" id="edit-rest" value="REMOVE"/>
-                                        </td>
-                                    </tr>
-                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
-                                        <td>REQUEST LEAVE</td>
+                                        <td>PAID LEAVE</td>
                                         <td id="leave"></td>
                                         <td style="display:grid;grid-template-columns: auto auto;column-gap:5px;">
                                             <input type="button" id="edit-leave" value="REQUEST"/>
@@ -741,77 +2044,10 @@ $(".view-staffs").on("click", function(event){
                 setTimeout(() => {
                     
 
-                    if (offdays != 'none') {
-                        let val = "";
-                        if (offdays.includes("monday")) {
-                            val += "Monday ";
-                        }
-                        if (offdays.includes("tuesday")) {
-                            val += "Tuesday ";
-                        }
-                        if (offdays.includes("wednesday")) {
-                            val += "Wednesday ";
-                        }
-                        if (offdays.includes("thursday")) {
-                            val += "Thursday ";
-                        }
-                         if (offdays.includes("friday")) {
-                            val += "Friday ";
-                        } 
-                        if (offdays.includes("saturday")) {
-                            val += "Saturday ";
-                        } 
-                        if (offdays.includes("sunday")) {
-                            val += "Sunday ";
-                        } 
-                        if (offdays === 'None') {
-                            $("#offdays").html("None");
-                        } else {
-                            $("#offdays").html(val);
-                        }
-                        
-
-                    } 
-
-                    $("#restdays").html("None");
-
-                    if (restdays != 'none') {
-                        let val2 = "";
-                        if (restdays.includes("monday")) {
-                            val2 += "Monday ";
-                        }
-                        if (restdays.includes("tuesday")) {
-                            val2 += "Tuesday ";
-                        }
-                        if (restdays.includes("wednesday")) {
-                            val2 += "Wednesday ";
-                        }
-                        if (restdays.includes("thursday")) {
-                            val2 += "Thursday ";
-                        }
-                         if (restdays.includes("friday")) {
-                            val2 += "Friday ";
-                        } 
-                        if (restdays.includes("saturday")) {
-                            val2 += "Saturday ";
-                        } 
-                        if (restdays.includes("sunday")) {
-                            val2 += "Sunday ";
-                        } 
-                        if (restdays === 'None') {
-                            $("#restdays").html("None");
-                        } else {
-                            $("#restdays").html(val2);
-                        }
-
-                    } 
-
                     if (leave_start != undefined || leave_start != null) {
-                        if (paid_leave == 0) {
-                            $("#leave").html(`${leave_start} - ${leave_end} (not paid)`);
-                        } else {
-                            $("#leave").html(`${leave_start} - ${leave_end} (paid leave)`);
-                        }
+                        
+                        $("#leave").html(`${leave_start} - ${leave_end}`);
+                        
                         
                     } else {
                         $("#leave").html("None");
@@ -819,277 +2055,6 @@ $(".view-staffs").on("click", function(event){
 
                 }, 200);
 
-                $("#edit-off").click(function(event){
-                    event.stopImmediatePropagation();
-                    document.body.insertAdjacentHTML("afterbegin", `
-                    <div class="fourth-layer-overlay">
-                        <div class="folo-wrapper pt-5" style="min-width:20vw;">
-                            <p class="text-white text-center" style="font-size:20px;">REMOVE DAY (OFF)</p>
-                            <hr>
-                            <form id="removeOffDayForm">
-                                <span>SELECT DAY:</span>
-                                <select id="day-select" name="day">
-                                    <option value="monday">Monday</option>
-                                    <option value="tuesday">Tuesday</option>
-                                    <option value="wednesday">Wednesday</option>
-                                    <option value="thursday">Thursday</option>
-                                    <option value="friday">Friday</option>
-                                    <option value="saturday">Saturday</option>
-                                    <option value="sunday">Sunday</option>
-                                </select>
-                                <br>
-                                <input type="submit" data-id="${snumber}" value="UPDATE"/>
-                            </form>
-                        </div>
-                    </div>`);
-
-                    $("input[type='submit']").click(function(event){
-                        event.preventDefault();
-                        let data = new FormData(document.getElementById("removeOffDayForm"));
-                        var formDataObject = {};
-                        let isNotEmpty = true;
-                        data.forEach(function(value, key){
-                            formDataObject[key] = value;
-                            if (value === '') {
-                                isNotEmpty = false;
-                            }
-                        });
-
-                        $.ajax({
-                            type: 'POST',
-                            url: '../php/remove_off.php',
-                            data: {
-                                serial: snumber,
-                                day: formDataObject.day,
-                            }, success: function(res){
-                                
-                                try {
-                                    
-                                    if (res.includes('success')) {
-                                        successNotification("Removed selected day off.", "success");
-                                        $(".fourth-layer-overlay").remove();
-                                    }
-    
-                                } catch(err) {
-                                    console.log(err);
-                                }
-                            }
-                        })
-                        
-                    })
-
-
-                    $(".folo-wrapper").on("click", function(event){
-                        event.stopImmediatePropagation();
-                    })
-                    $(".fourth-layer-overlay").on("click", function(){
-                        $(this).remove();
-                    })
-                })
-
-                $("#add-off").click(function(event){
-                    event.stopImmediatePropagation();
-                    document.body.insertAdjacentHTML("afterbegin", `
-                    <div class="fourth-layer-overlay">
-                        <div class="folo-wrapper pt-5" style="min-width:20vw;">
-                            <p class="text-white text-center" style="font-size:20px;">ADD DAY (OFF)</p>
-                            <hr>
-                            <form id="addOffDayForm">
-                                <span>SELECT DAY:</span>
-                                <select id="day-select" name="day">
-                                    <option value="monday">Monday</option>
-                                    <option value="tuesday">Tuesday</option>
-                                    <option value="wednesday">Wednesday</option>
-                                    <option value="thursday">Thursday</option>
-                                    <option value="friday">Friday</option>
-                                    <option value="saturday">Saturday</option>
-                                    <option value="sunday">Sunday</option>
-                                </select>
-                                <br>
-                                <input type="submit" value="UPDATE"/>
-                            </form>
-                        </div>
-                    </div>`);
-
-                    $("input[type='submit']").click(function(event){
-                        event.preventDefault();
-                        let data = new FormData(document.getElementById("addOffDayForm"));
-                        var formDataObject = {};
-                        let isNotEmpty = true;
-                        data.forEach(function(value, key){
-                            formDataObject[key] = value;
-                            if (value === '') {
-                                isNotEmpty = false;
-                            }
-                        });
-
-                        $.ajax({
-                            type: 'POST',
-                            url: '../php/add_off.php',
-                            data: {
-                                serial: snumber,
-                                day: formDataObject.day,
-                            }, success: function(res){
-                              
-                                try {
-                                 
-                                    if (res.includes('success')) {
-                                        successNotification("Off day added.", "success");
-                                        $(".fourth-layer-overlay").remove();
-                                    }
-    
-                                } catch(err) {
-                                    console.log(err);
-                                }
-                            }
-                        })
-                        
-                    })
-
-
-
-                    $(".folo-wrapper").on("click", function(event){
-                        event.stopImmediatePropagation();
-                    })
-                    $(".fourth-layer-overlay").on("click", function(){
-                        $(this).remove();
-                    })
-                })
-
-                $("#add-rest").click(function(event){
-                    event.stopImmediatePropagation();
-                    document.body.insertAdjacentHTML("afterbegin", `
-                    <div class="fourth-layer-overlay">
-                        <div class="folo-wrapper pt-5" style="min-width:20vw;">
-                            <p class="text-white text-center" style="font-size:20px;">ADD DAY (REST)</p>
-                            <hr>
-                            <form id="addRestDayForm">
-                                <span>SELECT DAY:</span>
-                                <select id="day-select" name="day">
-                                    <option value="monday">Monday</option>
-                                    <option value="tuesday">Tuesday</option>
-                                    <option value="wednesday">Wednesday</option>
-                                    <option value="thursday">Thursday</option>
-                                    <option value="friday">Friday</option>
-                                    <option value="saturday">Saturday</option>
-                                    <option value="sunday">Sunday</option>
-                                </select>
-                                <br>
-                                <input type="submit" value="UPDATE"/>
-                            </form>
-                        </div>
-                    </div>`);
-
-                    $("input[type='submit']").click(function(event){
-                        event.preventDefault();
-                        let data = new FormData(document.getElementById("addRestDayForm"));
-                        var formDataObject = {};
-                        let isNotEmpty = true;
-                        data.forEach(function(value, key){
-                            formDataObject[key] = value;
-                            if (value === '') {
-                                isNotEmpty = false;
-                            }
-                        });
-
-                        $.ajax({
-                            type: 'POST',
-                            url: '../php/add_rest.php',
-                            data: {
-                                serial: snumber,
-                                day: formDataObject.day,
-                            }, success: function(res){
-                              
-                                try {
-                                 
-                                    if (res.includes('success')) {
-                                        successNotification("Rest day added.", "success");
-                                        $(".fourth-layer-overlay").remove();
-                                    }
-    
-                                } catch(err) {
-                                    console.log(err);
-                                }
-                            }
-                        })
-                        
-                    })
-
-                    $(".folo-wrapper").on("click", function(event){
-                        event.stopImmediatePropagation();
-                    })
-
-                    $(".fourth-layer-overlay").on("click", function(){
-                        $(this).remove();
-                    })
-                })
-
-                $("#edit-rest").click(function(event){
-                    event.stopImmediatePropagation();
-                    document.body.insertAdjacentHTML("afterbegin", `
-                    <div class="fourth-layer-overlay">
-                        <div class="folo-wrapper pt-5" style="min-width:20vw;">
-                            <p class="text-white text-center" style="font-size:20px;">REMOVE DAY (REST)</p>
-                            <hr>
-                            <form id="removeRestDayForm">
-                                <span>SELECT DAY:</span>
-                                <select id="day-select" name="day">
-                                    <option value="monday">Monday</option>
-                                    <option value="tuesday">Tuesday</option>
-                                    <option value="wednesday">Wednesday</option>
-                                    <option value="thursday">Thursday</option>
-                                    <option value="friday">Friday</option>
-                                    <option value="saturday">Saturday</option>
-                                    <option value="sunday">Sunday</option>
-                                </select>
-                                <br>
-                                <input type="submit" value="UPDATE"/>
-                            </form>
-                        </div>
-                    </div>`);
-
-                    $("input[type='submit']").click(function(event){
-                        event.preventDefault();
-                        let data = new FormData(document.getElementById("removeRestDayForm"));
-                        var formDataObject = {};
-                        let isNotEmpty = true;
-                        data.forEach(function(value, key){
-                            formDataObject[key] = value;
-                            if (value === '') {
-                                isNotEmpty = false;
-                            }
-                        });
-
-                        $.ajax({
-                            type: 'POST',
-                            url: '../php/remove_rest.php',
-                            data: {
-                                serial: snumber,
-                                day: formDataObject.day,
-                            }, success: function(res){
-                              
-                                try {
-                                 
-                                    if (res.includes('success')) {
-                                        successNotification("Removed selected rest day.", "success");
-                                        $(".fourth-layer-overlay").remove();
-                                    }
-    
-                                } catch(err) {
-                                    console.log(err);
-                                }
-                            }
-                        })
-                        
-                    })
-
-                    $(".folo-wrapper").on("click", function(event){
-                        event.stopImmediatePropagation();
-                    })
-                    $(".fourth-layer-overlay").on("click", function(event){
-                        $(this).remove();
-                    })
-                })
 
                 $("#edit-leave").click(function(event){
                     event.stopImmediatePropagation();
@@ -1105,10 +2070,6 @@ $(".view-staffs").on("click", function(event){
                                 <span>DATE END:</span>
                                 <input type="date" name="end">
                                
-                                <span style="display:flex;align-items:center;">
-                                    <input type="checkbox" id="pd" name="paid_leave" value="paid" style="margin: 0 10px;width:17px;height:17px;cursor:pointer;">
-                                    <label for="pd" style="margin-top:7px;cursor:pointer;"> Paid leave</label><br>
-                                </span>
                                 <br>
                                 <input type="submit" value="UPDATE"/>
                             </form>
@@ -1312,986 +2273,1147 @@ $(".view-staffs").on("click", function(event){
 
 $(".settings").on("click", function(event){
     event.stopImmediatePropagation();
-    document.body.insertAdjacentHTML("afterbegin", `
-    <div class="pop-up-window" style="overflow:auto;">
-        <div class="window-content pt-5">
-            <div style="display: flex;align-items: center;margin-top:10px;margin-bottom:30px;">
-                <div style="flex:1;height:1px;background:rgba(0,0,0,0.1);"></div>
-                <div style="flex:1;display:grid;place-items:center;color:#fff;font-size:20px;">COMPANY SETUP</div>
-                <div style="flex:1;height:1px;background:rgba(0,0,0,0.1);"></div>
-            </div>
-            <form style="width:100%;" id="companySettingsForm">
-                <div class="company-details-wrapper">
-                    <div>
-                        <p class="text-center text-white">PAY SCHEDULE</p>
-                        <div>
-                            <select id="payroll-sched" name="pay_sched">
-                                <option value="twice-monthly">Twice monthly</option>
-                                <option value="monthly">Monthly</option>
-                            </select>
-
-                            <span class="twice-mon-sched">Day of the month (1st half):</span>
-                            <input class="twice-mon-sched" name="day1" type="number" placeholder="1st half"/>
-                            <span class="twice-mon-sched">Day of the month (2nd half):</span>
-                            <input class="twice-mon-sched" type="number" name="day2" placeholder="2nd half"/>
-                            
-                        </div>
-                    </div>
-                    <div>
-                        <p class="text-center text-white">EMPLOYEES CLASSIFICATION</p>
-                        <div>
-                            <input type="button" id="add-class"  value="ADD"/>
-                        </div>
-                    </div>
-                    <div>
-                        <p class="text-center text-white">ALLOWANCE</p>
-                        <div>
-                            <input type="button" id="add-allowance"  value="ADD"/>
-                        </div>
-                    </div>
-                    <div>
-                        <p class="text-center text-white">ALLOWANCE PENALTY</p>
-                        <div>
-                            <input type="button" id="add-penalties"  value="ADD"/>
-                        </div>
-                    </div>
-                    <div>
-                        <p class="text-center text-white">HOLIDAYS RATE</p>
-                        <div>
-                            <input type="button" id="add-holiday"  value="ADD"/>
-                        </div>
-                    </div>
-                    <div>
-                        <p class="text-center text-white">OFF AND REST DAY RATE</p>
-                        <div>
-                            <input type="button" id="add-odrd"  value="ADD"/>
-                        </div>
-                    </div>
-                    <div class="deductions">
-                        <input type="submit" value="UPDATE" style="width:100%;"/>
-                    </div>
-                </div>
-            </form>
-        </div>
-    </div>`);
-
-    $("#payroll-sched").on("change", function(){
-        if ($(this).val().includes("twice")) {
-            $(".twice-mon-sched").css("visibility", "visible");
-        } else {
-            $(".twice-mon-sched").css("visibility", "hidden");
-        }
-    })
-
     $.ajax({
-        type: 'GET',
+        type: 'POST',
         url: '../php/fetch_company_settings.php',
-        success: function(res){
+        success: function(res) {
+            console.log("PAY SCHED");
+            let ops = "";
+            let inputs = "";
+            let compname = "";
+            let compadd = "";
             try {
                 res = JSON.parse(res);
-                $(".pop-up-window input[name='allowance']").val(res[0].allowance);
-                $(".pop-up-window input[name='sss']").val(res[0].sss_deduction);
-                $(".pop-up-window input[name='phil']").val(res[0].philhealth_deduction);
-                $(".pop-up-window input[name='pbig']").val(res[0].pag_ibig_deduction);
+                compname = res[0].name;
+                compadd = res[0].address;
+                if (res[0].pay_sched == 'twice-monthly') {
+                    ops += `
+                    <option value="">Select schedule</option>
+                    <option value="twice-monthly" selected>Twice monthly</option>
+                    <option value="monthly">Monthly</option>`;
 
-            } catch (err) {
-                console.log(err);
-            }
-        }
-    })
+                    inputs += `
+                    <span class="twice-mon-sched">Day of the month (1st half):</span>
+                    <input class="twice-mon-sched" value="${res[0].day1}" name="day1" type="number" placeholder="1st half"/>
+                    <span class="twice-mon-sched">Day of the month (2nd half):</span>
+                    <input class="twice-mon-sched"value="${res[0].day2}" type="number" name="day2" placeholder="2nd half"/>`;
+                } else {
+                    ops += `
+                    <option value="">Select schedule</option>
+                    <option value="twice-monthly">Twice monthly</option>
+                    <option value="monthly" selected>Monthly</option>`;
 
-    $("input[type='submit']").on("click", function(event){
-        event.preventDefault();
-        event.stopImmediatePropagation();
-
-        let data = new FormData(document.getElementById("companySettingsForm"));
-        var formDataObject = {};
-
-        data.forEach(function(value, key){
-            formDataObject[key] = value;
-        });
-
-        $.ajax({
-            type: 'POST',
-            url: '../php/update_company_settings.php',
-            data: {
-                pay_sched: formDataObject.pay_sched,
-                day1: formDataObject.day1,
-                day2: formDataObject.day2,
-
-            }, success: function(res){
-                console.log(res);
-                if (res == 'success') {
-                    successNotification("Payroll settings updated.", "success");
-                    
-                    $(".pop-up-window").remove();
-                    try {
-                        $(".must").remove();
-
-                    } catch(err){
-                        console.log("");
-                    }
+                    inputs += `
+                    <span class="twice-mon-sched" style="visibility:hidden;">Day of the month (1st half):</span>
+                    <input class="twice-mon-sched" name="day1" type="number" placeholder="1st half" style="visibility:hidden;"/>
+                    <span class="twice-mon-sched" style="visibility:hidden;">Day of the month (2nd half):</span>
+                    <input class="twice-mon-sched" type="number" name="day2" placeholder="2nd half" style="visibility:hidden;"/>`;
                 }
+            } catch (err) {
+                ops += `
+                <option value="">Select schedule</option>
+                <option value="twice-monthly">Twice monthly</option>
+                <option value="monthly">Monthly</option>`;
             }
-        })
-    })
 
-    $("#add-class").on("click", function(event){
-        event.stopImmediatePropagation();
-        document.body.insertAdjacentHTML("afterbegin", `
-        <div class="third-layer-overlay">
-            <div class="tlo-wrapper pt-5">
-                <p class="text-white text-center" style="font-size:20px;">EMPLOYEES CLASSIFICATION</p>
-                <button id="add" style="padding: 5px 15px;
-                border-radius: 4px;
-                background: var(--teal);
-                color: #fff;
-                border: none;
-                font-size: 15px;">ADD CLASS</button>
-                <hr>
-                <div class="table-container" style="max-height:60vh;overflow:auto;max-width:45vw;min-width:40vw;">
-                    <table>
-                        <thead>
-                            <tr>
-                                <td>CLASS</td>
-                                <td>HOUR PER DAY</td>
-                                <td>CLOCK IN SCHEDULE</td>
-                                <td>RATE</td>
-                                <td>OT PAY</td>
-                                <td>HOLIDAY PAY</td>
-                                <td>ACTION</td>
-                            </tr>
-                        </thead>
-                        <tbody id="tbody">
-                            <tr>
-                                <td>Regular Employee</td>
-                                <td>8 hrs</td>
-                                <td>7:00 AM</td>
-                                <td>45 (hourly)</td>
-                                <td>Eligible</td>
-                                <td>Eligible</td>
-                                <td><input type="button" value="DELETE"></td>
-                            </tr>
-                            <tr>
-                                <td>Regular Employee</td>
-                                <td>8 hrs</td>
-                                <td>7:00 AM</td>
-                                <td>450 (daily)</td>
-                                <td>Eligible</td>
-                                <td>Eligible</td>
-                                <td><input type="button" value="DELETE"></td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>`);
+            
+            
 
-        $("#add").on("click", function(event){
-            event.stopImmediatePropagation();
             document.body.insertAdjacentHTML("afterbegin", `
-            <div class="fourth-layer-overlay">
-                <div class="folo-wrapper pt-5" style="min-width:20vw;">
-                    <p class="text-white text-center" style="font-size:20px;">ADD CLASS</p>
-                    <hr>
-                    <form id="addClassForm">
-                        <span>EMPLOYEE TYPE:</span>
-                        <input type="text" placeholder="Enter class" name="class"/>
-                        <span>HOUR PER DAY:</span>
-                        <select name="hour">
-                            <option value="4">4 hours</option>
-                            <option value="5">5 hours</option>
-                            <option value="6">6 hours</option>
-                            <option value="7">7 hours</option>
-                            <option value="8">8 hours</option>
-                            <option value="9">9 hours</option>
-                            <option value="10">10 hours</option>
-                        </select>
-                        <span>CLOCK IN SCHEDULE:</span>
-                        <input type="time" name="clock_in"/>
-                        <span>RATE:</span>
-                        <input type="number" name="rate" placeholder="Enter rate"/>
-                        <span>RATE TYPE:</span>
-                        <select name="rate_type">
-                            <option value="daily">Daily</option>
-                            <option value="hourly">Hourly</option>
-                            <option value="monthly">Monthly</option>
-                        </select>
-                        <span>OT PAY:</span>
-                        <select name="ot_pay">
-                            <option value="eligible">Eligible</option>
-                            <option value="not-eligible">Not Eligible</option>
-                        </select>
-                        <span>HOLIDAY PAY:</span>
-                        <select name="holi_pay">
-                            <option value="eligible">Eligible</option>
-                            <option value="not-eligible">Not Eligible</option>
-                        </select>
-                        <br>
-                        <input type="submit" value="ADD CLASS"/>
+            <div class="pop-up-window" style="overflow:auto;">
+                <div class="window-content pt-5">
+                    <div style="display: flex;align-items: center;margin-top:10px;margin-bottom:30px;">
+                        <div style="flex:1;height:1px;background:rgba(0,0,0,0.1);"></div>
+                        <div style="flex:1;display:grid;place-items:center;color:#fff;font-size:20px;">COMPANY SETUP</div>
+                        <div style="flex:1;height:1px;background:rgba(0,0,0,0.1);"></div>
+                    </div>
+                    <form style="width:100%;" id="companySettingsForm">
+                        <div class="company-details-wrapper">
+                            <div>
+                                <p class="text-center text-white">PAY SCHEDULE</p>
+                                <div>
+                                    <select id="payroll-sched" name="pay_sched" required>
+                                        ${ops}
+                                    </select>
+
+                                    ${inputs}
+                                </div>
+                            </div>
+                            <div>
+                                <p class="text-center text-white">COMPANY DETAILS</p>
+                                <div>
+                                    <span>Company name: (required)</span>
+                                    <input type="text" name="compname" value="${compname}" placeholder="Enter company name"/>
+                                    <span>Company address: (optional)</span>
+                                    <input type="text" name="compadd" value="${compadd}" placeholder="Enter company address"/>
+                                </div>
+                            </div>
+                            <div>
+                                <p class="text-center text-white">EMPLOYEES CLASSIFICATION</p>
+                                <div>
+                                    <input type="button" id="add-class"  value="ADD"/>
+                                </div>
+                            </div>
+                            <div>
+                                <p class="text-center text-white">ALLOWANCE</p>
+                                <div>
+                                    <input type="button" id="add-allowance"  value="ADD"/>
+                                </div>
+                            </div>
+                            <div>
+                                <p class="text-center text-white">ALLOWANCE PENALTY</p>
+                                <div>
+                                    <input type="button" id="add-penalties"  value="ADD"/>
+                                </div>
+                            </div>
+                            <div>
+                                <p class="text-center text-white">HOLIDAYS RATE</p>
+                                <div>
+                                    <input type="button" id="add-holiday"  value="ADD"/>
+                                </div>
+                            </div>
+
+                            <div class="deductions">
+                                <input type="submit" value="UPDATE" style="width:100%;"/>
+                            </div>
+                        </div>
                     </form>
                 </div>
             </div>`);
 
-            $("input[type='submit']").click(function(event){
+            $("#payroll-sched").on("change", function(){
+                if ($(this).val().includes("twice")) {
+                    $(".twice-mon-sched").css("visibility", "visible");
+                } else {
+                    $(".twice-mon-sched").css("visibility", "hidden");
+                }
+            })
+
+            $.ajax({
+                type: 'GET',
+                url: '../php/fetch_company_settings.php',
+                success: function(res){
+                    try {
+                        res = JSON.parse(res);
+                        $(".pop-up-window input[name='allowance']").val(res[0].allowance);
+                        $(".pop-up-window input[name='sss']").val(res[0].sss_deduction);
+                        $(".pop-up-window input[name='phil']").val(res[0].philhealth_deduction);
+                        $(".pop-up-window input[name='pbig']").val(res[0].pag_ibig_deduction);
+
+                    } catch (err) {
+                        console.log(err);
+                    }
+                }
+            })
+
+            $("input[type='submit']").on("click", function(event){
                 event.preventDefault();
-                let data = new FormData(document.getElementById("addClassForm"));
+                event.stopImmediatePropagation();
+
+                let data = new FormData(document.getElementById("companySettingsForm"));
                 var formDataObject = {};
-                let isNotEmpty = true;
+
                 data.forEach(function(value, key){
                     formDataObject[key] = value;
-                    if (value === '') {
-                        isNotEmpty = false;
-                    }
                 });
 
-
-                if (!isNotEmpty) {
-                    errorNotification("Input fields must be filled out.", "warning");
+                if (formDataObject.pay_sched == '') {
+                    errorNotification("Please select pay schedule.", "warning");
                 } else {
                     $.ajax({
                         type: 'POST',
-                        url: '../php/add_class.php',
+                        url: '../php/update_company_settings.php',
                         data: {
-                            class: formDataObject.class,
-                            hour: formDataObject.hour,
-                            clock_in: formDataObject.clock_in,
-                            rate: formDataObject.rate,
-                            rate_type: formDataObject.rate_type,
-                            ot_pay: formDataObject.ot_pay,
-                            holi_pay: formDataObject.holi_pay
-                        }, success: function(res){
-                            try {
-                                res = JSON.parse(res);
-                                if (res.message == 'success') {
-                                    successNotification("New class added.", "success");
-                                    $(".fourth-layer-overlay").remove();
-                                }
+                            pay_sched: formDataObject.pay_sched,
+                            day1: formDataObject.day1,
+                            day2: formDataObject.day2,
+                            name: formDataObject.compname,
+                            address: formDataObject.compadd
 
-                            } catch(err) {
-                                console.log(err);
+                        }, success: function(res){
+                            console.log(res);
+                            if (res == 'success') {
+                                successNotification("Payroll settings updated.", "success");
+                                
+                                $(".pop-up-window").remove();
+                                try {
+                                    $(".must").remove();
+            
+                                } catch(err){
+                                    console.log("");
+                                }
                             }
                         }
                     })
                 }
             })
 
-            $(".folo-wrapper").on("click", function(event){
+            $("#add-class").on("click", function(event){
                 event.stopImmediatePropagation();
-            })
-        
-            $(".fourth-layer-overlay").on("click", function(event){
-                event.stopImmediatePropagation();
-                $(this).remove();
-            })
-        })
-       
-        $(".tlo-wrapper").on("click", function(event){
-            event.stopImmediatePropagation();
-        })
-    
-        $(".third-layer-overlay").on("click", function(event){
-            event.stopImmediatePropagation();
-            $(this).remove();
-        })
-    })
-
-
-
-    $("#add-allowance").on("click", function(event){
-        event.stopImmediatePropagation();
-        document.body.insertAdjacentHTML("afterbegin", `
-        <div class="third-layer-overlay">
-            <div class="tlo-wrapper pt-5">
-                <p class="text-white text-center" style="font-size:20px;">ALLOWANCE</p>
-                <button id="add" style="padding: 5px 15px;
-                border-radius: 4px;
-                background: var(--teal);
-                color: #fff;
-                border: none;
-                font-size: 15px;">ADD ALLOWANCE</button>
-                <hr>
-                <div class="table-container" style="max-height:60vh;overflow:auto;max-width:30vw;min-width:25vw;">
-                    <table>
-                        <thead>
-                            <tr>
-                                <td>NAME</td>
-                                <td>AMOUNT</td>
-                                <td>DETAIL</td>
-                                <td>CLASS</td>
-                                <td>ACTION</td>
-                            </tr>
-                        </thead>
-                        <tbody id="tbody">
-                            <tr>
-                                <td>Meal allowance</td>
-                                <td>100</td>
-                                <td>Daily</td>
-                                <td>Regular</td>
-                                <td><input type="button" value="DELETE"></td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>`);
-
-        $("#add").on("click", function(event){
-            event.stopImmediatePropagation();
-
-            $.ajax({
-                type: 'GET',
-                url: '../php/fetch_classes.php',
-                success: function(res){
-              
-                    try {
-                        res = JSON.parse(res);
-                        
-                        let ops = "";
-
-                        for (let i = 0; i < res.length ; i++) {
-                            ops += `
-                            <option value="${res[i].id}">${res[i].class_name}</option>
-                            `;
-                        }
-                        
-                        document.body.insertAdjacentHTML("afterbegin", `
-                        <div class="fourth-layer-overlay">
-                            <div class="folo-wrapper pt-5" style="min-width:20vw;">
-                                <p class="text-white text-center" style="font-size:20px;">ADD ALLOWANCE</p>
-                                <hr>
-                                <form id="addAllowanceForm">
-                                    <span>ALLOWANCE NAME:</span>
-                                    <input type="text" placeholder="Enter name" name="name"/>
-                                    <span>AMOUNT</span>
-                                    <input type="number" name="amount" placeholder="Enter amount"/>
-                                    <span>ALLOWANCE TYPE:</span>
-                                    <select name="type">
-                                        <option value="daily">Daily</option>
-                                        <option value="every pay">Twice monthly</option>
-                                        <option value="monthly">Monthly</option>
-                                    </select>
-                                    <span>SELECT CLASS:</span>
-                                    <select name="class">
-                                        ${ops}
-                                    </select>
-                                    <br>
-                                    <input type="submit" value="ADD ALLOWANCE"/>
-                                </form>
-                            </div>
-                        </div>`);
-
-                        $("input[type='submit']").click(function(event){
-                            event.preventDefault();
-                            let data = new FormData(document.getElementById("addAllowanceForm"));
-                            var formDataObject = {};
-                            let isNotEmpty = true;
-                            data.forEach(function(value, key){
-                                formDataObject[key] = value;
-                                if (value === '') {
-                                    isNotEmpty = false;
-                                }
-                            });
-
-                            if (!isNotEmpty) {
-                                errorNotification("Input fields must be filled out.", "warning");
-                            } else {
-                                $.ajax({
-                                    type: 'POST',
-                                    url: '../php/add_allowance.php',
-                                    data: {
-                                        name: formDataObject.name,
-                                        amount: formDataObject.amount,
-                                        type: formDataObject.type,
-                                        class: formDataObject.class,
-                                        
-                                    }, success: function(res){
-                                        console.log(res);
-                                        try {
-                                            res = JSON.parse(res);
-                                          
-                                            if (res.message == 'success') {
-                                                successNotification("Allowance added.", "success");
-                                                $(".fourth-layer-overlay").remove();
-                                            }
-                                            
-                                        } catch(err) {
-                                            console.log(err);
-                                        }
-                                    }
-                                })
-                            }
-                        })
-
-                        $(".folo-wrapper").on("click", function(event){
-                            event.stopImmediatePropagation();
-                        })
+                
+                $.ajax({
+                    type: 'POST',
+                    url: '../php/fetchEmployeesClassification.php',
+                    success: function(res){
                     
-                        $(".fourth-layer-overlay").on("click", function(event){
-                            event.stopImmediatePropagation();
-                            $(this).remove();
-                        })
+                        let tbody = "";
+                        try {
+                            res = JSON.parse(res);
+                            for (let i = 0; i < res.length; i++) {
+                                const time = new Date('2000-01-01T' + res[i].clock_in_sched);
 
-                    } catch (err) {
-                        errorNotification("Error fetching classes.", "warning");
-                    }
-                } 
-            })
+                                // Extract hours and minutes
+                                const hours = time.getHours();
+                                const minutes = time.getMinutes();
 
-            
-        })
-       
-        $(".tlo-wrapper").on("click", function(event){
-            event.stopImmediatePropagation();
-        })
-    
-        $(".third-layer-overlay").on("click", function(event){
-            event.stopImmediatePropagation();
-            $(this).remove();
-        })
-    })
+                                // Determine AM or PM
+                                const period = hours >= 12 ? 'PM' : 'AM';
 
-    $(".window-content").on("click", function(event){
-        event.stopImmediatePropagation();
-    })
+                                // Convert hours to 12-hour format
+                                const displayHours = hours % 12 || 12;
 
-    $(".pop-up-window").on("click", function(event){
-        $(this).remove();
-    })
+                                // Format the time string
+                                const formattedTime = `${displayHours}:${minutes < 10 ? '0' : ''}${minutes} ${period}`;
 
-    $("#add-penalties").on("click", function(event){
-        event.stopImmediatePropagation();
-        document.body.insertAdjacentHTML("afterbegin", `
-        <div class="third-layer-overlay">
-            <div class="tlo-wrapper pt-5">
-                <p class="text-white text-center" style="font-size:20px;">ALLOWANCE PENALTIES</p>
-                <button id="add" style="padding: 5px 15px;
-                border-radius: 4px;
-                background: var(--teal);
-                color: #fff;
-                border: none;
-                font-size: 15px;">ADD PENALTY</button>
-                <hr>
-                <div class="table-container" style="max-height:60vh;overflow:auto;max-width:30vw;min-width:30vw;">
-                    <table>
-                        <thead>
+                                let deductions = res[i].deductions;
+                                deductions = deductions.split(" ");
+                                
+                                let txt = "";
+
+                                for (let x = 0; x < deductions.length; x++) {
+                                    let str = deductions[x];
+                                    str = str.charAt(0).toUpperCase() + str.slice(1);
+                                    txt += str;
+                                    if (deductions[x + 1]) {
+                                        txt += ', ';
+                                    }
+                                }
+
+                                tbody += `
+                                <tr id="row${res[i].id}" style='border-bottom:1px solid rgba(0,0,0,0.1);'>
+                                    <td>${res[i].class_name}</td>
+                                    <td>${res[i].hour_perday} hrs</td>
+                                    <td>${formattedTime}</td>
+                                    <td>${res[i].rate} (${res[i].rate_type})</td>
+                                    <td>${res[i].ot_pay}</td>
+                                    <td>${res[i].holi_pay}</td>
+                                    <td>${txt}</td>
+                                    <td><input type="button" class="delete-row" data-id="${res[i].id}" value="DELETE"></td>
+                                </tr>`
+                            }
+
+                        } catch (err) {
+                            tbody += `
                             <tr>
-                                <td>TYPE</td>
-                                <td>DETAIL</td>
-                                <td>ALLOWANCE DEDUC.</td>
-                                <td>CLASS</td>
-                                <td>ACTION</td>
-                            </tr>
-                        </thead>
-                        <tbody id="tbody">
-                            <tr>
-                                <td>Late</td>
-                                <td>About 30 min(s)</td>
-                                <td>-50 (Meal allowance)</td>
-                                <td>Regular Employee</td>
-                                <td><input type="button" value="DELETE"></td>
-                            </tr>
-                            <tr>
-                                <td>Absent</td>
-                                <td>Every 1 day(s)</td>
-                                <td>-10% (COLA)</td>
-                                <td>Regular Employee</td>
-                                <td><input type="button" value="DELETE"></td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>`);
-
-        $("#add").on("click", function(event){
-            event.stopImmediatePropagation();
-            $.ajax({
-                type: 'GET',
-                url: '../php/fetch_classes.php',
-                success: function(res){
-               
-                    try {
-                        res = JSON.parse(res);
-                        
-                        let ops = "";
-
-                        for (let i = 0; i < res.length ; i++) {
-                            ops += `
-                            <option value="${res[i].id}">${res[i].class_name}</option>
-                            `;
+                                <td colspan="7" style="padding:20px 0;text-align:center;">NO ITEM</td>
+                            </tr>`;
                         }
 
                         document.body.insertAdjacentHTML("afterbegin", `
-                        <div class="fourth-layer-overlay">
-                            <div class="folo-wrapper pt-5" style="min-width:20vw;">
-                                <p class="text-white text-center" style="font-size:20px;">ADD PENALTY</p>
+                        <div class="third-layer-overlay">
+                            <div class="tlo-wrapper pt-5">
+                                <p class="text-white text-center" style="font-size:20px;">EMPLOYEES CLASSIFICATION</p>
+                                <button id="add" style="padding: 5px 15px;
+                                border-radius: 4px;
+                                background: var(--teal);
+                                color: #fff;
+                                border: none;
+                                font-size: 15px;">ADD CLASS</button>
                                 <hr>
-                                <form id="addPenaltyForm">
-                                    <span>SELECT TYPE:</span>
-                                    <select id="type-select" name="type">
-                                        <option value="late">Late</option>
-                                        <option value="absent">Absent</option>
-                                    </select>
-
-                                    <span>DETAIL:</span>
-                                    <select name="detail">
-                                        <option value="">Select detail</option>
-                                        <option value="about">About</option>
-                                        <option value="every" style="display:none;" class="absent">Every</option>
-                                    </select>
-
-                                    <span class="late">TIME (minutes):</span>
-                                    <input class="late" type="number" placeholder="Enter minutes" name="minutes">
-
-                                    <span class="absent"  style="display:none;">NUM OF DAYS:</span>
-                                    <input class="absent" type="number" placeholder="Enter number of days" name="days"  style="display:none;">
-
-                                    <span>DEDUCTION (fixed or percentage):</span>
-                                    <input type="text" placeholder="Enter deduction" name="deduction">
-
-                                    <span>SELECT CLASS:</span>
-                                    <select name="class">
-                                        ${ops}
-                                    </select>
-
-                                    <br>
-                                    <input type="submit" value="ADD PENALTY"/>
-                                </form>
+                                <div class="table-container" style="max-height:60vh;overflow:auto;max-width:45vw;min-width:40vw;">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <td>CLASS</td>
+                                                <td>HOUR PER DAY</td>
+                                                <td>CLOCK IN SCHEDULE</td>
+                                                <td>RATE</td>
+                                                <td>OT PAY</td>
+                                                <td>HOLIDAY PAY</td>
+                                                <td>DEDUCTIONS</td>
+                                                <td>ACTION</td>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="tbody">
+                                            ${tbody}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>`);
 
-                        $("#type-select").on("change", function(event){
+                        $(".delete-row").on("click", function(event){
                             event.stopImmediatePropagation();
-                            if ($(this).val() === "late") {
-                                $("option.absent").hide();
-                                $("span.absent").hide();
-                                $("input.absent").hide();
-                                $("span.late").show();
-                                $("input.late").show();
-                            } else {
-                                $("option.absent").show();
-                                $("span.late").hide();
-                                $("input.late").hide();
-                                $("span.absent").show();
-                                $("input.absent").show();
-                                
-                            }
-                        })
+                            let id = $(this).data("id");
 
-
-                        $("input[type='submit']").click(function(event){
-                            event.preventDefault();
-                            let data = new FormData(document.getElementById("addPenaltyForm"));
-                            var formDataObject = {};
-                            let isNotEmpty = true;
-                            data.forEach(function(value, key){
-                                formDataObject[key] = value;
-                                if (value === '') {
-                                    isNotEmpty = false;
-                                }
-                            });
-
-                            
                             $.ajax({
                                 type: 'POST',
-                                url: '../php/add_allowance_penalty.php',
+                                url: '../php/delete_class.php',
                                 data: {
-                                    detail: formDataObject.detail,
-                                    mins: formDataObject.minutes,
-                                    days: formDataObject.days,
-                                    deduction: formDataObject.deduction,
-                                    type: formDataObject.type,
-                                    class: formDataObject.class,
-                                    
+                                    id: id,
                                 }, success: function(res){
-                                    try {
-                                        res = JSON.parse(res);
-                                        
-                                        if (res.message == 'success') {
-                                            successNotification("Penalty added.", "success");
-                                            $(".fourth-layer-overlay").remove();
-                                        }
-                                        
-                                    } catch(err) {
-                                        console.log(err);
+                                    console.log(res);
+                                    if (res.includes("deleted")) {
+                                        $(`#row${id}`).remove();
                                     }
                                 }
                             })
-                            
                         })
 
-                        $(".folo-wrapper").on("click", function(event){
+                        $("#add").on("click", function(event){
                             event.stopImmediatePropagation();
-                        })
-                    
-                        $(".fourth-layer-overlay").on("click", function(event){
-                            event.stopImmediatePropagation();
-                            $(this).remove();
-                        })
-
-                    } catch (err) {
-                        errorNotification("Error fetching classes.", "warning");
-                    }
-                }
-            });
-
-        })
-       
-        $(".tlo-wrapper").on("click", function(event){
-            event.stopImmediatePropagation();
-        })
-    
-        $(".third-layer-overlay").on("click", function(event){
-            event.stopImmediatePropagation();
-            $(this).remove();
-        })
-    })
-
-    $("#add-holiday").on("click", function(event){
-        event.stopImmediatePropagation();
-        document.body.insertAdjacentHTML("afterbegin", `
-        <div class="third-layer-overlay">
-            <div class="tlo-wrapper pt-5">
-                <p class="text-white text-center" style="font-size:20px;">HOLIDAYS RATE</p>
-                <button id="add" style="padding: 5px 15px;
-                border-radius: 4px;
-                background: var(--teal);
-                color: #fff;
-                border: none;
-                font-size: 15px;">ADD HOLIDAY</button>
-                <hr>
-                <div class="table-container" style="max-height:60vh;overflow:auto;max-width:40vw;min-width:40vw;">
-                    <table>
-                        <thead>
-                            <tr>
-                                <td>HOLIDAY</td>
-                                <td>WORKED</td>
-                                <td>DID NOT WORK</td>
-                                <td>CLASS</td>
-                                <td>EXCLUDE IF</td>
-                                <td>ACTION</td>
-                            </tr>
-                        </thead>
-                        <tbody id="tbody">
-                            <tr>
-                                <td>Regular</td>
-                                <td>200%</td>
-                                <td>100%</td>
-                                <td>Regular Employee</td>
-                                <td>Absent before and after holiday</td>
-                                <td><input type="button" value="DELETE"></td>
-                            </tr>
-                            <tr>
-                                <td>Special</td>
-                                <td>100%</td>
-                                <td>0%</td>
-                                <td>Regular Employee</td>
-                                <td>Absent before and after holiday</td>
-                                <td><input type="button" value="DELETE"></td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>`);
-
-        $("#add").on("click", function(event){
-            event.stopImmediatePropagation();
-
-            $.ajax({
-                type: 'GET',
-                url: '../php/fetch_classes.php',
-                success: function(res){
-               
-                    try {
-                        res = JSON.parse(res);
-                        
-                        let ops = "";
-
-                        for (let i = 0; i < res.length ; i++) {
-                            ops += `
-                            <option value="${res[i].id}">${res[i].class_name}</option>
-                            `;
-                        }
-
-                        document.body.insertAdjacentHTML("afterbegin", `
-                        <div class="fourth-layer-overlay">
-                            <div class="folo-wrapper pt-5" style="min-width:20vw;">
-                                <p class="text-white text-center" style="font-size:20px;">ADD HOLIDAY</p>
-                                <hr>
-                                <form id="addHolidayForm">
-                                    <span>HOLIDAY:</span>
-                                    <input type="text" placeholder="Enter holiday" name="holiday">
-
-                                    <span>RATE IF WORKED (percentage):</span>
-                                    <input type="number" placeholder="Enter rate if worked" name="worked" />
-
-                                    <span>RATE IF DID NOT WORK (percentage):</span>
-                                    <input type="number" placeholder="Enter rate if did not work" name="didnotwork" />
-
-                                    <span>SELECT CLASS:</span>
-                                    <select name="class">
-                                        ${ops}
-                                    </select>
-
-                                    <span>EXCLUDE IF EMPLOYEE IS:</span>
-                                    <select name="holiday_policy">
-                                        <option value="aoh">Absent on holiday</option>
-                                        <option value="abh">Absent before holiday</option>
-                                        <option value="aah">Absent after holiday</option>
-                                        <option value="abaah">Absent before and after holiday</option>
-                                    </select>
-
-                                    <br>
-                                    <input type="submit" value="ADD HOLIDAY RATE"/>
-                                </form>
-                            </div>
-                        </div>`);
-
-                        $("input[type='submit']").click(function(event){
-                            event.preventDefault();
-                            let data = new FormData(document.getElementById("addHolidayForm"));
-                            var formDataObject = {};
-                            let isNotEmpty = true;
-                            data.forEach(function(value, key){
-                                formDataObject[key] = value;
-                                if (value === '') {
-                                    isNotEmpty = false;
-                                }
-                            });
-
-                            if (!isNotEmpty) {
-
-                            } else {
-                                $.ajax({
-                                    type: 'POST',
-                                    url: '../php/add_holiday_setting.php',
-                                    data: {
-                                        holiday: formDataObject.holiday,
-                                        worked: formDataObject.worked,
-                                        didnotwork: formDataObject.didnotwork,
-                                        policy: formDataObject.holiday_policy,
-                                        class: formDataObject.class,
+                            document.body.insertAdjacentHTML("afterbegin", `
+                            <div class="fourth-layer-overlay" style="overflow:auto;">
+                                <div class="folo-wrapper pt-5" style="min-width:20vw;">
+                                    <p class="text-white text-center" style="font-size:20px;">ADD CLASS</p>
+                                    <hr>
+                                    <form id="addClassForm">
+                                        <span>EMPLOYEE TYPE:</span>
+                                        <input type="text" placeholder="Enter class" name="class"/>
+                                        <span>HOUR PER DAY:</span>
+                                        <select name="hour">
+                                            <option value="4">4 hours</option>
+                                            <option value="5">5 hours</option>
+                                            <option value="6">6 hours</option>
+                                            <option value="7">7 hours</option>
+                                            <option value="8">8 hours</option>
+                                            <option value="9">9 hours</option>
+                                            <option value="10">10 hours</option>
+                                        </select>
+                                        <span>CLOCK IN SCHEDULE:</span>
+                                        <input type="time" name="clock_in"/>
+                                        <span>RATE:</span>
+                                        <input type="number" name="rate" placeholder="Enter rate"/>
+                                        <span>RATE TYPE:</span>
+                                        <select name="rate_type">
+                                            <option value="daily">Daily</option>
+                                            <option value="hourly">Hourly</option>
+                                            <option value="monthly">Monthly</option>
+                                        </select>
+                                        <div style="display: flex;align-items: center;margin-top:10px;margin-bottom:10px;">
+                                            <div style="flex:1;height:1px;background:rgba(0,0,0,0.1);"></div>
+                                            <div style="flex:2;display:grid;place-items:center;color:#fff;">COMPENSATIONS</div>
+                                            <div style="flex:1;height:1px;background:rgba(0,0,0,0.1);"></div>
+                                        </div>
+                                        <span>OT PAY:</span>
                                         
-                                    }, success: function(res){
-                                        console.log(res);
-                                        try {
-                                            res = JSON.parse(res);
-                                            
-                                            if (res.message == 'success') {
-                                                successNotification("Holiday rate added.", "success");
-                                                $(".fourth-layer-overlay").remove();
-                                            }
-                                            
-                                        } catch(err) {
-                                            console.log(err);
-                                        }
+                                        <select name="ot_pay">
+                                            <option value="eligible">Eligible</option>
+                                            <option value="not-eligible">Not Eligible</option>
+                                        </select>
+                                        <span>HOLIDAY PAY:</span>
+                                        <select name="holi_pay">
+                                            <option value="eligible">Eligible</option>
+                                            <option value="not-eligible">Not Eligible</option>
+                                        </select>
+                                        <div style="display: flex;align-items: center;margin-top:10px;margin-bottom:10px;">
+                                            <div style="flex:1;height:1px;background:rgba(0,0,0,0.1);"></div>
+                                            <div style="flex:2;display:grid;place-items:center;color:#fff;">DEDUCTIONS</div>
+                                            <div style="flex:1;height:1px;background:rgba(0,0,0,0.1);"></div>
+                                        </div>
+                                        <span>SELECT MULTIPLE: (Hold CTRL to select)</span>
+                                        <select name="deductions" multiple>
+                                            <option value="tardiness">Tardiness</option>
+                                            <option value="undertime">Undertime</option>
+                                            <option value="absences">Absences</option>
+                                        </select>
+                                        
+                                        <br>
+                                        <input type="submit" value="ADD CLASS"/>
+                                    </form>
+                                </div>
+                            </div>`);
+
+                            $("input[type='submit']").click(function(event){
+                                event.preventDefault();
+                                let data = new FormData(document.getElementById("addClassForm"));
+                                var formDataObject = {};
+                                let isNotEmpty = true;
+                                data.forEach(function(value, key){
+                                    if (data.getAll(key).length > 1) {
+                                        formDataObject[key] = data.getAll(key);
+                                    } else {
+                                        formDataObject[key] = value;
                                     }
-                                })
-                            }
-                            
-                            
-                        })
 
-                        $(".folo-wrapper").on("click", function(event){
+                                    if (value === '') {
+                                        isNotEmpty = false;
+                                    }
+                                });
+
+                                let deductions = "";
+                                for (let x = 0; x < formDataObject.deductions.length; x++) {
+                                    deductions += formDataObject.deductions[x] + " ";
+                                }
+
+                                formDataObject.deductions = deductions;
+
+
+                                if (!isNotEmpty) {
+                                    errorNotification("Input fields must be filled out.", "warning");
+                                } else {
+                                    $.ajax({
+                                        type: 'POST',
+                                        url: '../php/add_class.php',
+                                        data: {
+                                            class: formDataObject.class,
+                                            hour: formDataObject.hour,
+                                            clock_in: formDataObject.clock_in,
+                                            rate: formDataObject.rate,
+                                            rate_type: formDataObject.rate_type,
+                                            ot_pay: formDataObject.ot_pay,
+                                            holi_pay: formDataObject.holi_pay,
+                                            deductions: formDataObject.deductions
+
+                                        }, success: function(res){
+                                            try {
+                                                res = JSON.parse(res);
+                                                if (res.message == 'success') {
+                                                    successNotification("New class added.", "success");
+                                                    $(".fourth-layer-overlay").remove();
+                                                }
+
+                                            } catch(err) {
+                                                console.log(err);
+                                            }
+                                        }
+                                    })
+                                }
+                            })
+
+                            $(".folo-wrapper").on("click", function(event){
+                                event.stopImmediatePropagation();
+                            })
+                        
+                            $(".fourth-layer-overlay").on("click", function(event){
+                                event.stopImmediatePropagation();
+                                $(this).remove();
+                            })
+                        })
+                    
+                        $(".tlo-wrapper").on("click", function(event){
                             event.stopImmediatePropagation();
                         })
                     
-                        $(".fourth-layer-overlay").on("click", function(event){
+                        $(".third-layer-overlay").on("click", function(event){
                             event.stopImmediatePropagation();
                             $(this).remove();
                         })
-
-                    } catch (err) {
-                        errorNotification("Error fetching classes.", "warning");
                     }
-                }
-            });
+                })
+            })
 
-            
-        })
-       
-        $(".tlo-wrapper").on("click", function(event){
-            event.stopImmediatePropagation();
-        })
-    
-        $(".third-layer-overlay").on("click", function(event){
-            event.stopImmediatePropagation();
-            $(this).remove();
-        })
-    })
+            $("#add-allowance").on("click", function(event){
+                event.stopImmediatePropagation();
 
-    $("#add-odrd").on("click", function(event){
-        event.stopImmediatePropagation();
-        document.body.insertAdjacentHTML("afterbegin", `
-        <div class="third-layer-overlay">
-            <div class="tlo-wrapper pt-5">
-                <p class="text-white text-center" style="font-size:20px;">OFF AND REST DAY RATE</p>
-                <button id="add" style="padding: 5px 15px;
-                border-radius: 4px;
-                background: var(--teal);
-                color: #fff;
-                border: none;
-                font-size: 15px;">ADD OFF OR REST DAY</button>
-                <hr>
-                <div class="table-container" style="max-height:60vh;overflow:auto;max-width:40vw;min-width:40vw;">
-                    <table>
-                        <thead>
+                $.ajax({
+                    type: 'POST',
+                    url: '../php/fetchCompanyAllowance.php',
+                    success: function(res){
+                    
+                        let tbody = "";
+                        try {
+                            res = JSON.parse(res);
+                            for (let i = 0; i < res.length; i++) {
+                                let CLASSNAME = CLASSES[`${res[i].class}`];
+                                let str = res[i].detail;
+                                str = str.charAt(0).toUpperCase() + str.slice(1);
+                                tbody += `
+                                <tr id="row${res[i].id}" style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                                    <td>${res[i].allowance_name}</td>
+                                    <td>${res[i].amount}</td>
+                                    <td>${str}</td>
+                                    <td>${CLASSNAME}</td>
+                                    <td><input type="button" class="delete-row" data-id="${res[i].id}" value="DELETE"></td>
+                                </tr>`;
+                            }
+
+                        } catch (err) {
+                            tbody += `
                             <tr>
-                                <td>NAME</td>
-                                <td>WORKED</td>
-                                <td>DID NOT WORK</td>
-                                <td>CLASS</td>
-                                <td>ACTION</td>
-                            </tr>
-                        </thead>
-                        <tbody id="tbody">
-                            <tr>
-                                <td>REST DAY</td>
-                                <td>130%</td>
-                                <td>100%</td>
-                                <td>Regular Employee</td>
-                                <td><input type="button" value="DELETE"></td>
-                            </tr>
-                            <tr>
-                                <td>OFF DAY</td>
-                                <td>100%</td>
-                                <td>100%</td>
-                                <td>Regular Employee</td>
-                                <td><input type="button" value="DELETE"></td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>`);
-
-        $("#add").on("click", function(event){
-            event.stopImmediatePropagation();
-
-            $.ajax({
-                type: 'GET',
-                url: '../php/fetch_classes.php',
-                success: function(res){
-               
-                    try {
-                        res = JSON.parse(res);
-                        
-                        let ops = "";
-
-                        for (let i = 0; i < res.length ; i++) {
-                            ops += `
-                            <option value="${res[i].id}">${res[i].class_name}</option>
-                            `;
+                                <td colspan="5" style="padding:20px 0;text-align:center;">NO ITEM</td>
+                            </tr>`;
                         }
 
                         document.body.insertAdjacentHTML("afterbegin", `
-                        <div class="fourth-layer-overlay">
-                            <div class="folo-wrapper pt-5" style="min-width:20vw;">
-                                <p class="text-white text-center" style="font-size:20px;">ADD OFF AND REST DAY POLICY</p>
+                        <div class="third-layer-overlay">
+                            <div class="tlo-wrapper pt-5">
+                                <p class="text-white text-center" style="font-size:20px;">ALLOWANCE</p>
+                                <button id="add" style="padding: 5px 15px;
+                                border-radius: 4px;
+                                background: var(--teal);
+                                color: #fff;
+                                border: none;
+                                font-size: 15px;">ADD ALLOWANCE</button>
                                 <hr>
-                                <form id="addOARDForm">
-                                    <span>SELECT TYPE:</span>
-                                    <select id="type-select" name="type">
-                                        <option value="off">OFF DAY</option>
-                                        <option value="rest">REST DAY</option>
-                                    </select>
-
-                                    <span>RATE IF WORKED (percentage):</span>
-                                    <input type="number" placeholder="Enter rate if worked" name="worked" />
-
-                                    <span>RATE IF DID NOT WORK (percentage):</span>
-                                    <input type="number" placeholder="Enter rate if did not work" name="didnotwork" />
-
-                                    <span>SELECT CLASS:</span>
-                                    <select name="class">
-                                        ${ops}
-                                    </select>
-
-                                    <br>
-                                    <input type="submit" value="ADD POLICY"/>
-                                </form>
+                                <div class="table-container" style="max-height:60vh;overflow:auto;max-width:30vw;min-width:25vw;">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <td>NAME</td>
+                                                <td>AMOUNT</td>
+                                                <td>DETAIL</td>
+                                                <td>CLASS</td>
+                                                <td>ACTION</td>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="tbody">
+                                        ${tbody}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>`);
 
-                        $("input[type='submit']").click(function(event){
-                            event.preventDefault();
-                            let data = new FormData(document.getElementById("addOARDForm"));
-                            var formDataObject = {};
-                            let isNotEmpty = true;
-                            data.forEach(function(value, key){
-                                formDataObject[key] = value;
-                                if (value === '') {
-                                    isNotEmpty = false;
+                        $(".delete-row").on("click", function(event){
+                            event.stopImmediatePropagation();
+                            let id = $(this).data("id");
+
+                            $.ajax({
+                                type: 'POST',
+                                url: '../php/delete_allowance.php',
+                                data: {
+                                    id: id,
+                                }, success: function(res){
+                                    console.log(res);
+                                    if (res.includes("deleted")) {
+                                        $(`#row${id}`).remove();
+                                    }
+                                }
+                            })
+                        })
+
+                        $("#add").on("click", function(event){
+                            event.stopImmediatePropagation();
+
+                            $.ajax({
+                                type: 'GET',
+                                url: '../php/fetch_classes.php',
+                                success: function(res){
+                            
+                                    try {
+                                        res = JSON.parse(res);
+                                        
+                                        let ops = "";
+
+                                        for (let i = 0; i < res.length ; i++) {
+                                            ops += `
+                                            <option value="${res[i].id}">${res[i].class_name}</option>
+                                            `;
+                                        }
+
+                                        let typeOps = "";
+                                        let help = "";
+                                        if ($("#payroll-sched").val().includes("twice")) {
+                                            typeOps += `
+                                            <option value="twice monthly">Twice monthly</option>
+                                            <option value="monthly">Monthly</option>`;
+                                            
+                                            help += `
+                                            <svg class="help" style="margin-top:-3px;margin-left:5px;cursor:pointer;" xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" class="bi bi-question-circle-fill" viewBox="0 0 16 16">
+                                            <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0M5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247m2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z"/>
+                                            </svg>
+                                            <span class="tip" style="display:none;position:absolute;top:-250%;left:40%;padding:10px;z-index:1000;background:var(--teal);box-shadow:0 0 5px rgba(0,0,0,.5);border-radius:4px 4px 4px 0;color:#fff;">Monthly allowance will be added every 2nd half.</span>`;
+                                        } else {
+                                            typeOps += `
+                                            <option value="monthly">Monthly</option>`;
+                                        }
+                                        
+                                        document.body.insertAdjacentHTML("afterbegin", `
+                                        <div class="fourth-layer-overlay">
+                                            <div class="folo-wrapper pt-5" style="min-width:20vw;">
+                                                <p class="text-white text-center" style="font-size:20px;">ADD ALLOWANCE</p>
+                                                <hr>
+                                                <form id="addAllowanceForm">
+                                                    <span>ALLOWANCE NAME:</span>
+                                                    <input type="text" placeholder="Enter name" name="name"/>
+                                                    <span>AMOUNT:</span>
+                                                    <input type="number" name="amount" placeholder="Enter amount"/>
+                                                    <span style="position:relative;">ALLOWANCE TYPE: ${help}
+                                                  </span>
+                                                    <select name="type">
+                                                        ${typeOps}
+                                                    </select>
+                                                    <span>SELECT CLASS:</span>
+                                                    <select name="class">
+                                                        ${ops}
+                                                    </select>
+                                                    <br>
+                                                    <input type="submit" value="ADD ALLOWANCE"/>
+                                                </form>
+                                            </div>
+                                        </div>`);
+
+                                        $("svg").on("mouseover", function(event){
+                                           $("span.tip").show();
+                                        })
+                                        $("svg").on("mouseout", function(event){
+                                            $("span.tip").hide();
+                                        })
+
+                                        $("input[type='submit']").click(function(event){
+                                            event.preventDefault();
+                                            let data = new FormData(document.getElementById("addAllowanceForm"));
+                                            var formDataObject = {};
+                                            let isNotEmpty = true;
+                                            data.forEach(function(value, key){
+                                                formDataObject[key] = value;
+                                                if (value === '') {
+                                                    isNotEmpty = false;
+                                                }
+                                            });
+
+                                            if (!isNotEmpty) {
+                                                errorNotification("Input fields must be filled out.", "warning");
+                                            } else {
+                                                $.ajax({
+                                                    type: 'POST',
+                                                    url: '../php/add_allowance.php',
+                                                    data: {
+                                                        name: formDataObject.name,
+                                                        amount: formDataObject.amount,
+                                                        type: formDataObject.type,
+                                                        class: formDataObject.class,
+                                                        
+                                                    }, success: function(res){
+                                                        console.log(res);
+                                                        try {
+                                                            res = JSON.parse(res);
+                                                        
+                                                            if (res.message == 'success') {
+                                                                successNotification("Allowance added.", "success");
+                                                                $(".fourth-layer-overlay").remove();
+                                                            }
+                                                            
+                                                        } catch(err) {
+                                                            console.log(err);
+                                                        }
+                                                    }
+                                                })
+                                            }
+                                        })
+
+                                        $(".folo-wrapper").on("click", function(event){
+                                            event.stopImmediatePropagation();
+                                        })
+                                    
+                                        $(".fourth-layer-overlay").on("click", function(event){
+                                            event.stopImmediatePropagation();
+                                            $(this).remove();
+                                        })
+
+                                    } catch (err) {
+                                        errorNotification("Add at least one class.", "warning");
+                                    }
+                                } 
+                            })
+
+                            
+                        })
+                    
+                        $(".tlo-wrapper").on("click", function(event){
+                            event.stopImmediatePropagation();
+                        })
+                    
+                        $(".third-layer-overlay").on("click", function(event){
+                            event.stopImmediatePropagation();
+                            $(this).remove();
+                        })
+                    }
+                })
+            })
+
+            $(".window-content").on("click", function(event){
+                event.stopImmediatePropagation();
+            })
+
+            $(".pop-up-window").on("click", function(event){
+                $(this).remove();
+            })
+
+            $("#add-penalties").on("click", function(event){
+                event.stopImmediatePropagation();
+                
+                $.ajax({
+                    type: 'POST',
+                    url: '../php/fetchCompanyPenalty.php',
+                    success: function(res){
+                    
+                        let tbody = "";
+                        try {
+
+                            res = JSON.parse(res);
+                            for (let i = 0; i < res.length; i++) {
+                                let CLASSNAME = CLASSES[`${res[i].class}`];
+
+                                let str = res[i].type;
+                                str = str.charAt(0).toUpperCase() + str.slice(1);
+
+                                tbody += `
+                                <tr id="row${res[i].id}" style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                                    <td>${res[i].allowance_name}</td>
+                                    <td>${str}</td>
+                                    <td>${res[i].deduction}</td>
+                                    <td>${CLASSNAME}</td>
+                                    <td><input type="button" class="delete-row" data-id="${res[i].id}" value="DELETE"></td>
+                                </tr>`;
+
+                            }
+
+                        } catch (err) {
+                            tbody += `
+                            <tr>
+                                <td colspan="5" style="padding:20px 0;text-align:center;">NO ITEM</td>
+                            </tr>`;
+                        }
+
+                        document.body.insertAdjacentHTML("afterbegin", `
+                        <div class="third-layer-overlay">
+                            <div class="tlo-wrapper pt-5">
+                                <p class="text-white text-center" style="font-size:20px;">ALLOWANCE PENALTIES</p>
+                                <button id="add" style="padding: 5px 15px;
+                                border-radius: 4px;
+                                background: var(--teal);
+                                color: #fff;
+                                border: none;
+                                font-size: 15px;">ADD PENALTY</button>
+                                <hr>
+                                <div class="table-container" style="max-height:60vh;overflow:auto;max-width:30vw;min-width:30vw;">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <td>ALLOWANCE</td>
+                                                <td>TYPE</td>
+                                                <td>DEDUCTION</td>
+                                                <td>CLASS</td>
+                                                <td>ACTION</td>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="tbody">
+                                            ${tbody}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>`);
+
+                        $(".delete-row").on("click", function(event){
+                            event.stopImmediatePropagation();
+                            let id = $(this).data("id");
+
+                            $.ajax({
+                                type: 'POST',
+                                url: '../php/delete_penalty.php',
+                                data: {
+                                    id: id,
+                                }, success: function(res){
+                                    console.log(res);
+                                    if (res.includes("deleted")) {
+                                        $(`#row${id}`).remove();
+                                    }
+                                }
+                            })
+                        })
+
+                        $("#add").on("click", function(event){
+                            event.stopImmediatePropagation();
+                            $.ajax({
+                                type: 'GET',
+                                url: '../php/fetch_classes.php',
+                                success: function(res){
+                            
+                                    try {
+                                        res = JSON.parse(res);
+                                        
+                                        var ops = "";
+                                        var allowanceOps = "";
+
+                                        for (let i = 0; i < res.length ; i++) {
+                                            ops += `
+                                            <option value="${res[i].id}">${res[i].class_name}</option>
+                                            `;
+                                        }
+
+                                        $.ajax({
+                                            type: 'POST',
+                                            url: '../php/fetchCompanyAllowance.php',
+                                            success: function(res) {
+                                                try {
+                                                    res = JSON.parse(res);
+                                                } catch (err) {
+                                                    console.log(err);
+                                                }
+
+                                                for (let i = 0; i < res.length; i++) {
+                                                    allowanceOps += `
+                                                    <option value="${res[i].id}|${res[i].allowance_name}">${res[i].allowance_name}</option>`;
+                                                }
+
+                                                document.body.insertAdjacentHTML("afterbegin", `
+                                                <div class="fourth-layer-overlay">
+                                                    <div class="folo-wrapper pt-5" style="min-width:20vw;">
+                                                        <p class="text-white text-center" style="font-size:20px;">ADD PENALTY</p>
+                                                        <hr>
+                                                        <form id="addPenaltyForm">
+                                                            <span>SELECT ALLOWANCE:</span>
+                                                            <select id="type-select" name="allowance">
+                                                                <option value="">Select allowance</option>
+                                                                ${allowanceOps}
+                                                            </select>
+
+                                                            <span>SELECT TYPE:</span>
+                                                            <select name="type">
+                                                                <option value="late|5">Late (5 minutes)</option>
+                                                                <option value="late|10">Late (10 minutes)</option>
+                                                                <option value="late|30">Late (30 minutes)</option>
+                                                                <option value="late|60">Late (60 minutes)</option>
+                                                                <option value="absent">Absent</option>
+                                                            </select>
+
+                                                            <span>DEDUCTION (fixed or percentage):</span>
+                                                            <input type="text" placeholder="Enter deduction" name="deduction">
+
+                                                            <span>SELECT CLASS:</span>
+                                                            <select name="class">
+                                                                ${ops}
+                                                            </select>
+
+                                                            <br>
+                                                            <input type="submit" value="ADD PENALTY"/>
+                                                        </form>
+                                                    </div>
+                                                </div>`);
+
+                                                $("input[type='submit']").click(function(event){
+                                                    event.preventDefault();
+                                                    let data = new FormData(document.getElementById("addPenaltyForm"));
+                                                    var formDataObject = {};
+                                                    let isNotEmpty = true;
+                                                    data.forEach(function(value, key){
+                                                        formDataObject[key] = value;
+                                                        if (value === '') {
+                                                            isNotEmpty = false;
+                                                        }
+                                                    });
+
+                                                    let opValue = formDataObject.allowance.split("|");
+                                                    formDataObject['allowance_name'] = opValue[1];
+                                                    formDataObject['allowance_id'] = opValue[0];
+
+                                                    if (!isNotEmpty) {
+                                                        errorNotification("Fields must be filled out.", "warning");
+                                                    } else {
+                                                        $.ajax({
+                                                            type: 'POST',
+                                                            url: '../php/add_allowance_penalty.php',
+                                                            data: {
+                                                                allowance_name: formDataObject.allowance_name,
+                                                                allowance_id: formDataObject.allowance_id,
+                                                                deduction: formDataObject.deduction,
+                                                                type: formDataObject.type,
+                                                                class: formDataObject.class,
+                                                                
+                                                            }, success: function(res){
+                                                                console.log(res);
+                                                                try {
+                                                                    res = JSON.parse(res);
+                                                                    
+                                                                    if (res.message == 'success') {
+                                                                        successNotification("Penalty added.", "success");
+                                                                        $(".fourth-layer-overlay").remove();
+                                                                    }
+                                                                    
+                                                                } catch(err) {
+                                                                    console.log(err);
+                                                                }
+                                                            }
+                                                        })
+                                                    }
+                                                    
+                                                })
+
+                                                $(".folo-wrapper").on("click", function(event){
+                                                    event.stopImmediatePropagation();
+                                                })
+                                            
+                                                $(".fourth-layer-overlay").on("click", function(event){
+                                                    event.stopImmediatePropagation();
+                                                    $(this).remove();
+                                                })
+                                            }
+                                        })
+
+                                        
+
+                                    } catch (err) {
+                                        errorNotification("Add at least one class.", "warning");
+                                    }
                                 }
                             });
 
-                            if (!isNotEmpty) {
-                                errorNotification("Input fields must be filled out.", "warning");
+                        })
+                    
+                        $(".tlo-wrapper").on("click", function(event){
+                            event.stopImmediatePropagation();
+                        })
+                    
+                        $(".third-layer-overlay").on("click", function(event){
+                            event.stopImmediatePropagation();
+                            $(this).remove();
+                        })
+                    }
+                })
+                
+            })
 
-                            } else {
-                                $.ajax({
-                                    type: 'POST',
-                                    url: '../php/add_oard_setting.php',
-                                    data: {
-                                        type: formDataObject.type,
-                                        worked: formDataObject.worked,
-                                        didnotwork: formDataObject.didnotwork,
-                                        class: formDataObject.class,
+            $("#add-holiday").on("click", function(event){
+                event.stopImmediatePropagation();
+
+                $.ajax({
+                    type: 'POST',
+                    url: '../php/fetchCompanyHolidaysRATE.php',
+                    success: function(res){
+
+                        let tbody = "";
+                        try {
+
+                            res = JSON.parse(res);
+                            for (let i = 0; i < res.length; i++) {
+                                let classes = "";
+
+                                let stringArray = res[i].class.split(" ");
+                                for (let x = 0; x < stringArray.length; x++) {
+                                    if (CLASSES.hasOwnProperty(stringArray[x])) {
+                                        classes += CLASSES[stringArray[x]] + ", ";
+                                    }
+                                }
+
+                                let exclusion;
+                                if (res[i].exclusion == 'abh') {
+                                    exclusion = 'Absent before holiday';
+                                } else if (res[i].exclusion == 'aah') {
+                                    exclusion = 'Absent after holiday';
+                                } else if (res[i].exclusion == 'abaah') {
+                                    exclusion = 'Absent before and after holiday';
+                                }
+
+                                tbody += `
+                                <tr id="row${res[i].id}" style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                                    <td>${res[i].holiday_name}</td>
+                                    <td>${res[i].worked}%</td>
+                                    <td>${res[i].didnotwork}%</td>
+                                    <td>${classes}</td>
+                                    <td>${exclusion}</td>
+                                    <td><input type="button" class="delete-row" data-id="${res[i].id}" value="DELETE"></td>
+                                </tr>`;
+                            }
+
+                        } catch (err) {
+                            tbody += `
+                            <tr>
+                                <td colspan="6" style="padding:20px 0;text-align:center;">NO ITEM</td>
+                            </tr>`;
+                        }
+
+                        document.body.insertAdjacentHTML("afterbegin", `
+                        <div class="third-layer-overlay">
+                            <div class="tlo-wrapper pt-5">
+                                <p class="text-white text-center" style="font-size:20px;">HOLIDAYS RATE</p>
+                                <button id="add" style="padding: 5px 15px;
+                                border-radius: 4px;
+                                background: var(--teal);
+                                color: #fff;
+                                border: none;
+                                font-size: 15px;">ADD HOLIDAY</button>
+                                <hr>
+                                <div class="table-container" style="max-height:60vh;overflow:auto;max-width:40vw;min-width:40vw;">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <td>HOLIDAY</td>
+                                                <td>WORKED</td>
+                                                <td>DID NOT WORK</td>
+                                                <td>CLASS</td>
+                                                <td>EXCLUDE IF</td>
+                                                <td>ACTION</td>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="tbody">
+                                            ${tbody}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>`);
+
+                        $(".delete-row").on("click", function(event){
+                            event.stopImmediatePropagation();
+                            let id = $(this).data("id");
+
+                            $.ajax({
+                                type: 'POST',
+                                url: '../php/delete_holidayrate.php',
+                                data: {
+                                    id: id,
+                                }, success: function(res){
+                                    console.log(res);
+                                    if (res.includes("deleted")) {
+                                        $(`#row${id}`).remove();
+                                    }
+                                }
+                            })
+                        })
+
+                        $("#add").on("click", function(event){
+                            event.stopImmediatePropagation();
+
+                            $.ajax({
+                                type: 'GET',
+                                url: '../php/fetch_classes.php',
+                                success: function(res){
+                            
+                                    try {
+                                        res = JSON.parse(res);
                                         
-                                    }, success: function(res){
-                                        console.log(res);
-                                        try {
-                                            res = JSON.parse(res);
-                                            
-                                            if (res.message == 'success') {
-                                                if ($("#type-select").val() == 'off') {
-                                                    successNotification("Off day rate added.", "success");
+                                        let ops = "";
+
+                                        for (let i = 0; i < res.length ; i++) {
+                                            ops += `
+                                            <option value="${res[i].id}">
+                                                ${res[i].class_name}
+                                            </option>
+                                            `;
+                                        }
+
+                                        document.body.insertAdjacentHTML("afterbegin", `
+                                        <div class="fourth-layer-overlay">
+                                            <div class="folo-wrapper pt-5" style="min-width:20vw;">
+                                                <p class="text-white text-center" style="font-size:20px;">ADD HOLIDAY</p>
+                                                <hr>
+                                                <form id="addHolidayForm">
+                                                    <span>HOLIDAY:</span>
+                                                    <input type="text" placeholder="Enter holiday" name="holiday">
+
+                                                    <span>RATE IF WORKED (percentage):</span>
+                                                    <input type="number" placeholder="Enter rate if worked" name="worked" />
+
+                                                    <span>RATE IF DID NOT WORK (percentage):</span>
+                                                    <input type="number" placeholder="Enter rate if did not work" name="didnotwork" />
+
+                                                    <span>SELECT CLASS: (Hold CTRL to select multiple)</span>
+                                                    <select name="class" multiple>
+                                                        ${ops}
+                                                    </select>
+                                                    
+
+                                                    <span>EXCLUDE IF:</span>
+                                                    <select name="holiday_policy">
+                                                        <option value="abh">Absent before holiday</option>
+                                                        <option value="aah">Absent after holiday</option>
+                                                        <option value="abaah">Absent before and after holiday</option>
+                                                    </select>
+
+                                                    <br>
+                                                    <input type="submit" value="ADD HOLIDAY RATE"/>
+                                                </form>
+                                            </div>
+                                        </div>`);
+
+                                        $("input[type='submit']").click(function(event){
+                                            event.preventDefault();
+                                            let data = new FormData(document.getElementById("addHolidayForm"));
+                                            var formDataObject = {};
+                                            let isNotEmpty = true;
+                                            data.forEach(function(value, key){
+                                                
+                                                if (data.getAll(key).length > 1) {
+                                                    formDataObject[key] = data.getAll(key);
                                                 } else {
-                                                    successNotification("Rest day rate added.", "success");
+                                                    formDataObject[key] = value;
                                                 }
                                                 
-                                                $(".fourth-layer-overlay").remove();
+                                                if (value === '') {
+                                                    isNotEmpty = false;
+                                                }
+                                            });
+
+                                            let employeeClass = "";
+                                            for (let x = 0; x < formDataObject.class.length; x++) {
+                                                employeeClass += formDataObject.class[x] + " ";
+                                            }
+
+                                            formDataObject.class = employeeClass;
+
+                                            if (!isNotEmpty) {
+                                                errorNotification("Fields must be filled out.", "warning");
+                                            } else {
+                                                $.ajax({
+                                                    type: 'POST',
+                                                    url: '../php/add_holiday_setting.php',
+                                                    data: {
+                                                        holiday: formDataObject.holiday,
+                                                        worked: formDataObject.worked,
+                                                        didnotwork: formDataObject.didnotwork,
+                                                        policy: formDataObject.holiday_policy,
+                                                        class: formDataObject.class,
+                                                        
+                                                    }, success: function(res){
+                                                        console.log(res);
+                                                        try {
+                                                            res = JSON.parse(res);
+                                                            
+                                                            if (res.message == 'success') {
+                                                                successNotification("Holiday rate added.", "success");
+                                                                $(".fourth-layer-overlay").remove();
+                                                            }
+                                                            
+                                                        } catch(err) {
+                                                            console.log(err);
+                                                        }
+                                                    }
+                                                })
                                             }
                                             
-                                        } catch(err) {
-                                            console.log(err);
-                                        }
-                                    }
-                                })
-                                
-                            }
-                        })
-                        
+                                            
+                                        })
 
-                        $(".folo-wrapper").on("click", function(event){
+                                        $(".folo-wrapper").on("click", function(event){
+                                            event.stopImmediatePropagation();
+                                        })
+                                    
+                                        $(".fourth-layer-overlay").on("click", function(event){
+                                            event.stopImmediatePropagation();
+                                            $(this).remove();
+                                        })
+
+                                    } catch (err) {
+                                        errorNotification("Add at least one class.", "warning");
+                                    }
+                                }
+                            });
+
+                            
+                        })
+                    
+                        $(".tlo-wrapper").on("click", function(event){
                             event.stopImmediatePropagation();
                         })
                     
-                        $(".fourth-layer-overlay").on("click", function(event){
+                        $(".third-layer-overlay").on("click", function(event){
                             event.stopImmediatePropagation();
                             $(this).remove();
                         })
-
-                    } catch(err) {
-                        errorNotification("Error fetching classes.", "warning");
                     }
-                }
-            });
+                });
+                
+            })
 
             
-        })
-       
-        $(".tlo-wrapper").on("click", function(event){
-            event.stopImmediatePropagation();
-        })
-    
-        $(".third-layer-overlay").on("click", function(event){
-            event.stopImmediatePropagation();
-            $(this).remove();
-        })
+            
+        }
     })
+
+    
 })
 
 function OPEN(snumber, id, name, age, position) {

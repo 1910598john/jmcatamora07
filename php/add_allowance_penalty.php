@@ -16,19 +16,18 @@ if ($conn->connect_error) {
 if (isset($_POST['class'])) {
   $class = $_POST['class'];
   $type = $_POST['type'];
-  $detail = $_POST['detail'];
-  $mins = $_POST['mins'];
-  $days = $_POST['days'];
+  $allowance_id = $_POST['allowance_id'];
+  $allowance_name = $_POST['allowance_name'];
   $deduction = $_POST['deduction'];
   
 
   $company_id = $_SESSION['companyid'];
 
 
-  $stmt = $conn->prepare("INSERT INTO allowance_penalty (company_id, type, detail, time, days, deduction, class)
-  VALUES (?, ?, ?, ?, ?, ?, ?)");
+  $stmt = $conn->prepare("INSERT INTO allowance_penalty (company_id, type, allowance, allowance_name, deduction, class)
+  VALUES (?, ?, ?, ?, ?, ?)");
 
-  $stmt->bind_param("issssss", $company_id, $type, $detail, $mins, $days, $deduction, $class);
+  $stmt->bind_param("isssss", $company_id, $type, $allowance_id, $allowance_name, $deduction, $class);
 
   $data = array();
 

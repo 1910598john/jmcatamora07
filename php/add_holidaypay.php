@@ -13,26 +13,24 @@ if ($conn->connect_error) {
   die("Connection failed: " . $conn->connect_error);
 }
 
-if (isset($_POST['class'])) {
-  $class = $_POST['class'];
-  $name = $_POST['type'];
-  $worked = $_POST['worked'];
-  $didnotwork = $_POST['didnotwork'];
+if (isset($_POST['holiday'])) {
+  $name = $_POST['holiday'];
+  $date = $_POST['date'];
+  
 
   $company_id = $_SESSION['companyid'];
 
 
-  $stmt = $conn->prepare("INSERT INTO off_rest (company_id, name, worked, didnotwork, class)
-  VALUES (?, ?, ?, ?, ?)");
+  $stmt = $conn->prepare("INSERT INTO holidays (company_id, name, date)
+  VALUES (?, ?, ?)");
 
-  $stmt->bind_param("issss", $company_id, $name, $worked, $didnotwork, $class);
+  $stmt->bind_param("iss", $company_id, $name, $date);
 
   $data = array();
 
   if ($stmt->execute()) {
-    $data["message"] = "success";
 
-    echo json_encode($data);
+    echo 'success';
   }
 }
 

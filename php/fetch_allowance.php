@@ -12,25 +12,23 @@ if ($conn->connect_error) {
 }
 
 session_start();
-if (isset($_POST['serial'])) {
-    $serial = $_POST['serial'];
-
-    $sql = "SELECT leave_start, leave_end FROM staffs WHERE company_id = '". $_SESSION['companyid'] . "' AND serialnumber = '$serial'";
+if (isset($_POST['class'])) {
+    $id = $_POST['class'];
+    
+    $sql = "SELECT * FROM company_allowance WHERE company_id = '". $_SESSION['companyid'] . "' AND class = '$id'";
     $result = $conn->query($sql);
 
     if ($result->num_rows > 0) {
     // output data of each row
-       
-        $row = $result->fetch_assoc();
-       
         $data = array();
-        $data[] = $row;
-
-        echo json_encode($data);
+        while ($row = $result->fetch_assoc()) {
+            $data[] = $row;
+        }
         
-    } else {
-        echo "none";
+        echo json_encode($data);
     }
 }
+
+
 $conn->close();
 ?>

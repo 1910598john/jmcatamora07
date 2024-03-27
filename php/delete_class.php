@@ -13,21 +13,16 @@ if ($conn->connect_error) {
 
 session_start();
 
-if (isset($_POST['serial'])) {
-
-    $serial = $_POST['serial'];
-
+if (isset($_POST['id'])) {
+    $id = $_POST['id'];
     $company_id = $_SESSION['companyid'];
 
-    
-    $sql = "UPDATE staffs SET leave_start = NULL, leave_end = NULL WHERE company_id = '$company_id' AND serialnumber = '$serial'";
-    
-    if ($conn->query($sql) === TRUE) {
-        echo "success";
-    } 
-    
-}
+    $sql = "DELETE FROM employees_classification WHERE id = '$id' AND company_id = '$company_id'";
 
+    if ($conn->query($sql) === TRUE) {
+      echo "deleted";
+    } 
+}
 
 
 $conn->close();
