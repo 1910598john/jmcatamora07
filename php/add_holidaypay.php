@@ -16,15 +16,16 @@ if ($conn->connect_error) {
 if (isset($_POST['holiday'])) {
   $name = $_POST['holiday'];
   $date = $_POST['date'];
+  $class = $_POST['class'];
   
 
   $company_id = $_SESSION['companyid'];
 
 
-  $stmt = $conn->prepare("INSERT INTO holidays (company_id, name, date)
-  VALUES (?, ?, ?)");
+  $stmt = $conn->prepare("INSERT INTO holidays (company_id, name, date, class)
+  VALUES (?, ?, ?, ?)");
 
-  $stmt->bind_param("iss", $company_id, $name, $date);
+  $stmt->bind_param("isss", $company_id, $name, $date, $class);
 
   $data = array();
 

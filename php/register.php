@@ -8,6 +8,7 @@ session_start();
 
 // Create connection
 $conn = new mysqli($servername, $username, $password, $dbname);
+
 // Check connection
 if ($conn->connect_error) {
   die("Connection failed: " . $conn->connect_error);
@@ -21,15 +22,13 @@ if (isset($_POST['username']) && isset($_POST['password']) && isset($_POST['name
     $serialnumber = $_POST['serialnumber'];
     $machine_id = $_POST['machine'];
     $registered_id = $_POST['id'];
-   
-    
+
     $companyid;
     if (isset($_SESSION['companyid'])) {
         $companyid = $_SESSION['companyid'];
     } else {
         $companyid = $_POST['companyid'];
     }
-    
 
     //encrypt password
     $ciphering = "AES-128-CTR";

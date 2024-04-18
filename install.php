@@ -59,6 +59,8 @@
 		status varchar(10) NOT NULL,
 		leave_start DATE,
 		leave_end DATE,
+		file LONGBLOB,
+		date_employed DATE,
 		date DATE
 	)";
 
@@ -84,6 +86,52 @@
 	    echo "Error creating table: " . $conn->error;
 	}
 
+	$sql = "CREATE TABLE IF NOT EXISTS reports (
+		id int(10) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+		paysched varchar(50) NOT NULL,
+		from_date DATE,
+		to_date DATE,
+		period varchar(30) NOT NULL,
+		company_id int(11) NOT NULL,
+		name varchar(200) NOT NULL,
+		serialnumber varchar(10) NOT NULL,
+		class varchar(10) NOT NULL,
+		class_name varchar(100) NOT NULL,
+		rate int(15) NOT NULL,
+		rate_type varchar(30) NOT NULL,
+		working_days int(2) NOT NULL,
+		days_worked int(2) NOT NULL,
+		salary_rate float(20, 2) NOT NULL,
+		absent float(20, 2) NOT NULL,
+		basic float(20, 2) NOT NULL,
+		ut_total float(20, 2) NOT NULL,
+		tardiness float(20, 2) NOT NULL,
+		holiday float(20, 2) NOT NULL,
+		ot_total float(20, 2) NOT NULL,
+		earnings float(20, 2) NOT NULL,
+		sss float(20, 2) NOT NULL,
+		phil float(20, 2) NOT NULL,
+		pbig float(20, 2) NOT NULL,
+		adjustment int(7) NOT NULL,
+		cash_advance int(7) NOT NULL,
+		charges int(7) NOT NULL,
+		sss_loan int(7) NOT NULL,
+		pbig_loan int(7) NOT NULL,
+		company_loan int(7) NOT NULL,
+		total_deductions float(20, 2) NOT NULL,
+		allowance float(20, 2) NOT NULL,
+		allowance_penalty float(20, 2) NOT NULL,
+		net float(20, 2) NOT NULL,
+		month varchar(30),
+		year varchar(4)
+	)";
+
+	if ($conn->query($sql) === TRUE) {
+	    echo "<br>Table created successfully";
+	} else {
+	    echo "Error creating table: " . $conn->error;
+	}
+
 	$sql = "CREATE TABLE IF NOT EXISTS employees_classification (
 		id int(6) NOT NULL AUTO_INCREMENT PRIMARY KEY,
 		company_id int(11) NOT NULL,
@@ -93,7 +141,8 @@
 		rate int(10) NOT NULL,
 		rate_type varchar(30) NOT NULL,
 		ot_pay varchar(30) NOT NULL,
-		holi_pay varchar(30) NOT NULL
+		holi_pay varchar(30) NOT NULL,
+		deductions varchar(255) NOT NULL
 	)";
 
 	if ($conn->query($sql) === TRUE) {
@@ -193,6 +242,7 @@
 	$sql = "CREATE TABLE IF NOT EXISTS notice (
 		id int(6) NOT NULL AUTO_INCREMENT PRIMARY KEY,
 		company_id int(11) NOT NULL,
+		class varchar(10) NOT NULL,
 		name varchar (30) NOT NULL,
 		serialnumber int(11) NOT NULL,
 		position varchar(30) NOT NULL,

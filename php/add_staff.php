@@ -22,18 +22,27 @@ if (isset($_POST['name'])) {
     $serialnumber = $_POST['serialnumber'];
     $phone = $_POST['phone'];
     $class = $_POST['class'];
+    $date_employed = $_POST['date_employed'];
     $str = "Not set";
-    $str2 = "None";
-
-    $stmt = $conn->prepare("INSERT INTO staffs (name, class, age, position, department, company_id, serialnumber, status, contact_number, off_day, rest_day)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-
-    $stmt->bind_param("sssssiissss", $name, $class, $age, $position,$dept, $company_id, $serialnumber, $str, $phone, $str2, $str2);
+    
+    if (isset($_FILES['file']) && $_FILES['file']['error'] === UPLOAD_ERR_OK) {
+        // Prepare and execute the statement with file upload
+        $file_tmp = $_FILES['file']['tmp_name'];
+        $file_content = file_get_contents($file_tmp); // Read file content
+    
+        $stmt = $conn->prepare("INSERT INTO staffs (name, class, age, position, department, company_id, serialnumber, status, contact_number, date_employed, file)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("sssssiissss", $name, $class, $age, $position, $dept, $company_id, $serialnumber, $str, $phone, $date_employed, $file_content);
+    } else {
+        // Prepare and execute the statement without file upload
+        $stmt = $conn->prepare("INSERT INTO staffs (name, class, age, position, department, company_id, serialnumber, status, contact_number, date_employed)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("sssssiisss", $name, $class, $age, $position, $dept, $company_id, $serialnumber, $str, $phone, $date_employed);
+    }
 
     if ($stmt->execute()) {
         echo "success";
    
-        
     } else {
         echo "An error occured!";
     }

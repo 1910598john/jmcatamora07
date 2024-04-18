@@ -15,7 +15,7 @@ session_start();
 
 if (isset($_POST['serial'])) {
     $serial = $_POST['serial'];
-    $sql = "SELECT * FROM staffs WHERE company_id = '". $_SESSION['companyid'] . "' AND serialnumber = '$serial'";
+    $sql = "SELECT id, name, class, age, position, department, contact_number, serialnumber, adjustment, cash_advance, charges, sss_loan, pag_ibig_loan, company_loan, total_hours, hours_worked_today, status, date, leave_start, leave_end, date_employed FROM staffs WHERE company_id = '". $_SESSION['companyid'] . "' AND serialnumber = '$serial'";
     $result = $conn->query($sql);
     
     if ($result->num_rows > 0) {

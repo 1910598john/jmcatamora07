@@ -13,16 +13,14 @@ if ($conn->connect_error) {
 
 session_start();
 
-$sql = "SELECT * FROM allowance_penalty WHERE company_id = '". $_SESSION['companyid'] . "'";
+$sql = "SELECT pay_sched, name, address FROM company_settings WHERE company_id = '". $_SESSION['companyid'] . "'";
 $result = $conn->query($sql);
 
 if ($result->num_rows > 0) {
-    // output data of each row
-    $data = array();
-    while($row = $result->fetch_assoc()) {
-        $data[] = $row;
-    }
-    echo json_encode($data);
+// output data of each row
+    $row = $result->fetch_assoc();
+
+    echo json_encode($row);
 }
 
 $conn->close();

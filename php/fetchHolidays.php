@@ -14,7 +14,7 @@ if ($conn->connect_error) {
 session_start();
 
     
-$sql = "SELECT id, holiday_name FROM company_holidays WHERE company_id = '". $_SESSION['companyid'] . "'";
+$sql = "SELECT id, holiday_name, class FROM company_holidays WHERE company_id = '". $_SESSION['companyid'] . "'";
 $result = $conn->query($sql);
 
 if ($result->num_rows > 0) {

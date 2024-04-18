@@ -12,23 +12,23 @@ if ($conn->connect_error) {
 }
 
 session_start();
-if (isset($_POST['class'])) {
-    $id = $_POST['class'];
-    
-    $sql = "SELECT name, date FROM holidays WHERE company_id = '". $_SESSION['companyid'] . "' AND class LIKE '% $id %' OR class LIKE '$id %' OR class LIKE '% $id'";
-    $result = $conn->query($sql);
 
+if (isset($_POST['serial'])) {
+    $serial = $_POST['serial'];
+
+    $sql = "SELECT * FROM staffs_trail WHERE company_id = '". $_SESSION['companyid'] . "' AND serialnumber = '$serial' AND paid_status = 'not paid' ORDER BY id DESC";
+    $result = $conn->query($sql);
+    
     if ($result->num_rows > 0) {
     // output data of each row
         $data = array();
-        while ($row = $result->fetch_assoc()) {
+        while($row = $result->fetch_assoc()) {
             $data[] = $row;
         }
-        
+
         echo json_encode($data);
     }
 }
-
 
 $conn->close();
 ?>

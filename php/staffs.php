@@ -13,18 +13,20 @@ if ($conn->connect_error) {
 
 session_start();
 
-$sql = "SELECT * FROM staffs WHERE company_id = '". $_SESSION['companyid'] . "' ORDER BY id DESC";
+$sql = "SELECT id, name, class, age, position, department, contact_number, serialnumber, adjustment, cash_advance, charges, sss_loan, pag_ibig_loan, company_loan, total_hours, hours_worked_today, status, date, leave_start, leave_end, date_employed FROM staffs WHERE company_id = '". $_SESSION['companyid'] . "' ORDER BY id DESC";
 $result = $conn->query($sql);
 
 if ($result->num_rows > 0) {
 // output data of each row
     $data = array();
+
     while($row = $result->fetch_assoc()) {
        $data[] = $row;
     }
     
     $json = json_encode($data);
     echo $json;
+
 } else {
     echo "No item";
 }

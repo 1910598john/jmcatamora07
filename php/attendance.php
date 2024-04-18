@@ -49,7 +49,7 @@ if (isset($_POST['serialnumber'], $_POST['name'], $_POST['pos'], $_POST['dept'],
     UPDATESTAFF($conn, $serialnumber, $company_id);
 
     if ($status == "OUT") {
-      calculateDaysWorked($conn, $serialnumber, $company_id);
+      //calculateDaysWorked($conn, $serialnumber, $company_id);
       $in_log = getLastInLog($serialnumber, $company_id, $conn);
       
       $endTimestamp;
@@ -84,22 +84,27 @@ if (isset($_POST['serialnumber'], $_POST['name'], $_POST['pos'], $_POST['dept'],
       $id = $sameday['id'];
       $isSameDay = $sameday['isSameDay'];
 
-      $isRestDay = isRestDay($conn, $company_id, $serialnumber);
-      $isOffDay = isOffDay($conn, $company_id, $serialnumber);
+      $paid_status = "not paid";
+  
       $onLeave = onLeave($conn, $company_id, $serialnumber);
       // Update existing record instead of inserting a new one
       if (isset($_POST['timeout'])) {
-        $sql = "INSERT INTO staffs_trail (name, class, company_id, hours_worked, start_time, end_time, date, serialnumber, rest_day, off_day, leave_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        $sql = "INSERT INTO staffs_trail (name, class, company_id, hours_worked, start_time, end_time, date, serialnumber,  leave_status, paid_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param("ssissssiiii", $name, $class, $company_id, $totalHoursWorked, $_POST['timein'], $_POST['timeout'], $_POST['date'], $serialnumber, $isRestDay, $isOffDay, $onLeave);
+        $stmt->bind_param("ssissssiis", $name, $class, $company_id, $totalHoursWorked, $_POST['timein'], $_POST['timeout'], $_POST['date'], $serialnumber, $onLeave, $paid_status);
       } else {
-        $sql = "INSERT INTO staffs_trail (name, class, company_id, hours_worked, start_time, end_time, date, serialnumber, rest_day, off_day, leave_status) VALUES (?, ?, ?, ?, ?, NOW(), NOW(), ?, ?, ?, ?)";
+        $sql = "INSERT INTO staffs_trail (name, class, company_id, hours_worked, start_time, end_time, date, serialnumber, leave_status, paid_status) VALUES (?, ?, ?, ?, ?, NOW(), NOW(), ?, ?, ?)";
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param("ssissiiii", $name, $class, $company_id, $totalHoursWorked, $in_log, $serialnumber, $isRestDay, $isOffDay, $onLeave);
+        $stmt->bind_param("ssissiis", $name, $class, $company_id, $totalHoursWorked, $in_log, $serialnumber, $onLeave, $paid_status);
       }
 
       if ($stmt->execute()) {
-        updateStaffWorkedHours($serialnumber, $company_id, $conn, $totalHoursWorked, $conn->insert_id, $totalMinutesWorked, $id, $isSameDay, $in_log, $totalWorkedToday);
+        if (isset($_POST['timeout'])) {
+          updateStaffWorkedHours($serialnumber, $company_id, $conn, $totalHoursWorked, $conn->insert_id, $totalMinutesWorked, $id, $isSameDay, $_POST['timein'], $totalWorkedToday);
+        } else {
+          updateStaffWorkedHours($serialnumber, $company_id, $conn, $totalHoursWorked, $conn->insert_id, $totalMinutesWorked, $id, $isSameDay, $in_log, $totalWorkedToday);
+        }
+        
       }
     }
   } 
@@ -243,6 +248,7 @@ function checkIfSameDay($conn, $serialnumber, $company_id){
 
 function updateStaffWorkedHours($serial, $company_id, $conn, $hoursWorked, $id, $totalMinutesWorked, $id2, $isSameDay2, $timed_in, $totalWorkedToday){
   $hour_worked_today = getHourWorkedToday($serial, $conn, $company_id);
+
   $isSameDay = checkIfSameDay($conn, $serial, $company_id);
 
   if (isset($_POST['date'])) {

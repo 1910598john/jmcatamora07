@@ -16,9 +16,7 @@ if ($conn->connect_error) {
 if (!(isset($_SESSION['username']))) {
     header('Location: ../');
 } 
-
 ?>
-
 <!DOCTYPE html>
 <html>
 <head>
@@ -31,7 +29,7 @@ if (!(isset($_SESSION['username']))) {
     <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.3/xlsx.full.min.js"></script>
 </head>
 <body>
 <div class="container-fluid">
@@ -175,7 +173,6 @@ if (!(isset($_SESSION['username']))) {
 <script src="../src/script.js"></script>
 
 <?php
-
 function notAuhorized() {
     echo "
     <script>

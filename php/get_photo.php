@@ -12,20 +12,21 @@ if ($conn->connect_error) {
 }
 
 session_start();
-if (isset($_POST['class'])) {
-    $id = $_POST['class'];
+if (isset($_POST['serial'])) {
+    $snumber = $_POST['serial'];
     
-    $sql = "SELECT name, date FROM holidays WHERE company_id = '". $_SESSION['companyid'] . "' AND class LIKE '% $id %' OR class LIKE '$id %' OR class LIKE '% $id'";
+    $sql = "SELECT file FROM staffs WHERE company_id = '". $_SESSION['companyid'] . "' AND serialnumber = '$snumber'";
     $result = $conn->query($sql);
 
     if ($result->num_rows > 0) {
-    // output data of each row
-        $data = array();
-        while ($row = $result->fetch_assoc()) {
-            $data[] = $row;
+        $row = $result->fetch_assoc();
+        if ($row['file'] === null) {
+            echo 'none';
+        } else {
+            echo base64_encode($row['file']);
         }
         
-        echo json_encode($data);
+        
     }
 }
 

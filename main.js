@@ -38,7 +38,6 @@ function onMessage(event) {
                 data: {
                     id: id,
                 }, success: function(res){
-                    console.log(res);
                     let data = JSON.parse(res);
 
                     $.ajax({
@@ -79,7 +78,7 @@ $(document).ready(function(){
 
     document.body.insertAdjacentHTML("afterbegin", `
     <div id="notifications" class="notifications">
-    </div>`)
+    </div>`);
 
     
 })
@@ -104,6 +103,7 @@ function successNotification(message, alertLevel){
         ${message}
     </div>
     `);
+    
     clearTimeout(timeout);
     
     timeout = setTimeout(() => {

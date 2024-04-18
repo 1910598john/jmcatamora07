@@ -4,6 +4,7 @@ $(document).ready(function() {
         url: '../php/checksameday.php',
         success: function(res){
             res = JSON.parse(res);
+     
             if (res.message.includes('not')) {
                 $.ajax({
                     type: 'POST',
@@ -72,17 +73,19 @@ $(document).ready(function() {
                             success: function(res){
                                 try {
                                     res = JSON.parse(res);
+                                    console.log(res);
                                     for (let i = 0; i < res.length; i++) {
                                         content += `
                                             <tr id="notice-row${res[i].serialnumber}" style="border-bottom: 1px solid rgba(0,0,0,0.1);">
                                                 <td>${res[i].name}</td>
+                                                <td>${res[i].class}</td>
                                                 <td>${res[i].position}</td>
                                                 <td>${res[i].department}</td>
                                                 <td>${res[i].contact_number}</td>
                                                 <td>${res[i].notice_message}</td>
                                                 <td>${res[i].date}</td>
                                                 <td class="text-center">
-                                                    <button class="action-button solve" data-name="${res[i].name}" data-pos="${res[i].position}" data-dept="${res[i].department}" data-serialnumber="${res[i].serialnumber}" data-date="${res[i].date}">RESOLVE</button>
+                                                    <button class="action-button solve" data-class="${res[i].class}" data-name="${res[i].name}" data-pos="${res[i].position}" data-dept="${res[i].department}" data-serialnumber="${res[i].serialnumber}" data-date="${res[i].date}">RESOLVE</button>
                                                 </td>
                                             </tr>
                                         `;
@@ -101,6 +104,7 @@ $(document).ready(function() {
                                                 <thead>
                                                     <tr>
                                                         <td>NAME</td>
+                                                        <td>CLASS</td>
                                                         <td>POSITION</td>
                                                         <td>DEPARTMENT</td>
                                                         <td>CONTACT</td>
@@ -124,6 +128,7 @@ $(document).ready(function() {
                                     let name = $(this).data("name");
                                     let pos = $(this).data("pos");
                                     let dept = $(this).data("dept");
+                                    let _class = $(this).data("class");
 
                                     $.ajax({
                                         type: 'POST',
@@ -141,6 +146,14 @@ $(document).ready(function() {
     
                                             // Format the time string
                                             const timeString = `${hours}:${minutes}:${seconds}`;
+
+                                            const meridian = hours >= 12 ? 'PM' : 'AM';
+
+                                            // Convert hours to 12-hour format
+                                            const hours12 = hours % 12 || 12; // 0 should be represented as 12 in 12-hour format
+
+                                            // Combine hours, minutes, and meridian into desired format
+                                            const timeIn12HourFormat = `${hours12}:${minutes}:${seconds} ${meridian}`;
     
                                             const year = dateObject.getFullYear();
                                             const month = dateObject.getMonth() + 1; // Adding 1 to get the correct month
@@ -161,8 +174,8 @@ $(document).ready(function() {
                                                     <form style="width:100%;display:flex;flex-direction:column;" id="noticeForm">
                                                         <span id="hr" class="text-center">(hours worked)</span>
                                                         <br>
-                                                        <span>FROM:</span>
-                                                        <input type="text" value="${timeString}" readonly/>
+                                                        <span>TIME IN:</span>
+                                                        <input type="text" value="${timeIn12HourFormat}" readonly/>
                                                         <span>ENTER TIME OUT:</span>
                                                         <input type="time" name="time"/>
                                                         <br>
@@ -204,6 +217,7 @@ $(document).ready(function() {
                                                     url: '../php/attendance.php',
                                                     data: {
                                                         serialnumber: serialnumber,
+                                                        class: _class,
                                                         name: name,
                                                         pos: pos,
                                                         dept: dept,
@@ -225,11 +239,13 @@ $(document).ready(function() {
                                                                 data: {
                                                                     serial: serialnumber,
                                                                 }, success: function(res){
-                                                                    console.log("delete: " + res);
-                                                                    console.log(res);
+                                                                    if (res.includes("success")) {
+                                                                        setTimeout(() => {
+                                                                            location.reload();
+                                                                        }, 1500);
+                                                                    }
                                                                 }
                                                             })
-                                                            
                                                         }
                                                     }
                                                 })

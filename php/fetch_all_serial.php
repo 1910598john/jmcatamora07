@@ -13,15 +13,21 @@ if ($conn->connect_error) {
 
 session_start();
 
-$sql = "SELECT * FROM allowance_penalty WHERE company_id = '". $_SESSION['companyid'] . "'";
+$sql = "SELECT serialnumber, name, class FROM staffs WHERE company_id = '". $_SESSION['companyid'] . "'";
+
 $result = $conn->query($sql);
 
 if ($result->num_rows > 0) {
-    // output data of each row
+// output data of each row
     $data = array();
     while($row = $result->fetch_assoc()) {
-        $data[] = $row;
+        $item = [];
+        $item["serial"] = $row['serialnumber'];
+        $item["name"] = $row['name'];
+        $item["class"] = $row['class'];
+        $data[] = $item;
     }
+
     echo json_encode($data);
 }
 

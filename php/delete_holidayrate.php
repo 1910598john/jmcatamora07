@@ -20,10 +20,17 @@ if (isset($_POST['id'])) {
     $sql = "DELETE FROM company_holidays WHERE id = '$id' AND company_id = '$company_id'";
 
     if ($conn->query($sql) === TRUE) {
-      echo "deleted";
+      deleteHoliday($id, $conn, $company_id);
     } 
 }
+function deleteHoliday($id, $conn, $company_id) {
+  $sql = "DELETE FROM holidays WHERE name = '$id' AND company_id = '$company_id'";
 
+  if ($conn->query($sql) === TRUE) {
+    echo 'deleted';
+  } 
+
+}
 
 $conn->close();
 

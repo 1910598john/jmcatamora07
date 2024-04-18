@@ -13,7 +13,7 @@ if ($conn->connect_error) {
 
 session_start();
 if (isset($_POST['date'])) {
-    $date= $_POST['date'];
+    $date = $_POST['date'];
     $snumber = $_POST['snumber'];
     
     $sql = "SELECT date FROM staffs_trail WHERE company_id = '". $_SESSION['companyid'] . "' AND date = '$date' AND serialnumber = '$snumber'";

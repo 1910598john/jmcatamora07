@@ -15,7 +15,14 @@ session_start();
 if (isset($_POST['serialnumber'])) {
     $id = $_POST['serialnumber'];
     
-    $sql = "SELECT * FROM staffs_trail WHERE company_id = '". $_SESSION['companyid'] . "' AND serialnumber = '$id' AND paid_status = 'not paid'";
+    if (isset($_POST['from']) && isset($_POST['to'])) {
+        $fromDate = $_POST['from'];
+        $toDate = $_POST['to'];
+        $sql = "SELECT * FROM staffs_trail WHERE company_id = '". $_SESSION['companyid'] . "' AND serialnumber = '$id' AND paid_status = 'not paid' AND date BETWEEN DATE('$fromDate') AND DATE('$toDate')";
+    } else {
+        $sql = "SELECT * FROM staffs_trail WHERE company_id = '". $_SESSION['companyid'] . "' AND serialnumber = '$id' AND paid_status = 'not paid'";
+    }
+    
     $result = $conn->query($sql);
 
     if ($result->num_rows > 0) {

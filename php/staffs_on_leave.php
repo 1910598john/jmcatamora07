@@ -22,12 +22,13 @@ if ($result->num_rows > 0) {
     while($row = $result->fetch_assoc()) {
         if ($row['leave_start'] !== null) {
             $curDate = date('Y-m-d');
-
+            
             $ended = false;
             if ($row['leave_end'] == $curDate || $row['leave_end'] < $curDate){
                 updateLeaveStatus($conn, $_SESSION['companyid'], $row['serialnumber']);
                 $ended = true;
             }
+
             if (!$ended) {
                 if ($row['leave_start'] == $curDate || $curDate > $row['leave_start']) {
                     addTrail($conn, $_SESSION['companyid'], $row['serialnumber'], $row['class'], $row['name']);
@@ -35,15 +36,13 @@ if ($result->num_rows > 0) {
             }
         }
     }
- 
 }
 
 function updateLeaveStatus($conn, $company_id, $serial) {
     $sql = "UPDATE staffs SET leave_start = NULL, leave_end = NULL WHERE serialnumber = '" . $serial . "' AND company_id = '$company_id'";
-    
     if ($conn->query($sql) === TRUE) {
-    
-    } 
+
+    }
 }
 
 function addTrail($conn, $company_id, $serial, $class, $name) {
