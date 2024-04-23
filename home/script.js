@@ -134,7 +134,6 @@ function onMessage(event) {
     }
 
     console.log(event.data);
-
 }
 
 $(document).ready(function(){

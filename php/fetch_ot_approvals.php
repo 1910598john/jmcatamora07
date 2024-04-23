@@ -13,18 +13,18 @@ if ($conn->connect_error) {
 
 session_start();
 
-    
-$sql = "SELECT id, holiday_name, class FROM company_holidays WHERE company_id = '". $_SESSION['companyid'] . "'";
+$sql = "SELECT * FROM ot_approval WHERE company_id = '". $_SESSION['companyid'] . "' ORDER BY id DESC";
 $result = $conn->query($sql);
 
 if ($result->num_rows > 0) {
 // output data of each row
     $data = array();
-    while($row = $result->fetch_assoc()){
-        $data[] = $row;
+    while($row = $result->fetch_assoc()) {
+       $data[] = $row;
     }
+    
     echo json_encode($data);
-}
+} 
 
 $conn->close();
 ?>

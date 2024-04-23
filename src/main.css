@@ -183,7 +183,6 @@
 }
 .main-content table{
     width: 100%;
-    ;
     overflow: auto;
 }
 
@@ -361,8 +360,13 @@ input[type='submit'], input[type='button']{
 }
 
 #notice{
-    animation: notice 2s infinite forwards;
-    animation-direction: alternate;
+    /* animation: notice 2s infinite forwards;
+    animation-direction: alternate; */
+    cursor: pointer;
+}
+#ot-approval {
+    /* animation: approval 3s infinite forwards;
+    animation-direction: alternate; */
     cursor: pointer;
 }
 
@@ -373,6 +377,15 @@ input[type='submit'], input[type='button']{
         bottom: 20px;
     }
 }
+
+@keyframes approval {
+    from{
+        bottom: 80px;
+    } to {
+        bottom: 100px;
+    }
+}
+
 
 .tooltiptext {
     visibility: hidden;

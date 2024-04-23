@@ -132,17 +132,82 @@
 	    echo "Error creating table: " . $conn->error;
 	}
 
+	$sql = "CREATE TABLE IF NOT EXISTS payroll_files(
+		id int(10) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+		paysched varchar(50) NOT NULL,
+		from_date DATE,
+		to_date DATE,
+		month varchar(30),
+		year varchar(30),
+		company_id int(11) NOT NULL,
+		name varchar(200) NOT NULL,
+		serialnumber varchar(10) NOT NULL,
+		class varchar(10) NOT NULL,
+		class_name varchar(100) NOT NULL,
+		rate int(15) NOT NULL,
+		rate_type varchar(30) NOT NULL,
+		working_days int(2) NOT NULL,
+		days_worked int(2) NOT NULL,
+		salary_rate float(20, 2) NOT NULL,
+		absent float(20, 2) NOT NULL,
+		basic float(20, 2) NOT NULL,
+		ut_total float(20, 2) NOT NULL,
+		tardiness float(20, 2) NOT NULL,
+		holiday float(20, 2) NOT NULL,
+		ot_total float(20, 2) NOT NULL,
+		earnings float(20, 2) NOT NULL,
+		sss float(20, 2) NOT NULL,
+		phil float(20, 2) NOT NULL,
+		pbig float(20, 2) NOT NULL,
+		adjustment int(7) NOT NULL,
+		cash_advance int(7) NOT NULL,
+		charges int(7) NOT NULL,
+		sss_loan int(7) NOT NULL,
+		pbig_loan int(7) NOT NULL,
+		company_loan int(7) NOT NULL,
+		total_deductions float(20, 2) NOT NULL,
+		allowance float(20, 2) NOT NULL,
+		allowance_penalty float(20, 2) NOT NULL,
+		net float(20, 2) NOT NULL
+	)";
+
+	if ($conn->query($sql) === TRUE) {
+	    echo "<br>Table created successfully";
+	} else {
+	    echo "Error creating table: " . $conn->error;
+	}
+
 	$sql = "CREATE TABLE IF NOT EXISTS employees_classification (
 		id int(6) NOT NULL AUTO_INCREMENT PRIMARY KEY,
 		company_id int(11) NOT NULL,
 		class_name varchar(30) NOT NULL,
 		hour_perday int(2) NOT NULL,
 		clock_in_sched TIME,
+		clock_out_sched TIME,
 		rate int(10) NOT NULL,
 		rate_type varchar(30) NOT NULL,
-		ot_pay varchar(30) NOT NULL,
-		holi_pay varchar(30) NOT NULL,
 		deductions varchar(255) NOT NULL
+	)";
+
+	if ($conn->query($sql) === TRUE) {
+	    echo "<br>Table created successfully";
+	} else {
+	    echo "Error creating table: " . $conn->error;
+	}
+
+	$sql = "CREATE TABLE IF NOT EXISTS ot_approval (
+		id int(6) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+		company_id int(11) NOT NULL,
+		serialnumber int(10) NOT NULL,
+		name varchar(100) NOT NULL,
+		position varchar(100) NOT NULL,
+		department varchar(100) NOT NULL,
+		timed_in DATETIME,
+		timed_out DATETIME,
+		ot_mins int(5) NOT NULL,
+		ot_pay float(10, 2) NOT NULL,
+		row_id int(10) NOT NULL,
+		date DATE
 	)";
 
 	if ($conn->query($sql) === TRUE) {
@@ -224,9 +289,10 @@
 		total_hours float(10) NOT NULL,
 		ot_total float(10) NOT NULL,
 		ut_total float(10) NOT NULL,
-		ot_mins float(10) NOT NULL,
-		ut_mins float(10) NOT NULL,
-		late_mins float(10) NOT NULL,
+		ot_mins int(10) NOT NULL,
+		ut_mins int(10) NOT NULL,
+		ot_approval varchar(30) DEFAULT 'need approval',
+		late_mins int(10) NOT NULL,
 		paid_status varchar(30) NOT NULL,
 		leave_status TINYINT(1) DEFAULT 0,
 		date DATE

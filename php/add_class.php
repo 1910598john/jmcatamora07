@@ -17,19 +17,17 @@ if (isset($_POST['class'])) {
     $class = $_POST['class'];
     $hour = $_POST['hour'];
     $clock_in = $_POST['clock_in'];
+    $clock_out = $_POST['clock_out'];
     $rate = $_POST['rate'];
     $rate_type = $_POST['rate_type'];
-    $ot_pay = $_POST['ot_pay'];
-    $holi_pay = $_POST['holi_pay'];
     $deductions = $_POST['deductions'];
-
     $company_id = $_SESSION['companyid'];
 
 
-    $stmt = $conn->prepare("INSERT INTO employees_classification (company_id, class_name, hour_perday, clock_in_sched, rate, rate_type, ot_pay, holi_pay, deductions)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt = $conn->prepare("INSERT INTO employees_classification (company_id, class_name, hour_perday, clock_in_sched, clock_out_sched, rate, rate_type, deductions)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
 
-    $stmt->bind_param("isisissss", $company_id, $class, $hour, $clock_in, $rate, $rate_type, $ot_pay, $holi_pay, $deductions);
+    $stmt->bind_param("isississ", $company_id, $class, $hour, $clock_in, $clock_out, $rate, $rate_type, $deductions);
 
     $data = array();
 

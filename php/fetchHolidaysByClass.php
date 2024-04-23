@@ -15,7 +15,7 @@ session_start();
 if (isset($_POST['class'])) {
     $id = $_POST['class'];
     
-    $sql = "SELECT name, date FROM holidays WHERE company_id = '". $_SESSION['companyid'] . "' AND class LIKE '% $id %' OR class LIKE '$id %' OR class LIKE '% $id'";
+    $sql = "SELECT name, date FROM holidays WHERE company_id = '". $_SESSION['companyid'] . "' AND (class LIKE '% $id %' OR class LIKE '$id %' OR class LIKE '% $id' OR class = '$id')";
     $result = $conn->query($sql);
 
     if ($result->num_rows > 0) {

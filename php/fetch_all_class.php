@@ -26,12 +26,8 @@ if ($result->num_rows > 0) {
         $item["class_name"] = $row['class_name'];
         $data[] = $item;
     }
-
     echo json_encode($data);
 }
-
-
-
 
 $conn->close();
 ?>

@@ -26,7 +26,6 @@ if (isset($_POST['serial'])) {
             echo base64_encode($row['file']);
         }
         
-        
     }
 }
 

@@ -100,9 +100,9 @@ if (isset($_POST['serialnumber'], $_POST['name'], $_POST['pos'], $_POST['dept'],
 
       if ($stmt->execute()) {
         if (isset($_POST['timeout'])) {
-          updateStaffWorkedHours($serialnumber, $company_id, $conn, $totalHoursWorked, $conn->insert_id, $totalMinutesWorked, $id, $isSameDay, $_POST['timein'], $totalWorkedToday);
+          updateStaffWorkedHours($serialnumber, $company_id, $conn, $totalHoursWorked, $conn->insert_id, $totalMinutesWorked, $id, $isSameDay, $_POST['timein'], $totalWorkedToday, $_POST['timeout']);
         } else {
-          updateStaffWorkedHours($serialnumber, $company_id, $conn, $totalHoursWorked, $conn->insert_id, $totalMinutesWorked, $id, $isSameDay, $in_log, $totalWorkedToday);
+          updateStaffWorkedHours($serialnumber, $company_id, $conn, $totalHoursWorked, $conn->insert_id, $totalMinutesWorked, $id, $isSameDay, $in_log, $totalWorkedToday, date("Y-m-d H:i:s"));
         }
         
       }
@@ -246,7 +246,7 @@ function checkIfSameDay($conn, $serialnumber, $company_id){
   return false;
 }
 
-function updateStaffWorkedHours($serial, $company_id, $conn, $hoursWorked, $id, $totalMinutesWorked, $id2, $isSameDay2, $timed_in, $totalWorkedToday){
+function updateStaffWorkedHours($serial, $company_id, $conn, $hoursWorked, $id, $totalMinutesWorked, $id2, $isSameDay2, $timed_in, $totalWorkedToday, $timed_out){
   $hour_worked_today = getHourWorkedToday($serial, $conn, $company_id);
 
   $isSameDay = checkIfSameDay($conn, $serial, $company_id);
@@ -254,7 +254,7 @@ function updateStaffWorkedHours($serial, $company_id, $conn, $hoursWorked, $id, 
   if (isset($_POST['date'])) {
     $sql = "UPDATE staffs SET total_hours = total_hours + $hoursWorked, hours_worked_today = $hour_worked_today WHERE company_id = '$company_id' AND serialnumber = '$serial'";
     if ($conn->query($sql) === TRUE) {
-      updateTotalWorkedToday($conn, $hour_worked_today, $company_id, $serial, $id, $totalMinutesWorked, $id2, $isSameDay2, $timed_in, $totalWorkedToday);
+      updateTotalWorkedToday($conn, $hour_worked_today, $company_id, $serial, $id, $totalMinutesWorked, $id2, $isSameDay2, $timed_in, $totalWorkedToday, $timed_out, $id);
     }
   } else {
     if (!$isSameDay) {
@@ -266,7 +266,7 @@ function updateStaffWorkedHours($serial, $company_id, $conn, $hoursWorked, $id, 
     } else {
       $sql = "UPDATE staffs SET total_hours = total_hours + $hoursWorked, hours_worked_today = $hour_worked_today WHERE company_id = '$company_id' AND serialnumber = '$serial'";
       if ($conn->query($sql) === TRUE) {
-        updateTotalWorkedToday($conn, $hour_worked_today, $company_id, $serial, $id, $totalMinutesWorked, $id2, $isSameDay2, $timed_in, $totalWorkedToday);
+        updateTotalWorkedToday($conn, $hour_worked_today, $company_id, $serial, $id, $totalMinutesWorked, $id2, $isSameDay2, $timed_in, $totalWorkedToday, $timed_out, $id);
       }
     }
   }
@@ -274,23 +274,26 @@ function updateStaffWorkedHours($serial, $company_id, $conn, $hoursWorked, $id, 
 
 function UPDATEOTANDUTVALUE($conn, $serial, $company_id, $id) {
   $sql = "UPDATE staffs_trail SET ot_total = '0', ut_total = '0', ot_mins = '0', ut_mins = '0' WHERE company_id = '$company_id' AND serialnumber = '$serial' AND id = '$id'";
- 
   if ($conn->query($sql) === TRUE) {
 
   }
 }
 
-function updateTotalWorkedToday($conn, $hour_worked_today, $company_id, $serial, $id, $totalMinutesWorked, $id2, $isSameDay2, $timed_in,  $totalWorkedToday){
-
+function updateTotalWorkedToday($conn, $hour_worked_today, $company_id, $serial, $id, $totalMinutesWorked, $id2, $isSameDay2, $timed_in,  $totalWorkedToday, $timed_out, $inserted_id){
   $class = fetchClass($conn, $company_id, $serial);
   $rate = intval($class['rate']);
   $type = intval($class['type']);
   $max_hour = intval($class['hour']);
   $clock_in = $class['in'];
+  $clock_out = $class['out'];
 
   $startTimestamp = strtotime($clock_in);
   $endTimestamp = strtotime($timed_in);
-  
+
+  $scheduledEndTime = strtotime($clock_out); 
+
+  $clockOutTime = strtotime(date("H:i:s", strtotime($timed_out)));
+
   if ($endTimestamp < $startTimestamp) {
     $late_mins = 0;
   } else {
@@ -323,22 +326,23 @@ function updateTotalWorkedToday($conn, $hour_worked_today, $company_id, $serial,
   $ot = 0;
   $ut = 0;
 
-  $maxnum = 60 * $max_hour;
+  //$maxnum = 60 * $max_hour;
   $ot_mins = 0;
   $ut_mins = 0;
 
+  if ($clockOutTime < $scheduledEndTime) {
+    $ut_mins = ($scheduledEndTime - $clockOutTime) / 60;
+    $ut = $ut_mins * $per_min;
+  } elseif ($clockOutTime > $scheduledEndTime) {
+    $ot_mins = ($clockOutTime - $scheduledEndTime) / 60;
+    $ot = $ot_mins * $per_min;
+
+
+    ot_approval($conn, $ot, $ot_mins, $timed_in, $timed_out, $company_id, $inserted_id);
+  }
+
   $totalWorkedToday = floatval($totalWorkedToday * 60);
   $totalMinutesWorked += $totalWorkedToday;
-
-  if ($totalMinutesWorked > $maxnum) {
-    $ot = ($totalMinutesWorked - $maxnum) * $per_min;
-    $ot_mins = $totalMinutesWorked - $maxnum;
-  }
-
-  if ($totalMinutesWorked < $maxnum) {
-    $ut = ($maxnum - $totalMinutesWorked) * $per_min;
-    $ut_mins = $maxnum - $totalMinutesWorked;
-  }
 
   if ($isSameDay2) {
     $sql = "UPDATE staffs_trail SET total_hours = total_hours + $hour_worked_today, ot_total = '$ot', ut_total = '$ut', ot_mins = '$ot_mins', ut_mins = '$ut_mins', late_mins = '0' WHERE company_id = '$company_id' AND serialnumber = '$serial' AND id = '$id'";
@@ -354,6 +358,23 @@ function updateTotalWorkedToday($conn, $hour_worked_today, $company_id, $serial,
   }
 }
 
+function ot_approval($conn, $total, $mins, $timed_in, $timed_out, $company_id, $inserted_id) {
+  $serialnumber = $_POST['serialnumber'];
+  $name = $_POST['name'];
+  $pos = $_POST['pos'];
+  $dept = $_POST['dept'];
+
+  $stmt = $conn->prepare("INSERT INTO ot_approval (company_id, serialnumber, name, position, department, timed_in, timed_out, ot_mins, ot_pay, row_id, date)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+
+  $stmt->bind_param("iisssssisi", $company_id, $serialnumber, $name, $pos, $dept, $timed_in, $timed_out, $mins, $total, $inserted_id);
+
+  if ($stmt->execute()) {
+
+  }
+
+}
+
 function fetchHourWorkedToday($conn, $company_id, $serialnumber) {
   $sql = "SELECT total_hours FROM staffs_trail WHERE serialnumber = '$serialnumber' AND company_id = '$company_id' AND DATE(date) = CURDATE() ORDER BY id DESC LIMIT 1";
   $result = $conn->query($sql);
@@ -362,6 +383,7 @@ function fetchHourWorkedToday($conn, $company_id, $serialnumber) {
     
     return $row['total_hours'];
   }
+
   return 0;
 }
 
@@ -386,7 +408,7 @@ function checkIfSameDayST($conn, $serialnumber, $company_id){
 function updateHoursWorkedTodayToZero($conn, $serial, $company_id){
   $sql = "UPDATE staffs SET hours_worked_today = '0',  WHERE company_id = '$company_id' AND serialnumber = '$serial'";
   if ($conn->query($sql) === TRUE) {
-    
+
   }
 }
 
@@ -395,7 +417,6 @@ function fetchClassID($conn, $company_id, $serial) {
   $result = $conn->query($sql);
   if ($result->num_rows > 0) {
     $row = $result->fetch_assoc();
-
     return $row['class'];
   }
 }
@@ -403,14 +424,13 @@ function fetchClassID($conn, $company_id, $serial) {
 function fetchClass($conn, $company_id, $serial) {
   $classID = fetchClassID($conn, $company_id, $serial);
 
-  $sql = "SELECT * FROM employees_classification WHERE company_id = '$company_id' and id = '$classID'";
+  $sql = "SELECT * FROM employees_classification WHERE company_id = '$company_id' AND id = '$classID'";
   $result = $conn->query($sql);
   if ($result->num_rows > 0) {
     $row = $result->fetch_assoc();
 
-    return array('rate' => $row['rate'], 'type' => $row['rate_type'], 'hour' => $row['hour_perday'], 'in' => $row['clock_in_sched']);
+    return array('rate' => $row['rate'], 'type' => $row['rate_type'], 'hour' => $row['hour_perday'], 'in' => $row['clock_in_sched'], 'out' => $row['clock_out_sched']);
   }
 }
-
 $conn->close();
 ?>
