@@ -23,11 +23,18 @@ if (isset($_POST['data'])) {
   if (isset($_POST['from']) && isset($_POST['to'])) {
     $from = $_POST['from'];
     $to = $_POST['to'];
+    $period = $_POST['period'];
 
-    $stmt = $conn->prepare("INSERT INTO payroll_files (paysched, from_date, to_date, company_id, name, serialnumber, class, class_name, rate, rate_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt->bind_param("sssisissss", $paysched, $from, $to, $company_id, $name, $serialnumber, $class, $class_name, $rate, $rate_type);
+    $exists = checkIfFileExists($conn, $from, $to);
 
-    foreach ($datas as $data) {
+    $month = date('m', strtotime($from));
+    $year = date('Y', strtotime($from));
+
+    if (!$exists) {
+      $stmt = $conn->prepare("INSERT INTO payroll_files (paysched, period, from_date, to_date, month, year, company_id, name, serialnumber, class, class_name, rate, rate_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+      $stmt->bind_param("ssssssisissss", $paysched, $period, $from, $to, $month, $year, $company_id, $name, $serialnumber, $class, $class_name, $rate, $rate_type);
+  
+      foreach ($datas as $data) {
         $name = $data['name'];
         $serialnumber = $data['serialnumber'];
         $class = $data['class'];
@@ -36,18 +43,29 @@ if (isset($_POST['data'])) {
         $rate_type = $CLASS['types'][$data['class']];
         if ($stmt->execute()) {
         }
-    }
+      }
 
-    $stmt->close();
+      $stmt->close();
+
+    } else {
+      echo 'exists';
+    }
+    
+
+    
   }
 
   if (isset($_POST['mon'])) {
     $selectedMonth = date('m', strtotime($_POST['mon']));
     $selectedYear = date('Y', strtotime($_POST['mon']));
-    $stmt = $conn->prepare("INSERT INTO payroll_files (paysched, month, year, company_id, name, serialnumber, class, class_name, rate, rate_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt->bind_param("sssisissss", $paysched, $selectedMonth, $selectedYear, $company_id, $name, $serialnumber, $class, $class_name, $rate, $rate_type);
 
-    foreach ($datas as $data) {
+    $exists = checkIfFileExists2($conn, $selectedMonth, $selectedYear);
+
+    if (!$exists) {
+      $stmt = $conn->prepare("INSERT INTO payroll_files (paysched, month, year, company_id, name, serialnumber, class, class_name, rate, rate_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+      $stmt->bind_param("sssisissss", $paysched, $selectedMonth, $selectedYear, $company_id, $name, $serialnumber, $class, $class_name, $rate, $rate_type);
+  
+      foreach ($datas as $data) {
         $name = $data['name'];
         $serialnumber = $data['serialnumber'];
         $class = $data['class'];
@@ -56,12 +74,37 @@ if (isset($_POST['data'])) {
         $rate_type = $CLASS['types'][$data['class']];
         if ($stmt->execute()) {
         }
+      }
+
+      $stmt->close();
+
+    } else {
+      echo 'exists';
     }
 
-    $stmt->close();
+    
 
   }
+}
 
+function checkIfFileExists($conn, $from, $to) {
+  $sql = "SELECT from_date, to_date FROM payroll_files WHERE company_id = '". $_SESSION['companyid'] . "' AND from_date = '$from' AND to_date = '$to'";
+  $result = $conn->query($sql);
+  if ($result->num_rows > 0) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+function checkIfFileExists2($conn, $mon, $year) {
+  $sql = "SELECT month, year FROM payroll_files WHERE company_id = '". $_SESSION['companyid'] . "' AND month = '$mon' AND year = '$year'";
+  $result = $conn->query($sql);
+  if ($result->num_rows > 0) {
+    return true;
+  } else {
+    return false;
+  }
 }
 
 function fetchClass($conn, $company_id) {

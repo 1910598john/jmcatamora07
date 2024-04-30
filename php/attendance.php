@@ -15,18 +15,34 @@ if ($conn->connect_error) {
 
 session_start();
 
-if (isset($_POST['serialnumber'], $_POST['name'], $_POST['pos'], $_POST['dept'], $_POST['status']/* ,$_SESSION['companyid'] */)) {
-  $serialnumber = $_POST['serialnumber'];
-  $name = $_POST['name'];
-  $pos = $_POST['pos'];
-  $dept = $_POST['dept'];
-  $status = $_POST['status'];
-  $class = $_POST['class'];
+if (isset($_POST['serialnumber'], $_POST['name'], $_POST['pos'], $_POST['dept'], $_POST['status']/* ,$_SESSION['companyid'] */) || isset($_SESSION['details'])) {
+
+  if (isset($_SESSION['details'])) {
+    $serialnumber = $_SESSION['details']['serialnumber'];
+    $name = $_SESSION['details']['name'];
+    $pos = $_SESSION['details']['pos'];
+    $dept = $_SESSION['details']['dept'];
+    $status = $_SESSION['details']['status'];
+    $class = $_SESSION['details']['class'];
+  } else {
+    $serialnumber = $_POST['serialnumber'];
+    $name = $_POST['name'];
+    $pos = $_POST['pos'];
+    $dept = $_POST['dept'];
+    $status = $_POST['status'];
+    $class = $_POST['class'];
+  }
+  
 
   if (isset($_POST['companyid'])) {
     $company_id = $_POST['companyid'];
   } else {
-    $company_id = $_SESSION['companyid'];
+    if (isset($_SESSION['details'])) {
+      $company_id = $_SESSION['details']['companyid'];
+    } else {
+      $company_id = $_SESSION['companyid'];
+    }
+    
   }
 
   if (isset($_POST['timeout'])) {

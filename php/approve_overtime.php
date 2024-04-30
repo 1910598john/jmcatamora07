@@ -19,7 +19,12 @@ if (isset($_POST['serial'])) {
     $id = $_POST['id'];
     $company_id = $_SESSION['companyid'];
 
-    $sql = "UPDATE staffs_trail SET ot_approval = 'approved' WHERE company_id = '$company_id' AND serialnumber = '$serial' AND id = '$sid'";
+    if (isset($_POST['dismissed'])) {
+        $sql = "UPDATE staffs_trail SET ot_approval = 'dismissed' WHERE company_id = '$company_id' AND serialnumber = '$serial' AND id = '$sid'";
+    } else {
+        $sql = "UPDATE staffs_trail SET ot_approval = 'approved' WHERE company_id = '$company_id' AND serialnumber = '$serial' AND id = '$sid'";
+    }
+    
     
     if ($conn->query($sql) === TRUE) {
         delete_approval($conn, $serial, $company_id, $id);

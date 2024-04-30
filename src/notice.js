@@ -181,7 +181,7 @@ $(document).ready(function() {
                                                     <p class="text-white text-center" style="font-size:20px;">RESOLVE NOTICE</p>
                                                     <hr>
                                                     <form style="width:100%;display:flex;flex-direction:column;" id="noticeForm">
-                                                        <span id="hr" class="text-center">(hours worked)</span>
+                                                        
                                                         <br>
                                                         <span>TIME IN:</span>
                                                         <input type="text" value="${timeIn12HourFormat}" readonly/>
@@ -195,19 +195,19 @@ $(document).ready(function() {
     
                                             $("input[type='time']").on("change", function(event){
                                                 event.stopImmediatePropagation();
-                                                timeOut = date + ` ${$(this).val()}:00`;
+                                                // timeOut = date + ` ${$(this).val()}:00`;
     
-                                                const startTimestamp = new Date(res).getTime();
-                                                const endTimestamp = new Date(timeOut).getTime();
+                                                // const startTimestamp = new Date(res).getTime();
+                                                // const endTimestamp = new Date(timeOut).getTime();
     
-                                                // Calculate the difference between the two timestamps in milliseconds
+                                                // // Calculate the difference between the two timestamps in milliseconds
      
 
-                                                var elapsedTime = endTimestamp - startTimestamp;
+                                                // var elapsedTime = endTimestamp - startTimestamp;
 
-                                                // Calculate total hours worked
-                                                totalHoursWorked = elapsedTime / (1000 * 60 * 60);
-                                                $("#hr").html(totalHoursWorked.toFixed(2) + " hrs");
+                                                // // Calculate total hours worked
+                                                // totalHoursWorked = elapsedTime / (1000 * 60 * 60);
+                                                // $("#hr").html(totalHoursWorked.toFixed(2) + " hrs");
 
                                             })
     
@@ -343,7 +343,10 @@ $(document).ready(function() {
                             <td>${res[i].ot_mins} (mins)</td>
                             <td>${res[i].ot_pay}</td>
                             <td>${res[i].date}</td>
-                            <td><button data-indx="${i}" data-id="${res[i].id}" data-snumber="${res[i].serialnumber}" data-sid="${res[i].row_id}" class="action-button approve">Approve</button></td>
+                            <td>
+                                <button data-indx="${i}" data-id="${res[i].id}" data-snumber="${res[i].serialnumber}" data-sid="${res[i].row_id}" class="action-button approve">Approve</button>
+                                <button data-indx="${i}" data-id="${res[i].id}" data-snumber="${res[i].serialnumber}" data-sid="${res[i].row_id}" class="action-button ml-2 dismiss">Dismiss</button>
+                            </td>
                         </tr>`;
                     }
 
@@ -393,9 +396,41 @@ $(document).ready(function() {
                                 if (res2 == 'approved') {
                                     successNotification("Overtime approved.", "success");
                                     $(`#row${index}`).remove();
-                                
-                                    res.splice(parseInt(index), 1);
                                     
+                                    res.splice(parseInt(index), 1);
+                                    if (res.length == 0) {
+                                        $("#ot-approval").remove();
+                                    }
+                                }
+                            }
+                        })
+                    })
+
+                    $(".dismiss").click(function(event){
+                        event.stopImmediatePropagation();
+                        let rowID = $(this).data("sid");
+                        let id = $(this).data("id");
+                        let snumber = $(this).data("snumber");
+                        let index = $(this).data("indx");
+
+                        $.ajax({
+                            type: 'POST',
+                            url: '../php/approve_overtime.php',
+                            data: {
+                                sid: rowID,
+                                id: id,
+                                serial: snumber,
+                                dismissed: 'dismissed',
+                            
+                            }, success: function(res2) {
+                                if (res2 == 'approved') {
+                                    successNotification("Overtime approved.", "success");
+                                    $(`#row${index}`).remove();
+                                    
+                                    res.splice(parseInt(index), 1);
+                                    if (res.length == 0) {
+                                        $("#ot-approval").remove();
+                                    }
                                 }
                             }
                         })

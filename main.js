@@ -52,7 +52,7 @@ function onMessage(event) {
                                 $("input[type='text'], input[type='password'], input[type='number']").val('');
                                 successNotification("You have successfully logged in.", "success");
                                 setTimeout(() => {
-                                    window.open("./home/", "_self");
+                                    window.open("./manage_staffs/", "_self");
                                 }, 1000);
                                 
                             } else {
@@ -138,7 +138,7 @@ function loginAdmin(){
                     $("input[type='text'], input[type='password'], input[type='number']").val('');
                     successNotification("You have successfully logged in.", "success");
                     setTimeout(() => {
-                        window.open("./home/", "_self");
+                        window.open("./manage_staffs/", "_self");
                     }, 1000);
                     
                 } else {

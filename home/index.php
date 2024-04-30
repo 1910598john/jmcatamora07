@@ -34,7 +34,7 @@ if ($result->num_rows > 0) {
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Biometric Attendance | Home</title>
+    <title>Biometric Attendance | Home </title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
@@ -54,7 +54,7 @@ if ($result->num_rows > 0) {
                     <div style="width:30%;padding:5px;margin-right:5px;">
                         <img src="../src/images/fingerprint_img.png" style="width:100%;"/>
                     </div>
-                    <p class="text-white text-center" style="text-transform: uppercase;">Employee Biometric <br>Attendance <br>- <br>Payroll System</p>
+                    <p class="text-white text-center" style="text-transform: uppercase;">Employee Biometric <br>Attendance <br>- <br>Payroll System </p>
                 </div>
                 <hr>
                 <div class="menu">
@@ -73,7 +73,7 @@ if ($result->num_rows > 0) {
             </div>
             <div class="main-content">
                 <br>
-                <h1 class="text-white text-center">Attendance (<span id="current-day">Today</span>)</h1>
+                <h1 class="text-white text-center">Attendance (<span id="current-day">Today</span>) </h1>
                 <p class="text-center current-time" style="color:rgba(255,255,255,0.8)" >-- 00, 0000 (00:00 --)</p>
                 <br>
                

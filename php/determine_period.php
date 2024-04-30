@@ -15,22 +15,20 @@ session_start();
 
 if (isset($_POST['id'])) {
     $id = $_POST['id'];
-    $sql = "SELECT period FROM reports WHERE company_id = '". $_SESSION['companyid'] . "' AND serialnumber = '$id' ORDER BY id DESC LIMIT 1";
+    $from = $_POST['from'];
+
+    $month = date('m', strtotime($from));
+    $year = date('Y', strtotime($from));
+
+    $sql = "SELECT earnings, sss, phil, pbig FROM payroll_files WHERE month = '$month' AND year = '$year' AND period = 'first-half' AND company_id = '". $_SESSION['companyid'] . "' AND serialnumber = '$id'";
 
     $result = $conn->query($sql);
     
     if ($result->num_rows > 0) {
         $row = $result->fetch_assoc();
-        if ($row['period'] == 'first-half') {
-            echo 'second-half';
-        } 
-        if ($row['period'] == 'second-half') {
-            echo 'first-half';
-        }
-    } else {
-        echo 'first-half';
+        echo json_encode($row);
     }
-}
+} 
 
 
 $conn->close();

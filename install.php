@@ -36,6 +36,37 @@
 	    echo "Error creating table: " . $conn->error;
 	}
 
+	$sql = "CREATE TABLE IF NOT EXISTS contributions (
+		id int(6) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+		phil varchar(10) NOT NULL,
+		phil_first_half float(10, 2),
+		pbig varchar(10) NOT NULL,
+		pbig_first_half float(10, 2)
+	)";
+
+	if ($conn->query($sql) === TRUE) {
+	    echo "<br>Table created successfully";
+	} else {
+	    echo "Error creating table: " . $conn->error;
+	}
+
+	
+	$sql = "CREATE TABLE IF NOT EXISTS sss (
+		id int(6) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+		company_id int(30) NOT NULL,
+		sss LONGBLOB,
+		sss_name varchar(100) NOT NULL,
+		status varchar(30) NOT NULL
+	)";
+
+	if ($conn->query($sql) === TRUE) {
+	    echo "<br>Table created successfully";
+	} else {
+	    echo "Error creating table: " . $conn->error;
+	}
+
+	
+
 	//sql to create table
 	$sql = "CREATE TABLE IF NOT EXISTS staffs (
 		id int(6) NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -135,6 +166,7 @@
 	$sql = "CREATE TABLE IF NOT EXISTS payroll_files(
 		id int(10) NOT NULL AUTO_INCREMENT PRIMARY KEY,
 		paysched varchar(50) NOT NULL,
+		period varchar(50) NOT NULL,
 		from_date DATE,
 		to_date DATE,
 		month varchar(30),
@@ -187,6 +219,21 @@
 		rate int(10) NOT NULL,
 		rate_type varchar(30) NOT NULL,
 		deductions varchar(255) NOT NULL
+	)";
+
+	if ($conn->query($sql) === TRUE) {
+	    echo "<br>Table created successfully";
+	} else {
+	    echo "Error creating table: " . $conn->error;
+	}
+
+	$sql = "CREATE TABLE IF NOT EXISTS users (
+		id int(6) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+		company_id int(11) NOT NULL,
+		name varchar(50) NOT NULL,
+		username varchar(50) NOT NULL,
+		password varchar(50) NOT NULL,
+		permission JSON
 	)";
 
 	if ($conn->query($sql) === TRUE) {

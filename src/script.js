@@ -9,6 +9,7 @@ var timeout;
 var details = [];
 var ALLDetails = [];
 var COMPANY_NAME;
+var COMPANY_ADD;
 
 var PAYSLIPS = [];
 var PAYSLIP = [];
@@ -16,6 +17,7 @@ var PAYSCHED;
 
 var from;
 var to;
+var PERIOD;
 var MON;
 
 var SSS;
@@ -23,6 +25,13 @@ var PHILHEALTH;
 var PAGIBIG;
 var firsHalfDeduction;
 var D = [];
+var file_opened = false;
+
+var phil;
+var phil_first_half;
+var pbig;
+var pbig_first_half;
+var sss_first_half;
 
 var ALL_CLASS;
 var ALL_SERIAL;
@@ -64,8 +73,7 @@ function onMessage(event) {
             SERIAL_NUMBER = data.id;
             $("input[type='submit']").prop("disabled", false);
             successNotification("Fingerprint confirmed.", "success");
-        } 
-
+        }
     } catch(err){
         console.log(err);
     }
@@ -113,6 +121,51 @@ $(document).ready(function(){
 
     $.ajax({
         type: 'POST',
+        url: '../php/fetch_sss_file.php',
+        success: function(res) {
+            try {
+                res = JSON.parse(res);
+                for (let i = 0; i < res.length; i++) {
+                    if (res[i].status == 'current') {
+                        const excelData = atob(res[i].file);
+                        // Parse Excel data using SheetJS
+                        const workbook = XLSX.read(excelData, { type: 'binary' });
+            
+                        // Assuming you want to read the first sheet
+                        const firstSheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[firstSheetName];
+
+                        // Convert worksheet to JSON
+                        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                        SSS = jsonData;
+                    }
+                }
+            } catch (err) {
+                console.log(err);
+            }
+        }
+    });
+
+    $.ajax({
+        type: 'POST',
+        url: '../php/fetch_contributions.php',
+        success: function(res) {
+            try {
+                res = JSON.parse(res);
+                PHILHEALTH = res.phil;
+                phil_first_half = res.phil_first_half;
+                PAGIBIG = res.pbig;
+                pbig_first_half = res.pbig_first_half;
+                sss_first_half = res.sss_first_half;
+
+            } catch (err) {
+                console.log(err);
+            }
+        }
+    });
+
+    $.ajax({
+        type: 'POST',
         url: '../php/remove_holidays.php',
         success: function(res) {}
     })
@@ -150,6 +203,7 @@ $(document).ready(function(){
             try {
                 res = JSON.parse(res);
                 COMPANY_NAME = res.name;
+                COMPANY_ADD = res.address;
                 PAYSCHED = res.pay_sched;
             } catch (err) {
                 console.log(err);
@@ -162,6 +216,7 @@ $(document).ready(function(){
 var salary_details;
 
 function computeSalary(id) {
+
     var responseBody;
     $.ajax({
         type: 'POST',
@@ -198,6 +253,8 @@ function computeSalary(id) {
                             
                             var name, pos, department, adjustment, CA, charges, sss_loan, pbig_loan, company_loan;
 
+                           
+
                             name = responseBody.name;
                             pos = responseBody.position;
                             department = responseBody.department;
@@ -207,13 +264,12 @@ function computeSalary(id) {
                             sss_loan = responseBody.sss_loan;
                             pbig_loan = responseBody.pag_ibig_loan;
                             company_loan = responseBody.company_loan;
-                            
 
                             $.ajax({
                                 type: 'POST',
                                 url: '../php/fetch_company_settings.php',
                                 success: function(sched){
-                                    
+
                                     try {
                                         sched = JSON.parse(sched);
                                     } catch (err) {
@@ -229,7 +285,6 @@ function computeSalary(id) {
                                                 to: to,
                                                 serialnumber: responseBody.serialnumber,
                                             },
-            
                                             success: function(trail){
                                                 compute(trail);
                                             }
@@ -466,6 +521,7 @@ function computeSalary(id) {
                                                                                                     }
                                                                                                 })
                                                                                             });
+
                                                                                         } else if (obj[x].exclusion == 'uah') {
                                                                                             let DATE = new Date(HOLIDAYS_ARR[x].date);
                                                                                             DATE.setDate(DATE.getDate() + 1);
@@ -486,7 +542,6 @@ function computeSalary(id) {
                                                                                                         serial: responseBody.serialnumber
                                                                                                         
                                                                                                     }, success: function(res1){
-                                                                                                    
                                                                                                         resolve(res1);
                                                                                                     }
                                                                                                 })
@@ -549,7 +604,6 @@ function computeSalary(id) {
                                                                                                         }
                                                                                                     });
                                                                                                 })
-
 
                                                                                                 promise.then(
 
@@ -638,18 +692,37 @@ function computeSalary(id) {
                                                                                                                 try {
                                                                                                                     if (trail[i].date != trail[i + 1].date) {
                                                                                                                         days_worked += 1;
-                                                                                                                        ot_total += 0;//parseFloat(trail[i].ot_total);
+                                                                                                                        if (trail[i].ot_approval == 'approved') {
+                                                                                                                            ot_total += parseFloat(trail[i].ot_total);
+                                                                                                                        }
                                                                                                                         ut_total += parseFloat(trail[i].ut_total);
                                                                                                                         ot_mins += parseFloat(trail[i].ot_mins);
                                                                                                                         ut_mins += parseFloat(trail[i].ut_mins);
                                                                                                                     }
                                                                                                                 } catch (err) {
                                                                                                                     if (trail[i]) {
-                                                                                                                        days_worked += 1;
-                                                                                                                        ot_total += 0;//parseFloat(trail[i].ot_total);
-                                                                                                                        ut_total += parseFloat(trail[i].ut_total);
+                                                                                                                        const currentDate = new Date();
+
+                                                                                                                        // Get the year, month, and day
+                                                                                                                        const year = currentDate.getFullYear();
+                                                                                                                        const mon = String(currentDate.getMonth() + 1).padStart(2, '0'); // Months are zero-indexed, so we add 1
+                                                                                                                        const day = String(currentDate.getDate()).padStart(2, '0');
+
+                                                                                                                        if (trail[i].date != `${year}-${mon}-${day}`)  {
+                                                                                                                            days_worked += 1;
+                                                                                                                        }
+                                                                                                                        if (trail[i].ot_approval == 'approved') {
+                                                                                                                            ot_total += parseFloat(trail[i].ot_total);
+                                                                                                                        }
                                                                                                                         ot_mins += parseFloat(trail[i].ot_mins);
+
                                                                                                                         ut_mins += parseFloat(trail[i].ut_mins);
+                                                                                                                        
+
+                                                                                                                        //if (trail[i].date != `${year}-${mon}-${day}`)  {
+                                                                                                                            ut_total += parseFloat(trail[i].ut_total);
+                                                                                                                        //}
+                                                                                                                        
                                                                                                                     }
                                                                                                                 }
                                                                                                                 let HOURPERDAY = parseInt(hour_perday);
@@ -772,386 +845,801 @@ function computeSalary(id) {
                                                                                                             PAYSLIP.push({'name' : "Holiday", 'row': '10', 'col': '1'})
                                                                                                             PAYSLIP.push({'name' : 0, 'row': '10', 'col': '2'})
                                                                                                             
-                                                                                                            earned = earned + 0;//ot_total;
+                                                                                                            
+                                                                                                            earned = earned + ot_total;
+                                                                                                            details.push({"OVERTIME (total)" : {"value" : ot_total.toFixed(2), "op" : "+"}});
 
-                                                                                                            // details.push({"OVERTIME (total)" : {"value" : ot_total.toFixed(2), "op" : "+"}});
-
-                                                                                                            // PAYSLIP.push({'name' : "Overtime", 'row': '11', 'col': '1'})
-                                                                                                            // PAYSLIP.push({'name' : ot_total.toFixed(2), 'row': '11', 'col': '2'})
+                                                                                                            PAYSLIP.push({'name' : "Overtime", 'row': '11', 'col': '1'})
+                                                                                                            PAYSLIP.push({'name' : ot_total.toFixed(2), 'row': '11', 'col': '2'})
 
                                                                                                             details.push({"EARNED" : {"value" : earned.toLocaleString(), "highlight" : "", "op" : "+"}});
                                                                                                             
                                                                                                             net = earned;
 
-                                                                                                            $.ajax({
-                                                                                                                type: 'POST',
-                                                                                                                url: '../php/determine_period.php',
-                                                                                                                data : {
-                                                                                                                    id: id,
-                                                                                                                }, success: function(res) {
+                                                                                                            let sss_contri = 0;
+                                                                                                            let pbig_contri = 0;
+                                                                                                            let phil_contri = 0;
 
-                                                                                                                    let sss_contri = 0;
-                                                                                                                    let pbig_contri = 0;
-                                                                                                                    let phil_contri = 0;
-
-                                                                                                                    if (res == 'second-half') {
-                                                                                                                        // let s = salaryRate * 2;
-                                                                                                                        // if (SSS != 'undefined' && SSS != null) {
-                                                                                                                        //     for (let i = 0; i < SSS.length; i++) {
-                                                                                                                        //         if (SSS[i][2] == 'Over') {
-                                                                                                                        //             if (s >= SSS[i][1]) {
-                                                                                                                        //                 sss_contri = SSS[i][6];
-                                                                                                                        //                 break;
-                                                                                                                        //             }
-                                                                                                                        //         } else {
-                                                                                                                        //             if (s >= SSS[i][1] && s <= SSS[i][2]) {
-                                                                                                                        //                 sss_contri = SSS[i][6];
-                                                                                                                        //                 break;
-                                                                                                                        //             }
-                                                                                                                        //         }
-                                                                                                                        //     }
-                                                                                                                        // }
-
-                                                                                                                        // if (PAGIBIG != 'undefined' && PAGIBIG != null) {
-                                                                                                                        //     let d = PAGIBIG;
-                                                                                                                        //     if (d.includes("%")) {
-                                                                                                                        //         d = d.replace(/%/g, '');
-                                                                                                                        //         d = parseFloat(d);
-
-                                                                                                                        //         d = d / 100;
-                                                                                                                        //         d = s * d;
-                                                                                                                                
-                                                                                                                        //     } else {
-                                                                                                                        //         d = parseFloat(d);
-                                                                                                                        //     }
-                                                                                                                        //     pbig_contri = d;
-                                                                                                                        // }
-
-                                                                                                                        // if (PHILHEALTH != 'undefined' && PHILHEALTH != null) {
-                                                                                                                        //     let d = PHILHEALTH;
-                                                                                                                        //     if (d.includes("%")) {
-                                                                                                                        //         d = d.replace(/%/g, '');
-                                                                                                                        //         d = parseFloat(d);
-
-                                                                                                                        //         d = d / 100;
-                                                                                                                        //         d = s * d;
-                                                                                                                                
-                                                                                                                        //     } else {
-                                                                                                                        //         d = parseFloat(d);
-                                                                                                                        //     }
-                                                                                                                        //     phil_contri = d;
-                                                                                                                        // }
-
-                                                                                                                    } else {
-                                                                                                                        sss_contri = firsHalfDeduction;
-                                                                                                                        pbig_contri = firsHalfDeduction;
-                                                                                                                        phil_contri = firsHalfDeduction;
-                                                                                                                    }
-
-                                                                                                                    deductions[`deduc${id}`] = {"sss" : sss_contri, "pbig" : pbig_contri, "phil" : phil_contri};
-
-                                                                                                                    D[`d${id}`] = {'sss' : deductions[`deduc${id}`].sss, 'phil' : deductions[`deduc${id}`].phil, 'pbig' : deductions[`deduc${id}`].pbig};
-
-                                                                                                                    if (deductions.hasOwnProperty(`deduc${id}`)) {
-                                                                                                                        total_deductions = total_deductions + parseFloat(deductions[`deduc${id}`].sss);
-                                                                                                                        total_deductions = total_deductions + parseFloat(deductions[`deduc${id}`].phil);
-                                                                                                                        total_deductions = total_deductions + parseFloat(deductions[`deduc${id}`].pbig);
-
-                                                                                                                        details.push({"SSS" : {"value" : deductions[`deduc${id}`].sss, "op" : "-"}});
-                                                                                                                        details.push({"PHILHEALTH" : {"value" : deductions[`deduc${id}`].phil, "op" : "-"}});
-                                                                                                                        details.push({"PAG-IBIG" : {"value" : deductions[`deduc${id}`].pbig, "op" : "-"}});
+                                                                                                            if (PAYSCHED == 'twice-monthly') {
+                                                                                                                $.ajax({
+                                                                                                                    type: 'POST',
+                                                                                                                    url: '../php/determine_period.php',
+                                                                                                                    data : {
+                                                                                                                        id: id,
+                                                                                                                        from: from,
+                                                                                                                    }, success: function(res) {
                                                                                                                         
-                                                                                                                        PAYSLIP.push({'name' : "SSS", 'row': '6', 'col': '3'})
-                                                                                                                        PAYSLIP.push({'name' : deductions[`deduc${id}`].sss, 'row': '6', 'col': '4'})
-                                                                                                                        PAYSLIP.push({'name' : "PhilHealth", 'row': '7', 'col': '3'})
-                                                                                                                        PAYSLIP.push({'name' : deductions[`deduc${id}`].phil, 'row': '7', 'col': '4'})
-                                                                                                                        PAYSLIP.push({'name' : "Pag-IBIG", 'row': '8', 'col': '3'})
-                                                                                                                        PAYSLIP.push({'name' : deductions[`deduc${id}`].pbig, 'row': '8', 'col': '4'})
-                                                                                                                    } else {
-                                                                                                                        PAYSLIP.push({'name' : "SSS", 'row': '6', 'col': '3'})
-                                                                                                                        PAYSLIP.push({'name' : 0, 'row': '6', 'col': '4'})
-                                                                                                                        PAYSLIP.push({'name' : "PhilHealth", 'row': '7', 'col': '3'})
-                                                                                                                        PAYSLIP.push({'name' : 0, 'row': '7', 'col': '4'})
-                                                                                                                        PAYSLIP.push({'name' : "Pag-IBIG", 'row': '8', 'col': '3'})
-                                                                                                                        PAYSLIP.push({'name' : 0, 'row': '8', 'col': '4'})
-
-                                                                                                                        details.push({"SSS" : {"value" : 0, "op" : "-"}});
-                                                                                                                        details.push({"PHILHEALTH" : {"value" : 0, "op" : "-"}});
-                                                                                                                        details.push({"PAG-IBIG" : {"value" : 0, "op" : "-"}});
-                                                                                                                    }
-
-                                                                                                                    
-                                                                                                                    
-                                                                                                                    total_deductions = total_deductions + parseInt(adjustment);
-                                                                                                                    total_deductions = total_deductions + parseInt(CA);
-                                                                                                                    total_deductions = total_deductions + parseInt(charges);
-                                                                                                                    total_deductions = total_deductions + parseInt(sss_loan);
-                                                                                                                    total_deductions = total_deductions + parseInt(pbig_loan);
-                                                                                                                    total_deductions = total_deductions + parseInt(company_loan);
-
-                                                                                                                    PAYSLIP.push({'name' : "Adjustment", 'row': '9', 'col': '3'})
-                                                                                                                    PAYSLIP.push({'name' : adjustment, 'row': '9', 'col': '4'})
-                                                                                                                    PAYSLIP.push({'name' : "Cash Advance", 'row': '10', 'col': '3'})
-                                                                                                                    PAYSLIP.push({'name' : CA, 'row': '10', 'col': '4'})
-                                                                                                                    PAYSLIP.push({'name' : "Charges", 'row': '11', 'col': '3'})
-                                                                                                                    PAYSLIP.push({'name' : charges, 'row': '11', 'col': '4'})
-                                                                                                                    PAYSLIP.push({'name' : "SSS Loan", 'row': '12', 'col': '3'})
-                                                                                                                    PAYSLIP.push({'name' : sss_loan, 'row': '12', 'col': '4'})
-                                                                                                                    PAYSLIP.push({'name' : "Pag-IBIG Loan", 'row': '13', 'col': '3'})
-                                                                                                                    PAYSLIP.push({'name' : pbig_loan, 'row': '13', 'col': '4'})
-                                                                                                                    PAYSLIP.push({'name' : "Company Loan", 'row': '14', 'col': '3'})
-                                                                                                                    PAYSLIP.push({'name' : company_loan, 'row': '14', 'col': '4'})
-
-                                                                                                                    details.push({"ADJUSTMENT" : {"value" : adjustment, "op" : "-"}});
-                                                                                                                    details.push({"CASH ADVANCE" :{"value" : CA, "op" : "-"}});
-                                                                                                                    details.push({"CHARGES" : {"value" : charges, "op" : "-"}});
-                                                                                                                    details.push({"SSS LOAN" : {"value" : sss_loan, "op" : "-"}});
-                                                                                                                    details.push({"PAG-IBIG LOAN" :{"value" : pbig_loan, "op" : "-"}});
-                                                                                                                    details.push({"COMPANY LOAN" : {"value" : company_loan, "op" : "-"}});
-                                                                                                                    
-                                                                                                                    details.push({"TOTAL DEDUCTIONS" : {"value" : total_deductions.toLocaleString(), "highlight" : "", "op" : "-"}});
-
-                                                                                                                    PAYSLIP.push({'name' : "Total Deductions", 'row': '15', 'col': '3', 'bold' : true})
-                                                                                                                    PAYSLIP.push({'name' : total_deductions.toLocaleString(), 'row': '15', 'col': '4', 'bold' : true})
 
 
-                                                                                                                    PAYSLIP.push({'name' : "Total Earnings", 'row': '15', 'col': '1', 'bold' : true})
-                                                                                                                    PAYSLIP.push({'name' : earned.toLocaleString(), 'row': '15', 'col': '2', 'bold' : true})
-                                                                                                                    net = net - total_deductions;
+                                                                                                                        if (PERIOD == 'second-half') {
+                                                                                                                            try {
+                                                                                                                                res = JSON.parse(res);
+                                                                                                                                let s = earned + parseFloat(res.earnings);
 
-                                                                                                                    if (sched != 'None') {
-                                                                                                                        $.ajax({
-                                                                                                                            type: 'POST',
-                                                                                                                            url: '../php/determine_period.php',
-                                                                                                                            data: {
-                                                                                                                                id: id,
-                                                                                                                            }, success: function(res) {
-
-                                                                                                                                let amount = 0;
-                                                                                                                                let penalty = 0;
-
-                                                                                                                                if (sched[0].pay_sched == 'twice-monthly') {
-
-                                                                                                                                    if (allowanceResponseBody != 'None') {
-                                                                                                                                        for (let i = 0; i < allowanceResponseBody.length; i++) {
-
-                                                                                                                                            if (allowanceResponseBody[i].detail == 'twice monthly') { //    twice monthly allowance
-                                                                                                                                                amount += parseInt(allowanceResponseBody[i].amount);
-                                                                                                                                            } else {
-                                                                                                                                                if (res == 'second-half') {
-                                                                                                                                                    amount += parseInt(allowanceResponseBody[i].amount);
-                                                                                                                                                }
-                                                                                                                                            }
-                    
-                                                                                                                                            let allowanceID = parseInt(allowanceResponseBody[i].id);
-                    
-                                                                                                                                            if (allowancePenalty != 'None') {
+                                                                                                                                if (SSS != 'undefined' && SSS != null) {
+                                                                                                                                    for (let i = 0; i < SSS.length; i++) {
+                                                                                                                                        let arr = Object.values(SSS[i]);
+                                                                                                                                        if (arr[2] == 'Over') {
+                                    
+                                                                                                                                            if (s >= arr[1]) {
+                                                                                                                                                sss_contri = arr[6];
                                                                                                                                                 
-                                                                                                                                                for (let k = 0; k < allowancePenalty.length; k++) {
-                                                                                                                                                    
-                                                                                                                                                    if (parseInt(allowancePenalty[k].allowance) == allowanceID) {
-                                                                                                                                                        
-                                                                                                                                                        let deduction = allowancePenalty[k].deduction;
-                                                        
-                                                                                                                                                        //percentage
-                                                                                                                                                        if (deduction.includes("%")) {
-                                                                                                                                                            deduction = deduction.replace(/%/g, '');
-                                                                                                                                                            deduction = parseFloat(deduction);
-                                                        
-                                                                                                                                                            if (allowancePenalty[k].type == 'absent') {
-                                                                                                                                                                let numOfAbsent = parseInt($(`#cal${id}`).val()) - days_worked;
-                                                        
-                                                                                                                                                                deduction = deduction * numOfAbsent;
-                                                                                                                                                                deduction = deduction / 100;
-                                                        
-                                                                                                                                                                let deducted = amount * deduction;
-                                                                                                                                                                penalty = deducted;
-                                                                                                                                                                amount = amount - deducted;
-                                                        
-                                                                                                                                                            } else {
-                                                                                                                                                                let type = allowancePenalty[k].type.split("|");
-                                                                                                                                                                let lateMins = parseInt(type[1]);
-                                                                                                                                                                let numOfLate = 0;
-                                                                                                                                                                for (let j = 0; j < trail.length; j++) {
-                                                                                                                                                                    if (parseInt(trail[j].late_mins) >= lateMins) {
-                                                                                                                                                                        numOfLate += 1;
-                                                                                                                                                                    }
-                                                                                                                                                                }
-                                                                                                                                                                deduction = deduction * numOfLate;
-                                                                                                                                                                deduction = deduction / 100;
-                                                        
-                                                                                                                                                                let deducted = amount * deduction;
-                                                                                                                                                                penalty = deducted;
-                                                                                                                                                                amount = amount - deducted;
-                                                                                                                                                            }
-                                                        
-                                                                                                                                                        } else {
-                                                                                                                                                            deduction = parseFloat(deduction);
-            
-                                                                                                                                                            if (allowancePenalty[k].type == 'absent') {
-                                                                                                                                                                let numOfAbsent = parseInt($(`#cal${id}`).val()) - days_worked;
-                                                        
-                                                                                                                                                                deduction = deduction * numOfAbsent;
-                                                                                                                                                                amount = amount - deduction;
-                                                        
-                                                                                                                                                            } else {
-                                                                                                                                                                let type = allowancePenalty[k].type.split("|");
-                                                                                                                                                                let lateMins = parseInt(type[1]);
-                                                                                                                                                                let numOfLate = 0;
-                                                                                                                                                                for (let j = 0; j < trail.length; j++) {
-                                                                                                                                                                    if (parseInt(trail[j].late_mins) >= lateMins) {
-                                                                                                                                                                        numOfLate += 1;
-                                                                                                                                                                    }
-                                                                                                                                                                }
-                                                                                                                                                                deduction = deduction * numOfLate;
-                                                                                                                                                                penalty = deduction;
-                                                                                                                                                                amount = amount - deduction;
-                                                                                                                                                            }
-                                                                                                                                                        }
-                                                                                                                                                    
-                                                                                                                                                    }
-                                                                                                                                                }
+                                                                                                                                                break;
+                                                                                                                                            }
+                                    
+                                                                                                                                        } else {
+                                    
+                                                                                                                                            let arr = Object.values(SSS[i]);
+                                                                                                                                            
+                                                                                                                                            if (s >= arr[1] && s <= arr[2]) {
+                                                                                                                                                sss_contri = arr[6];
+                                                                                                                                                
+                                                                                                                                                break;
                                                                                                                                             }
                                                                                                                                         }
                                                                                                                                     }
-                                                                                                                                
-                                                                                                                                    
+                                                                                                                                }
+                                                
+                                                                                                                                if (PAGIBIG != 'undefined' && PAGIBIG != null) {
+                                                                                                                                    let d = PAGIBIG;
+                                                                                                                                    if (d.includes("%")) {
+                                                                                                                                        d = d.replace(/%/g, '');
+                                                                                                                                        d = parseFloat(d);
+                                                
+                                                                                                                                        d = d / 100;
+                                                                                                                                        d = s * d;
+                                                                                                                                        
+                                                                                                                                    } else {
+                                                                                                                                        d = parseFloat(d);
+                                                                                                                                    }
+                                                                                                                                    pbig_contri = d;
+                                                                                                                                }
+                                                
+                                                                                                                                if (PHILHEALTH != 'undefined' && PHILHEALTH != null) {
+                                                                                                                                    let d = PHILHEALTH;
+                                                                                                                                    if (d.includes("%")) {
+                                                                                                                                        d = d.replace(/%/g, '');
+                                                                                                                                        d = parseFloat(d);
+                                                
+                                                                                                                                        d = d / 100;
+                                                                                                                                        d = s * d;
+                                                                                                                                        
+                                                                                                                                    } else {
+                                                                                                                                        d = parseFloat(d);
+                                                                                                                                    }
+                                                                                                                                    phil_contri = d;
+                                                                                                                                }
+    
+                                                                                                                                sss_contri = sss_contri - parseFloat(res.sss);
+                                                                                                                                phil_contri = phil_contri - parseFloat(res.phil);
+                                                                                                                                pbig_contri = pbig_contri - parseFloat(res.pbig);
 
-                                                                                                                                } else if (sched[0].pay_sched == 'monthly') {
+                                                                                                                            } catch (err) {
+                                                                                                                                console.log(err);
+                                                                                                                            }
 
-                                                                                                                                    if (allowanceResponseBody != 'None') {
-                                                                                                                                        for (let i = 0; i < allowanceResponseBody.length; i++) {
-                
-                                                                                                                                            if (allowanceResponseBody[i].detail == 'monthly') {
+                                                                                                                            
+                                                                                                                        //first half (contributions)
+                                                                                                                        } else {
+                                                                                                                            if (sss_first_half != 'undefined' && sss_first_half != null) {
+                                                                                                                                sss_contri = sss_first_half;
+                                                                                                                            }
+                                                                                                                            if (pbig_first_half != 'undefined' && pbig_first_half != null) {
+                                                                                                                                pbig_contri = pbig_first_half;
+                                                                                                                            }
+                                                                                                                            if (phil_first_half != 'undefined' && phil_first_half != null) {
+                                                                                                                                phil_contri = phil_first_half;
+                                                                                                                            }
+                                                                                                                        }
+
+                                                                                                                        deductions[`deduc${id}`] = {"sss" : sss_contri, "pbig" : pbig_contri, "phil" : phil_contri};
+
+                                                                                                                        D[`d${id}`] = {'sss' : deductions[`deduc${id}`].sss, 'phil' : deductions[`deduc${id}`].phil, 'pbig' : deductions[`deduc${id}`].pbig};
+
+                                                                                                                        if (deductions.hasOwnProperty(`deduc${id}`)) {
+                                                                                                                            let sss, phil, pbig;
+                                                                                                                            sss = parseFloat(deductions[`deduc${id}`].sss);
+                                                                                                                            phil = parseFloat(deductions[`deduc${id}`].phil);
+                                                                                                                            pbig = parseFloat(deductions[`deduc${id}`].pbig);
+
+                                                                                                                            total_deductions = total_deductions + sss;
+                                                                                                                            total_deductions = total_deductions + phil;
+                                                                                                                            total_deductions = total_deductions + pbig;
+
+                                                                                                                            details.push({"SSS" : {"value" : sss.toFixed(2), "op" : "-"}});
+                                                                                                                            details.push({"PHILHEALTH" : {"value" : phil.toFixed(2), "op" : "-"}});
+                                                                                                                            details.push({"PAG-IBIG" : {"value" : pbig.toFixed(2), "op" : "-"}});
+                                                                                                                            
+                                                                                                                            PAYSLIP.push({'name' : "SSS", 'row': '6', 'col': '3'})
+                                                                                                                            PAYSLIP.push({'name' : sss.toFixed(2), 'row': '6', 'col': '4'})
+                                                                                                                            PAYSLIP.push({'name' : "PhilHealth", 'row': '7', 'col': '3'})
+                                                                                                                            PAYSLIP.push({'name' : phil.toFixed(2), 'row': '7', 'col': '4'})
+                                                                                                                            PAYSLIP.push({'name' : "Pag-IBIG", 'row': '8', 'col': '3'})
+                                                                                                                            PAYSLIP.push({'name' : pbig.toFixed(2), 'row': '8', 'col': '4'})
+
+                                                                                                                        } else {
+                                                                                                                            PAYSLIP.push({'name' : "SSS", 'row': '6', 'col': '3'})
+                                                                                                                            PAYSLIP.push({'name' : 0, 'row': '6', 'col': '4'})
+                                                                                                                            PAYSLIP.push({'name' : "PhilHealth", 'row': '7', 'col': '3'})
+                                                                                                                            PAYSLIP.push({'name' : 0, 'row': '7', 'col': '4'})
+                                                                                                                            PAYSLIP.push({'name' : "Pag-IBIG", 'row': '8', 'col': '3'})
+                                                                                                                            PAYSLIP.push({'name' : 0, 'row': '8', 'col': '4'})
+
+                                                                                                                            details.push({"SSS" : {"value" : 0, "op" : "-"}});
+                                                                                                                            details.push({"PHILHEALTH" : {"value" : 0, "op" : "-"}});
+                                                                                                                            details.push({"PAG-IBIG" : {"value" : 0, "op" : "-"}});
+                                                                                                                        }
+                                                                                                                        
+                                                                                                                        total_deductions = total_deductions + parseInt(adjustment);
+                                                                                                                        total_deductions = total_deductions + parseInt(CA);
+                                                                                                                        total_deductions = total_deductions + parseInt(charges);
+                                                                                                                        total_deductions = total_deductions + parseInt(sss_loan);
+                                                                                                                        total_deductions = total_deductions + parseInt(pbig_loan);
+                                                                                                                        total_deductions = total_deductions + parseInt(company_loan);
+
+                                                                                                                        PAYSLIP.push({'name' : "Adjustment", 'row': '9', 'col': '3'})
+                                                                                                                        PAYSLIP.push({'name' : adjustment, 'row': '9', 'col': '4'})
+                                                                                                                        PAYSLIP.push({'name' : "Cash Advance", 'row': '10', 'col': '3'})
+                                                                                                                        PAYSLIP.push({'name' : CA, 'row': '10', 'col': '4'})
+                                                                                                                        PAYSLIP.push({'name' : "Charges", 'row': '11', 'col': '3'})
+                                                                                                                        PAYSLIP.push({'name' : charges, 'row': '11', 'col': '4'})
+                                                                                                                        PAYSLIP.push({'name' : "SSS Loan", 'row': '12', 'col': '3'})
+                                                                                                                        PAYSLIP.push({'name' : sss_loan, 'row': '12', 'col': '4'})
+                                                                                                                        PAYSLIP.push({'name' : "Pag-IBIG Loan", 'row': '13', 'col': '3'})
+                                                                                                                        PAYSLIP.push({'name' : pbig_loan, 'row': '13', 'col': '4'})
+                                                                                                                        PAYSLIP.push({'name' : "Company Loan", 'row': '14', 'col': '3'})
+                                                                                                                        PAYSLIP.push({'name' : company_loan, 'row': '14', 'col': '4'})
+
+                                                                                                                        details.push({"ADJUSTMENT" : {"value" : adjustment, "op" : "-"}});
+                                                                                                                        details.push({"CASH ADVANCE" :{"value" : CA, "op" : "-"}});
+                                                                                                                        details.push({"CHARGES" : {"value" : charges, "op" : "-"}});
+                                                                                                                        details.push({"SSS LOAN" : {"value" : sss_loan, "op" : "-"}});
+                                                                                                                        details.push({"PAG-IBIG LOAN" :{"value" : pbig_loan, "op" : "-"}});
+                                                                                                                        details.push({"COMPANY LOAN" : {"value" : company_loan, "op" : "-"}});
+                                                                                                                        
+                                                                                                                        details.push({"TOTAL DEDUCTIONS" : {"value" : total_deductions.toLocaleString(), "highlight" : "", "op" : "-"}});
+
+                                                                                                                        PAYSLIP.push({'name' : "Total Deductions", 'row': '15', 'col': '3', 'bold' : true})
+                                                                                                                        PAYSLIP.push({'name' : total_deductions.toLocaleString(), 'row': '15', 'col': '4', 'bold' : true})
+
+
+                                                                                                                        PAYSLIP.push({'name' : "Total Earnings", 'row': '15', 'col': '1', 'bold' : true})
+                                                                                                                        PAYSLIP.push({'name' : earned.toLocaleString(), 'row': '15', 'col': '2', 'bold' : true})
+                                                                                                                        net = net - total_deductions;
+
+                                                                                                                        if (sched != 'None') {
+
+                                                                                                                            let amount = 0;
+                                                                                                                            let penalty = 0;
+
+                                                                                                                            if (sched[0].pay_sched == 'twice-monthly') {
+
+                                                                                                                                if (allowanceResponseBody != 'None') {
+                                                                                                                                    for (let i = 0; i < allowanceResponseBody.length; i++) {
+
+                                                                                                                                        if (allowanceResponseBody[i].detail == 'twice monthly') { //    twice monthly allowance
+                                                                                                                                            amount += parseInt(allowanceResponseBody[i].amount);
+                                                                                                                                        } else {
+                                                                                                                                            if (PERIOD == 'second-half') {
                                                                                                                                                 amount += parseInt(allowanceResponseBody[i].amount);
                                                                                                                                             }
-                    
-                                                                                                                                            let allowanceID = parseInt(allowanceResponseBody[i].id);
-                    
-                                                                                                                                            if (allowancePenalty != 'None') {
-                                                                                                                                                for (let k = 0; k < allowancePenalty.length; k++) {
-                                                                                                                                                    if (parseInt(allowancePenalty[k].allowance) == allowanceID) {
-                                                                                                                                                        let deduction = allowancePenalty[k].deduction;
-                                                        
-                                                                                                                                                        //percentage
-                                                                                                                                                        if (deduction.includes("%")) {
-                                                                                                                                                            deduction = deduction.replace(/%/g, '');
-                                                                                                                                                            deduction = parseFloat(deduction);
-                                                        
-                                                                                                                                                            if (allowancePenalty[k].type == 'absent') {
-                                                                                                                                                                let numOfAbsent = parseInt($(`#cal${id}`).val()) - days_worked;
-                                                        
-                                                                                                                                                                deduction = deduction * numOfAbsent;
-                                                                                                                                                                deduction = deduction / 100;
-                                                        
-                                                                                                                                                                let deducted = amount * deduction;
-                                                                                                                                                                penalty = deducted;
-                                                                                                                                                                amount = amount - deducted;
-                                                        
-                                                                                                                                                            } else {
-                                                                                                                                                                let type = allowancePenalty[k].type.split("|");
-                                                                                                                                                                let lateMins = parseInt(type[1]);
-                                                                                                                                                                let numOfLate = 0;
-                                                                                                                                                                for (let j = 0; j < trail.length; j++) {
-                                                                                                                                                                    if (parseInt(trail[j].late_mins) >= lateMins) {
-                                                                                                                                                                        numOfLate += 1;
-                                                                                                                                                                    }
-                                                                                                                                                                }
-                                                                                                                                                                deduction = deduction * numOfLate;
-                                                                                                                                                                deduction = deduction / 100;
-                                                        
-                                                                                                                                                                let deducted = amount * deduction;
-                                                                                                                                                                penalty = deducted;
-                                                                                                                                                                amount = amount - deducted;
-                                                                                                                                                            }
-                                                        
+                                                                                                                                        }
+                
+                                                                                                                                        let allowanceID = parseInt(allowanceResponseBody[i].id);
+                
+                                                                                                                                        if (allowancePenalty != 'None') {
+                                                                                                                                            
+                                                                                                                                            for (let k = 0; k < allowancePenalty.length; k++) {
+                                                                                                                                                
+                                                                                                                                                if (parseInt(allowancePenalty[k].allowance) == allowanceID) {
+                                                                                                                                                    
+                                                                                                                                                    let deduction = allowancePenalty[k].deduction;
+                                                    
+                                                                                                                                                    //percentage
+                                                                                                                                                    if (deduction.includes("%")) {
+                                                                                                                                                        deduction = deduction.replace(/%/g, '');
+                                                                                                                                                        deduction = parseFloat(deduction);
+                                                    
+                                                                                                                                                        if (allowancePenalty[k].type == 'absent') {
+                                                                                                                                                            let numOfAbsent = parseInt($(`#cal${id}`).val()) - days_worked;
+                                                    
+                                                                                                                                                            deduction = deduction * numOfAbsent;
+                                                                                                                                                            deduction = deduction / 100;
+                                                    
+                                                                                                                                                            let deducted = amount * deduction;
+                                                                                                                                                            penalty = deducted;
+                                                                                                                                                            amount = amount - deducted;
+                                                    
                                                                                                                                                         } else {
-                                                                                                                                                            deduction = parseFloat(deduction);
-                                                        
-                                                                                                                                                            if (allowancePenalty[k].type == 'absent') {
-                                                                                                                                                                let numOfAbsent = parseInt($(`#cal${id}`).val()) - days_worked;
-                                                        
-                                                                                                                                                                deduction = deduction * numOfAbsent;
-                                                                                                                                                                amount = amount - deduction;
-                                                        
-                                                                                                                                                            } else {
-                                                                                                                                                                let type = allowancePenalty[k].type.split("|");
-                                                                                                                                                                let lateMins = parseInt(type[1]);
-                                                                                                                                                                let numOfLate = 0;
-                                                                                                                                                                for (let j = 0; j < trail.length; j++) {
-                                                                                                                                                                    if (parseInt(trail[j].late_mins) >= lateMins) {
-                                                                                                                                                                        numOfLate += 1;
-                                                                                                                                                                    }
+                                                                                                                                                            let type = allowancePenalty[k].type.split("|");
+                                                                                                                                                            let lateMins = parseInt(type[1]);
+                                                                                                                                                            let numOfLate = 0;
+                                                                                                                                                            for (let j = 0; j < trail.length; j++) {
+                                                                                                                                                                if (parseInt(trail[j].late_mins) >= lateMins) {
+                                                                                                                                                                    numOfLate += 1;
                                                                                                                                                                 }
-                                                                                                                                                                deduction = deduction * numOfLate;
-                                                                                                                                                                penalty = deduction;
-                                                                                                                                                                amount = amount - deduction;
                                                                                                                                                             }
+                                                                                                                                                            deduction = deduction * numOfLate;
+                                                                                                                                                            deduction = deduction / 100;
+                                                    
+                                                                                                                                                            let deducted = amount * deduction;
+                                                                                                                                                            penalty = deducted;
+                                                                                                                                                            amount = amount - deducted;
+                                                                                                                                                        }
+                                                    
+                                                                                                                                                    } else {
+                                                                                                                                                        deduction = parseFloat(deduction);
+        
+                                                                                                                                                        if (allowancePenalty[k].type == 'absent') {
+                                                                                                                                                            let numOfAbsent = parseInt($(`#cal${id}`).val()) - days_worked;
+                                                    
+                                                                                                                                                            deduction = deduction * numOfAbsent;
+                                                                                                                                                            amount = amount - deduction;
+                                                    
+                                                                                                                                                        } else {
+                                                                                                                                                            let type = allowancePenalty[k].type.split("|");
+                                                                                                                                                            let lateMins = parseInt(type[1]);
+                                                                                                                                                            let numOfLate = 0;
+                                                                                                                                                            for (let j = 0; j < trail.length; j++) {
+                                                                                                                                                                if (parseInt(trail[j].late_mins) >= lateMins) {
+                                                                                                                                                                    numOfLate += 1;
+                                                                                                                                                                }
+                                                                                                                                                            }
+                                                                                                                                                            deduction = deduction * numOfLate;
+                                                                                                                                                            penalty = deduction;
+                                                                                                                                                            amount = amount - deduction;
                                                                                                                                                         }
                                                                                                                                                     }
                                                                                                                                                 }
                                                                                                                                             }
                                                                                                                                         }
                                                                                                                                     }
-                                                                                                                                    
                                                                                                                                 }
-
-                                                                                                                                
-
-                                                                                                                                details.push({"ALLOWANCE (total)" : {"value" : amount.toLocaleString(), "op" : "+"}});
-                                                                                                                                details.push({"ALLOWANCE PENALTY" : {"value" : penalty.toFixed(2), "op" : "-"}});
                                                                                                                             
-                                                                                                                                net = net + amount;
-
                                                                                                                                 
 
-                                                                                                                                PAYSLIP.push({'name' : "Allowance", 'row': '16', 'col': '1', 'bold' : true})
-                                                                                                                                PAYSLIP.push({'name' : amount.toLocaleString(), 'row': '16', 'col': '2', 'bold' : true})
+                                                                                                                            } else if (sched[0].pay_sched == 'monthly') {
 
-                                                                                                                                PAYSLIP.push({'name' : "Net Earnings", 'row': '17', 'col': '1', 'span' : '3', 'align' : 'right', 'bold' : true, 'margin' : '15px'})
-                                                                                                                                PAYSLIP.push({'name' : net.toLocaleString(), 'row': '17', 'col': '2', 'bold' : true})
-
-                                                                                                                                details.push({"NET" : {"value" : net.toLocaleString(), "highlight" : ""}});
-
-                                                                                                                                PAYSLIP.push({'name' : "Signature", 'row': '18', 'col': '1', 'span' : '2', 'align' : 'center', 'border':'2px solid rgba(0,0,0,.6)'})
-
-                                                                                                                                PAYSLIPS.push(PAYSLIP);
-                                                                                                                                PAYSLIP = [];
-
-                                                                                                                                $(`#gross-pay${id}`).html(earned.toLocaleString());
-
-                                                                                                                                
-                                                                                                                                $(`#net-pay${id}`).html(net.toLocaleString());
-                                                                                                                                
-                                                                                                                                id = parseInt(id);
-                                                                                                                                if (ALLDetails.length < id + 1) {
-                                                                                                                                    for (let i = id; i > 0; i--) {
-                                                                                                                                        ALLDetails[i] = " ";
-                                                                                                                                        if (ALLDetails[i - 1] != null || ALLDetails[i - 1] != undefined) {
-                                                                                                                                            break;
+                                                                                                                                if (allowanceResponseBody != 'None') {
+                                                                                                                                    for (let i = 0; i < allowanceResponseBody.length; i++) {
+            
+                                                                                                                                        if (allowanceResponseBody[i].detail == 'monthly') {
+                                                                                                                                            amount += parseInt(allowanceResponseBody[i].amount);
+                                                                                                                                        }
+                
+                                                                                                                                        let allowanceID = parseInt(allowanceResponseBody[i].id);
+                
+                                                                                                                                        if (allowancePenalty != 'None') {
+                                                                                                                                            for (let k = 0; k < allowancePenalty.length; k++) {
+                                                                                                                                                if (parseInt(allowancePenalty[k].allowance) == allowanceID) {
+                                                                                                                                                    let deduction = allowancePenalty[k].deduction;
+                                                    
+                                                                                                                                                    //percentage
+                                                                                                                                                    if (deduction.includes("%")) {
+                                                                                                                                                        deduction = deduction.replace(/%/g, '');
+                                                                                                                                                        deduction = parseFloat(deduction);
+                                                    
+                                                                                                                                                        if (allowancePenalty[k].type == 'absent') {
+                                                                                                                                                            let numOfAbsent = parseInt($(`#cal${id}`).val()) - days_worked;
+                                                    
+                                                                                                                                                            deduction = deduction * numOfAbsent;
+                                                                                                                                                            deduction = deduction / 100;
+                                                    
+                                                                                                                                                            let deducted = amount * deduction;
+                                                                                                                                                            penalty = deducted;
+                                                                                                                                                            amount = amount - deducted;
+                                                    
+                                                                                                                                                        } else {
+                                                                                                                                                            let type = allowancePenalty[k].type.split("|");
+                                                                                                                                                            let lateMins = parseInt(type[1]);
+                                                                                                                                                            let numOfLate = 0;
+                                                                                                                                                            for (let j = 0; j < trail.length; j++) {
+                                                                                                                                                                if (parseInt(trail[j].late_mins) >= lateMins) {
+                                                                                                                                                                    numOfLate += 1;
+                                                                                                                                                                }
+                                                                                                                                                            }
+                                                                                                                                                            deduction = deduction * numOfLate;
+                                                                                                                                                            deduction = deduction / 100;
+                                                    
+                                                                                                                                                            let deducted = amount * deduction;
+                                                                                                                                                            penalty = deducted;
+                                                                                                                                                            amount = amount - deducted;
+                                                                                                                                                        }
+                                                    
+                                                                                                                                                    } else {
+                                                                                                                                                        deduction = parseFloat(deduction);
+                                                    
+                                                                                                                                                        if (allowancePenalty[k].type == 'absent') {
+                                                                                                                                                            let numOfAbsent = parseInt($(`#cal${id}`).val()) - days_worked;
+                                                    
+                                                                                                                                                            deduction = deduction * numOfAbsent;
+                                                                                                                                                            amount = amount - deduction;
+                                                    
+                                                                                                                                                        } else {
+                                                                                                                                                            let type = allowancePenalty[k].type.split("|");
+                                                                                                                                                            let lateMins = parseInt(type[1]);
+                                                                                                                                                            let numOfLate = 0;
+                                                                                                                                                            for (let j = 0; j < trail.length; j++) {
+                                                                                                                                                                if (parseInt(trail[j].late_mins) >= lateMins) {
+                                                                                                                                                                    numOfLate += 1;
+                                                                                                                                                                }
+                                                                                                                                                            }
+                                                                                                                                                            deduction = deduction * numOfLate;
+                                                                                                                                                            penalty = deduction;
+                                                                                                                                                            amount = amount - deduction;
+                                                                                                                                                        }
+                                                                                                                                                    }
+                                                                                                                                                }
+                                                                                                                                            }
                                                                                                                                         }
                                                                                                                                     }
                                                                                                                                 }
-
-                                                                                                                                ALLDetails[id] = details;
-
-                                                                                                                                let x = 0;
-                                                                                                                                for (let i = 0; i < ALLDetails.length; i++) {
-                                                                                                                                    if (typeof ALLDetails[i] === 'object') {
-                                                                                                                                        x += 1;
-                                                                                                                                    }
-                                                                                                                                }
                                                                                                                                 
-                                                                                                                                $("#available-payslip").html(`Available: ${x}`);
+                                                                                                                            }
 
                                                                                                                             
-                                                                                                                            }
-                                                                                                                        })
 
+                                                                                                                            details.push({"ALLOWANCE (total)" : {"value" : amount.toLocaleString(), "op" : "+"}});
+                                                                                                                            details.push({"ALLOWANCE PENALTY" : {"value" : penalty.toFixed(2), "op" : "-"}});
+                                                                                                                        
+                                                                                                                            net = net + amount;
+
+                                                                                                                            
+
+                                                                                                                            PAYSLIP.push({'name' : "Allowance", 'row': '16', 'col': '1', 'bold' : true})
+                                                                                                                            PAYSLIP.push({'name' : amount.toLocaleString(), 'row': '16', 'col': '2', 'bold' : true})
+
+                                                                                                                            PAYSLIP.push({'name' : "Net Earnings", 'row': '17', 'col': '1', 'span' : '3', 'align' : 'right', 'bold' : true, 'margin' : '15px'})
+                                                                                                                            PAYSLIP.push({'name' : net.toLocaleString(), 'row': '17', 'col': '2', 'bold' : true})
+
+                                                                                                                            details.push({"NET" : {"value" : net.toLocaleString(), "highlight" : ""}});
+
+                                                                                                                            PAYSLIP.push({'name' : "Signature", 'row': '18', 'col': '1', 'span' : '2', 'align' : 'center', 'border':'2px solid rgba(0,0,0,.6)'})
+
+                                                                                                                        
+                                                                                                                            for (let i = 0; i < PAYSLIPS.length; i++) {
+                                                                                                                                if (PAYSLIP[3].name == PAYSLIPS[i][3].name) {
+                                                                                                                                    PAYSLIPS.splice(i, 1);
+                                                                                                                                }
+                                                                                                                            }
+                                                                                                                            
+                                                                                                                            PAYSLIPS.push(PAYSLIP);
+                                                                                                                            
+
+                                                                                                                            PAYSLIP = [];
+
+                                                                                                                            $(`#gross-pay${id}`).html(earned.toLocaleString());
+
+                                                                                                                            
+                                                                                                                            $(`#net-pay${id}`).html(net.toLocaleString());
+                                                                                                                            
+                                                                                                                            id = parseInt(id);
+                                                                                                                            if (ALLDetails.length < id + 1) {
+                                                                                                                                for (let i = id; i > 0; i--) {
+                                                                                                                                    ALLDetails[i] = " ";
+                                                                                                                                    if (ALLDetails[i - 1] != null || ALLDetails[i - 1] != undefined) {
+                                                                                                                                        break;
+                                                                                                                                    }
+                                                                                                                                }
+                                                                                                                            }
+
+                                                                                                                            ALLDetails[id] = details;
+
+                                                                                                                        
+                                                                                                                            if (PAYSCHED == 'twice-monthly') {
+                                                                                                                                update_payroll_file(PAYSCHED, from, to, name, id, responseBody.class, className, ALLDetails[id][0]['RATE'], ALLDetails[id][1]['RATE TYPE'], ALLDetails[id][2]['WORKING DAYS'], ALLDetails[id][3]['DAYS WORKED'], ALLDetails[id][4]['SALARY RATE'], ALLDetails[id][5]['ABSENT (total)'].value, ALLDetails[id][6]['BASIC'], ALLDetails[id][7]['UNDERTIME (total)'].value, ALLDetails[id][8]['TARDINESS (total)'].value, ALLDetails[id][9]['HOLIDAYS (total)'].value, ALLDetails[id][10]['OVERTIME (total)'].value, ALLDetails[id][11]['EARNED'].value, ALLDetails[id][12]['SSS'].value, ALLDetails[id][13]['PHILHEALTH'].value, ALLDetails[id][14]['PAG-IBIG'].value, ALLDetails[id][15]['ADJUSTMENT'].value, ALLDetails[id][16]['CASH ADVANCE'].value, ALLDetails[id][17]['CHARGES'].value, ALLDetails[id][18]['SSS LOAN'].value, ALLDetails[id][19]['PAG-IBIG LOAN'].value, ALLDetails[id][20]['COMPANY LOAN'].value, ALLDetails[id][21]['TOTAL DEDUCTIONS'].value, ALLDetails[id][22]['ALLOWANCE (total)'].value, ALLDetails[id][23]['ALLOWANCE PENALTY'].value, ALLDetails[id][24]['NET'].value);
+                                                                                                                            } else {
+                                                                                                                                if (PAYSCHED == 'monthly') {
+                                                                                                                                    update_payroll_file(PAYSCHED, MON, MON, name, id, responseBody.class, className, ALLDetails[id][0]['RATE'], ALLDetails[id][1]['RATE TYPE'], ALLDetails[id][2]['WORKING DAYS'], ALLDetails[id][3]['DAYS WORKED'], ALLDetails[id][4]['SALARY RATE'], ALLDetails[id][5]['ABSENT (total)'].value, ALLDetails[id][6]['BASIC'], ALLDetails[id][7]['UNDERTIME (total)'].value, ALLDetails[id][8]['TARDINESS (total)'].value, ALLDetails[id][9]['HOLIDAYS (total)'].value, ALLDetails[id][10]['OVERTIME (total)'].value, ALLDetails[id][11]['EARNED'].value, ALLDetails[id][12]['SSS'].value, ALLDetails[id][13]['PHILHEALTH'].value, ALLDetails[id][14]['PAG-IBIG'].value, ALLDetails[id][15]['ADJUSTMENT'].value, ALLDetails[id][16]['CASH ADVANCE'].value, ALLDetails[id][17]['CHARGES'].value, ALLDetails[id][18]['SSS LOAN'].value, ALLDetails[id][19]['PAG-IBIG LOAN'].value, ALLDetails[id][20]['COMPANY LOAN'].value, ALLDetails[id][21]['TOTAL DEDUCTIONS'].value, ALLDetails[id][22]['ALLOWANCE (total)'].value, ALLDetails[id][23]['ALLOWANCE PENALTY'].value, ALLDetails[id][24]['NET'].value);
+                                                                                                                                }
+                                                                                                                            }
+
+                                                                                                                            let x = 0;
+                                                                                                                            for (let i = 0; i < ALLDetails.length; i++) {
+                                                                                                                                if (typeof ALLDetails[i] === 'object') {
+                                                                                                                                    x += 1;
+                                                                                                                                }
+                                                                                                                            }
+                                                                                                                            
+                                                                                                                            $("#available-payslip").html(`Available: ${x}`);
+                                                                                                                                
+                                                                                                                        }
+                                                                                                                        
+                                                                                                                    }
+                                                                                                                });
+
+                                                                                                            } else if (PAYSCHED == 'monthly') {
+                                                                                                                let s = earned;
+
+                                                                                                                if (SSS != 'undefined' && SSS != null) {
+                                                                                                                    for (let i = 0; i < SSS.length; i++) {
+                                                                                                                        let arr = Object.values(SSS[i]);
+                                                                                                                        if (arr[2] == 'Over') {
+                    
+                                                                                                                            if (s >= arr[1]) {
+                                                                                                                                sss_contri = arr[6];
+                                                                                                                                
+                                                                                                                                break;
+                                                                                                                            }
+                    
+                                                                                                                        } else {
+                    
+                                                                                                                            let arr = Object.values(SSS[i]);
+                                                                                                                            
+                                                                                                                            if (s >= arr[1] && s <= arr[2]) {
+                                                                                                                                sss_contri = arr[6];
+                                                                                                                                
+                                                                                                                                break;
+                                                                                                                            }
+                                                                                                                        }
                                                                                                                     }
                                                                                                                 }
-                                                                                                            })
-                                                                                                           
+                                
+                                                                                                                if (PAGIBIG != 'undefined' && PAGIBIG != null) {
+                                                                                                                    let d = PAGIBIG;
+                                                                                                                    if (d.includes("%")) {
+                                                                                                                        d = d.replace(/%/g, '');
+                                                                                                                        d = parseFloat(d);
+                                
+                                                                                                                        d = d / 100;
+                                                                                                                        d = s * d;
+                                                                                                                        
+                                                                                                                    } else {
+                                                                                                                        d = parseFloat(d);
+                                                                                                                    }
+                                                                                                                    pbig_contri = d;
+                                                                                                                }
+                                
+                                                                                                                if (PHILHEALTH != 'undefined' && PHILHEALTH != null) {
+                                                                                                                    let d = PHILHEALTH;
+                                                                                                                    if (d.includes("%")) {
+                                                                                                                        d = d.replace(/%/g, '');
+                                                                                                                        d = parseFloat(d);
+                                
+                                                                                                                        d = d / 100;
+                                                                                                                        d = s * d;
+                                                                                                                        
+                                                                                                                    } else {
+                                                                                                                        d = parseFloat(d);
+                                                                                                                    }
+                                                                                                                    phil_contri = d;
+                                                                                                                }
+
+                                                                                                                deductions[`deduc${id}`] = {"sss" : sss_contri, "pbig" : pbig_contri, "phil" : phil_contri};
+
+                                                                                                                D[`d${id}`] = {'sss' : deductions[`deduc${id}`].sss, 'phil' : deductions[`deduc${id}`].phil, 'pbig' : deductions[`deduc${id}`].pbig};
+
+                                                                                                                if (deductions.hasOwnProperty(`deduc${id}`)) {
+                                                                                                                    let sss, phil, pbig;
+                                                                                                                    sss = parseFloat(deductions[`deduc${id}`].sss);
+                                                                                                                    phil = parseFloat(deductions[`deduc${id}`].phil);
+                                                                                                                    pbig = parseFloat(deductions[`deduc${id}`].pbig);
+
+                                                                                                                    total_deductions = total_deductions + sss;
+                                                                                                                    total_deductions = total_deductions + phil;
+                                                                                                                    total_deductions = total_deductions + pbig;
+
+                                                                                                                    details.push({"SSS" : {"value" : sss.toFixed(2), "op" : "-"}});
+                                                                                                                    details.push({"PHILHEALTH" : {"value" : phil.toFixed(2), "op" : "-"}});
+                                                                                                                    details.push({"PAG-IBIG" : {"value" : pbig.toFixed(2), "op" : "-"}});
+                                                                                                                    
+                                                                                                                    PAYSLIP.push({'name' : "SSS", 'row': '6', 'col': '3'})
+                                                                                                                    PAYSLIP.push({'name' : sss.toFixed(2), 'row': '6', 'col': '4'})
+                                                                                                                    PAYSLIP.push({'name' : "PhilHealth", 'row': '7', 'col': '3'})
+                                                                                                                    PAYSLIP.push({'name' : phil.toFixed(2), 'row': '7', 'col': '4'})
+                                                                                                                    PAYSLIP.push({'name' : "Pag-IBIG", 'row': '8', 'col': '3'})
+                                                                                                                    PAYSLIP.push({'name' : pbig.toFixed(2), 'row': '8', 'col': '4'})
+                                                                                                                } else {
+                                                                                                                    PAYSLIP.push({'name' : "SSS", 'row': '6', 'col': '3'})
+                                                                                                                    PAYSLIP.push({'name' : 0, 'row': '6', 'col': '4'})
+                                                                                                                    PAYSLIP.push({'name' : "PhilHealth", 'row': '7', 'col': '3'})
+                                                                                                                    PAYSLIP.push({'name' : 0, 'row': '7', 'col': '4'})
+                                                                                                                    PAYSLIP.push({'name' : "Pag-IBIG", 'row': '8', 'col': '3'})
+                                                                                                                    PAYSLIP.push({'name' : 0, 'row': '8', 'col': '4'})
+
+                                                                                                                    details.push({"SSS" : {"value" : 0, "op" : "-"}});
+                                                                                                                    details.push({"PHILHEALTH" : {"value" : 0, "op" : "-"}});
+                                                                                                                    details.push({"PAG-IBIG" : {"value" : 0, "op" : "-"}});
+                                                                                                                }
+                                                                                                                
+                                                                                                                total_deductions = total_deductions + parseInt(adjustment);
+                                                                                                                total_deductions = total_deductions + parseInt(CA);
+                                                                                                                total_deductions = total_deductions + parseInt(charges);
+                                                                                                                total_deductions = total_deductions + parseInt(sss_loan);
+                                                                                                                total_deductions = total_deductions + parseInt(pbig_loan);
+                                                                                                                total_deductions = total_deductions + parseInt(company_loan);
+
+                                                                                                                PAYSLIP.push({'name' : "Adjustment", 'row': '9', 'col': '3'})
+                                                                                                                PAYSLIP.push({'name' : adjustment, 'row': '9', 'col': '4'})
+                                                                                                                PAYSLIP.push({'name' : "Cash Advance", 'row': '10', 'col': '3'})
+                                                                                                                PAYSLIP.push({'name' : CA, 'row': '10', 'col': '4'})
+                                                                                                                PAYSLIP.push({'name' : "Charges", 'row': '11', 'col': '3'})
+                                                                                                                PAYSLIP.push({'name' : charges, 'row': '11', 'col': '4'})
+                                                                                                                PAYSLIP.push({'name' : "SSS Loan", 'row': '12', 'col': '3'})
+                                                                                                                PAYSLIP.push({'name' : sss_loan, 'row': '12', 'col': '4'})
+                                                                                                                PAYSLIP.push({'name' : "Pag-IBIG Loan", 'row': '13', 'col': '3'})
+                                                                                                                PAYSLIP.push({'name' : pbig_loan, 'row': '13', 'col': '4'})
+                                                                                                                PAYSLIP.push({'name' : "Company Loan", 'row': '14', 'col': '3'})
+                                                                                                                PAYSLIP.push({'name' : company_loan, 'row': '14', 'col': '4'})
+
+                                                                                                                details.push({"ADJUSTMENT" : {"value" : adjustment, "op" : "-"}});
+                                                                                                                details.push({"CASH ADVANCE" :{"value" : CA, "op" : "-"}});
+                                                                                                                details.push({"CHARGES" : {"value" : charges, "op" : "-"}});
+                                                                                                                details.push({"SSS LOAN" : {"value" : sss_loan, "op" : "-"}});
+                                                                                                                details.push({"PAG-IBIG LOAN" :{"value" : pbig_loan, "op" : "-"}});
+                                                                                                                details.push({"COMPANY LOAN" : {"value" : company_loan, "op" : "-"}});
+                                                                                                                
+                                                                                                                details.push({"TOTAL DEDUCTIONS" : {"value" : total_deductions.toLocaleString(), "highlight" : "", "op" : "-"}});
+
+                                                                                                                PAYSLIP.push({'name' : "Total Deductions", 'row': '15', 'col': '3', 'bold' : true})
+                                                                                                                PAYSLIP.push({'name' : total_deductions.toLocaleString(), 'row': '15', 'col': '4', 'bold' : true})
+
+
+                                                                                                                PAYSLIP.push({'name' : "Total Earnings", 'row': '15', 'col': '1', 'bold' : true})
+                                                                                                                PAYSLIP.push({'name' : earned.toLocaleString(), 'row': '15', 'col': '2', 'bold' : true})
+                                                                                                                net = net - total_deductions;
+
+                                                                                                                if (sched != 'None') {
+
+                                                                                                                    let amount = 0;
+                                                                                                                    let penalty = 0;
+
+                                                                                                                    if (sched[0].pay_sched == 'twice-monthly') {
+
+                                                                                                                        if (allowanceResponseBody != 'None') {
+                                                                                                                            for (let i = 0; i < allowanceResponseBody.length; i++) {
+
+                                                                                                                                if (allowanceResponseBody[i].detail == 'twice monthly') { //    twice monthly allowance
+                                                                                                                                    amount += parseInt(allowanceResponseBody[i].amount);
+                                                                                                                                } else {
+                                                                                                                                    if (PERIOD == 'second-half') {
+                                                                                                                                        amount += parseInt(allowanceResponseBody[i].amount);
+                                                                                                                                    }
+                                                                                                                                }
+        
+                                                                                                                                let allowanceID = parseInt(allowanceResponseBody[i].id);
+        
+                                                                                                                                if (allowancePenalty != 'None') {
+                                                                                                                                    
+                                                                                                                                    for (let k = 0; k < allowancePenalty.length; k++) {
+                                                                                                                                        
+                                                                                                                                        if (parseInt(allowancePenalty[k].allowance) == allowanceID) {
+                                                                                                                                            
+                                                                                                                                            let deduction = allowancePenalty[k].deduction;
+                                            
+                                                                                                                                            //percentage
+                                                                                                                                            if (deduction.includes("%")) {
+                                                                                                                                                deduction = deduction.replace(/%/g, '');
+                                                                                                                                                deduction = parseFloat(deduction);
+                                            
+                                                                                                                                                if (allowancePenalty[k].type == 'absent') {
+                                                                                                                                                    let numOfAbsent = parseInt($(`#cal${id}`).val()) - days_worked;
+                                            
+                                                                                                                                                    deduction = deduction * numOfAbsent;
+                                                                                                                                                    deduction = deduction / 100;
+                                            
+                                                                                                                                                    let deducted = amount * deduction;
+                                                                                                                                                    penalty = deducted;
+                                                                                                                                                    amount = amount - deducted;
+                                            
+                                                                                                                                                } else {
+                                                                                                                                                    let type = allowancePenalty[k].type.split("|");
+                                                                                                                                                    let lateMins = parseInt(type[1]);
+                                                                                                                                                    let numOfLate = 0;
+                                                                                                                                                    for (let j = 0; j < trail.length; j++) {
+                                                                                                                                                        if (parseInt(trail[j].late_mins) >= lateMins) {
+                                                                                                                                                            numOfLate += 1;
+                                                                                                                                                        }
+                                                                                                                                                    }
+                                                                                                                                                    deduction = deduction * numOfLate;
+                                                                                                                                                    deduction = deduction / 100;
+                                            
+                                                                                                                                                    let deducted = amount * deduction;
+                                                                                                                                                    penalty = deducted;
+                                                                                                                                                    amount = amount - deducted;
+                                                                                                                                                }
+                                            
+                                                                                                                                            } else {
+                                                                                                                                                deduction = parseFloat(deduction);
+
+                                                                                                                                                if (allowancePenalty[k].type == 'absent') {
+                                                                                                                                                    let numOfAbsent = parseInt($(`#cal${id}`).val()) - days_worked;
+                                            
+                                                                                                                                                    deduction = deduction * numOfAbsent;
+                                                                                                                                                    amount = amount - deduction;
+                                            
+                                                                                                                                                } else {
+                                                                                                                                                    let type = allowancePenalty[k].type.split("|");
+                                                                                                                                                    let lateMins = parseInt(type[1]);
+                                                                                                                                                    let numOfLate = 0;
+                                                                                                                                                    for (let j = 0; j < trail.length; j++) {
+                                                                                                                                                        if (parseInt(trail[j].late_mins) >= lateMins) {
+                                                                                                                                                            numOfLate += 1;
+                                                                                                                                                        }
+                                                                                                                                                    }
+                                                                                                                                                    deduction = deduction * numOfLate;
+                                                                                                                                                    penalty = deduction;
+                                                                                                                                                    amount = amount - deduction;
+                                                                                                                                                }
+                                                                                                                                            }
+                                                                                                                                        }
+                                                                                                                                    }
+                                                                                                                                }
+                                                                                                                            }
+                                                                                                                        }
+                                                                                                                    
+                                                                                                                        
+
+                                                                                                                    } else if (sched[0].pay_sched == 'monthly') {
+
+                                                                                                                        if (allowanceResponseBody != 'None') {
+                                                                                                                            for (let i = 0; i < allowanceResponseBody.length; i++) {
+    
+                                                                                                                                if (allowanceResponseBody[i].detail == 'monthly') {
+                                                                                                                                    amount += parseInt(allowanceResponseBody[i].amount);
+                                                                                                                                }
+        
+                                                                                                                                let allowanceID = parseInt(allowanceResponseBody[i].id);
+        
+                                                                                                                                if (allowancePenalty != 'None') {
+                                                                                                                                    for (let k = 0; k < allowancePenalty.length; k++) {
+                                                                                                                                        if (parseInt(allowancePenalty[k].allowance) == allowanceID) {
+                                                                                                                                            let deduction = allowancePenalty[k].deduction;
+                                            
+                                                                                                                                            //percentage
+                                                                                                                                            if (deduction.includes("%")) {
+                                                                                                                                                deduction = deduction.replace(/%/g, '');
+                                                                                                                                                deduction = parseFloat(deduction);
+                                            
+                                                                                                                                                if (allowancePenalty[k].type == 'absent') {
+                                                                                                                                                    let numOfAbsent = parseInt($(`#cal${id}`).val()) - days_worked;
+                                            
+                                                                                                                                                    deduction = deduction * numOfAbsent;
+                                                                                                                                                    deduction = deduction / 100;
+                                            
+                                                                                                                                                    let deducted = amount * deduction;
+                                                                                                                                                    penalty = deducted;
+                                                                                                                                                    amount = amount - deducted;
+                                            
+                                                                                                                                                } else {
+                                                                                                                                                    let type = allowancePenalty[k].type.split("|");
+                                                                                                                                                    let lateMins = parseInt(type[1]);
+                                                                                                                                                    let numOfLate = 0;
+                                                                                                                                                    for (let j = 0; j < trail.length; j++) {
+                                                                                                                                                        if (parseInt(trail[j].late_mins) >= lateMins) {
+                                                                                                                                                            numOfLate += 1;
+                                                                                                                                                        }
+                                                                                                                                                    }
+                                                                                                                                                    deduction = deduction * numOfLate;
+                                                                                                                                                    deduction = deduction / 100;
+                                            
+                                                                                                                                                    let deducted = amount * deduction;
+                                                                                                                                                    penalty = deducted;
+                                                                                                                                                    amount = amount - deducted;
+                                                                                                                                                }
+                                            
+                                                                                                                                            } else {
+                                                                                                                                                deduction = parseFloat(deduction);
+                                            
+                                                                                                                                                if (allowancePenalty[k].type == 'absent') {
+                                                                                                                                                    let numOfAbsent = parseInt($(`#cal${id}`).val()) - days_worked;
+                                            
+                                                                                                                                                    deduction = deduction * numOfAbsent;
+                                                                                                                                                    amount = amount - deduction;
+                                            
+                                                                                                                                                } else {
+                                                                                                                                                    let type = allowancePenalty[k].type.split("|");
+                                                                                                                                                    let lateMins = parseInt(type[1]);
+                                                                                                                                                    let numOfLate = 0;
+                                                                                                                                                    for (let j = 0; j < trail.length; j++) {
+                                                                                                                                                        if (parseInt(trail[j].late_mins) >= lateMins) {
+                                                                                                                                                            numOfLate += 1;
+                                                                                                                                                        }
+                                                                                                                                                    }
+                                                                                                                                                    deduction = deduction * numOfLate;
+                                                                                                                                                    penalty = deduction;
+                                                                                                                                                    amount = amount - deduction;
+                                                                                                                                                }
+                                                                                                                                            }
+                                                                                                                                        }
+                                                                                                                                    }
+                                                                                                                                }
+                                                                                                                            }
+                                                                                                                        }
+                                                                                                                        
+                                                                                                                    }
+
+                                                                                                                    
+
+                                                                                                                    details.push({"ALLOWANCE (total)" : {"value" : amount.toLocaleString(), "op" : "+"}});
+                                                                                                                    details.push({"ALLOWANCE PENALTY" : {"value" : penalty.toFixed(2), "op" : "-"}});
+                                                                                                                
+                                                                                                                    net = net + amount;
+
+                                                                                                                    
+
+                                                                                                                    PAYSLIP.push({'name' : "Allowance", 'row': '16', 'col': '1', 'bold' : true})
+                                                                                                                    PAYSLIP.push({'name' : amount.toLocaleString(), 'row': '16', 'col': '2', 'bold' : true})
+
+                                                                                                                    PAYSLIP.push({'name' : "Net Earnings", 'row': '17', 'col': '1', 'span' : '3', 'align' : 'right', 'bold' : true, 'margin' : '15px'})
+                                                                                                                    PAYSLIP.push({'name' : net.toLocaleString(), 'row': '17', 'col': '2', 'bold' : true})
+
+                                                                                                                    details.push({"NET" : {"value" : net.toLocaleString(), "highlight" : ""}});
+
+                                                                                                                    PAYSLIP.push({'name' : "Signature", 'row': '18', 'col': '1', 'span' : '2', 'align' : 'center', 'border':'2px solid rgba(0,0,0,.6)'})
+
+                                                                                                                
+                                                                                                                    for (let i = 0; i < PAYSLIPS.length; i++) {
+                                                                                                                        if (PAYSLIP[3].name == PAYSLIPS[i][3].name) {
+                                                                                                                            PAYSLIPS.splice(i, 1);
+                                                                                                                        }
+                                                                                                                    }
+                                                                                                                    
+                                                                                                                    PAYSLIPS.push(PAYSLIP);
+                                                                                                                    
+
+                                                                                                                    PAYSLIP = [];
+
+                                                                                                                    $(`#gross-pay${id}`).html(earned.toLocaleString());
+
+                                                                                                                    
+                                                                                                                    $(`#net-pay${id}`).html(net.toLocaleString());
+                                                                                                                    
+                                                                                                                    id = parseInt(id);
+                                                                                                                    if (ALLDetails.length < id + 1) {
+                                                                                                                        for (let i = id; i > 0; i--) {
+                                                                                                                            ALLDetails[i] = " ";
+                                                                                                                            if (ALLDetails[i - 1] != null || ALLDetails[i - 1] != undefined) {
+                                                                                                                                break;
+                                                                                                                            }
+                                                                                                                        }
+                                                                                                                    }
+
+                                                                                                                    ALLDetails[id] = details;
+
+                                                                                                                
+                                                                                                                    if (PAYSCHED == 'twice-monthly') {
+                                                                                                                        update_payroll_file(PAYSCHED, from, to, name, id, responseBody.class, className, ALLDetails[id][0]['RATE'], ALLDetails[id][1]['RATE TYPE'], ALLDetails[id][2]['WORKING DAYS'], ALLDetails[id][3]['DAYS WORKED'], ALLDetails[id][4]['SALARY RATE'], ALLDetails[id][5]['ABSENT (total)'].value, ALLDetails[id][6]['BASIC'], ALLDetails[id][7]['UNDERTIME (total)'].value, ALLDetails[id][8]['TARDINESS (total)'].value, ALLDetails[id][9]['HOLIDAYS (total)'].value, ALLDetails[id][10]['OVERTIME (total)'].value, ALLDetails[id][11]['EARNED'].value, ALLDetails[id][12]['SSS'].value, ALLDetails[id][13]['PHILHEALTH'].value, ALLDetails[id][14]['PAG-IBIG'].value, ALLDetails[id][15]['ADJUSTMENT'].value, ALLDetails[id][16]['CASH ADVANCE'].value, ALLDetails[id][17]['CHARGES'].value, ALLDetails[id][18]['SSS LOAN'].value, ALLDetails[id][19]['PAG-IBIG LOAN'].value, ALLDetails[id][20]['COMPANY LOAN'].value, ALLDetails[id][21]['TOTAL DEDUCTIONS'].value, ALLDetails[id][22]['ALLOWANCE (total)'].value, ALLDetails[id][23]['ALLOWANCE PENALTY'].value, ALLDetails[id][24]['NET'].value);
+                                                                                                                    } else {
+                                                                                                                        if (PAYSCHED == 'monthly') {
+                                                                                                                            update_payroll_file(PAYSCHED, MON, MON, name, id, responseBody.class, className, ALLDetails[id][0]['RATE'], ALLDetails[id][1]['RATE TYPE'], ALLDetails[id][2]['WORKING DAYS'], ALLDetails[id][3]['DAYS WORKED'], ALLDetails[id][4]['SALARY RATE'], ALLDetails[id][5]['ABSENT (total)'].value, ALLDetails[id][6]['BASIC'], ALLDetails[id][7]['UNDERTIME (total)'].value, ALLDetails[id][8]['TARDINESS (total)'].value, ALLDetails[id][9]['HOLIDAYS (total)'].value, ALLDetails[id][10]['OVERTIME (total)'].value, ALLDetails[id][11]['EARNED'].value, ALLDetails[id][12]['SSS'].value, ALLDetails[id][13]['PHILHEALTH'].value, ALLDetails[id][14]['PAG-IBIG'].value, ALLDetails[id][15]['ADJUSTMENT'].value, ALLDetails[id][16]['CASH ADVANCE'].value, ALLDetails[id][17]['CHARGES'].value, ALLDetails[id][18]['SSS LOAN'].value, ALLDetails[id][19]['PAG-IBIG LOAN'].value, ALLDetails[id][20]['COMPANY LOAN'].value, ALLDetails[id][21]['TOTAL DEDUCTIONS'].value, ALLDetails[id][22]['ALLOWANCE (total)'].value, ALLDetails[id][23]['ALLOWANCE PENALTY'].value, ALLDetails[id][24]['NET'].value);
+                                                                                                                        }
+                                                                                                                    }
+
+                                                                                                                    let x = 0;
+                                                                                                                    for (let i = 0; i < ALLDetails.length; i++) {
+                                                                                                                        if (typeof ALLDetails[i] === 'object') {
+                                                                                                                            x += 1;
+                                                                                                                        }
+                                                                                                                    }
+                                                                                                                    
+                                                                                                                    $("#available-payslip").html(`Available: ${x}`);
+                                                                                                                        
+                                                                                                                      
+
+                                                                                                                }
+
+                                                                                                            }
                                                                                                         }
                                                                                                     }
                                                                                                 )
@@ -1207,18 +1695,36 @@ function computeSalary(id) {
                                                                             try {
                                                                                 if (trail[i].date != trail[i + 1].date) {
                                                                                     days_worked += 1;
-                                                                                    ot_total += 0;//parseFloat(trail[i].ot_total);
+                                                                                    if (trail[i].ot_approval == 'approved') {
+                                                                                        ot_total += parseFloat(trail[i].ot_total);
+                                                                                    }
                                                                                     ut_total += parseFloat(trail[i].ut_total);
                                                                                     ot_mins += parseFloat(trail[i].ot_mins);
                                                                                     ut_mins += parseFloat(trail[i].ut_mins);
                                                                                 }
                                                                             } catch (err) {
                                                                                 if (trail[i]) {
-                                                                                    days_worked += 1;
-                                                                                    ot_total += 0;//parseFloat(trail[i].ot_total);
-                                                                                    ut_total += parseFloat(trail[i].ut_total);
+                                                                                    const currentDate = new Date();
+
+                                                                                    // Get the year, month, and day
+                                                                                    const year = currentDate.getFullYear();
+                                                                                    const mon = String(currentDate.getMonth() + 1).padStart(2, '0'); // Months are zero-indexed, so we add 1
+                                                                                    const day = String(currentDate.getDate()).padStart(2, '0');
+
+                                                                                    if (trail[i].date != `${year}-${mon}-${day}`)  {
+                                                                                        days_worked += 1;
+                                                                                    }
+                                                                                    if (trail[i].ot_approval == 'approved') {
+                                                                                        ot_total += parseFloat(trail[i].ot_total);
+                                                                                    }
                                                                                     ot_mins += parseFloat(trail[i].ot_mins);
+
                                                                                     ut_mins += parseFloat(trail[i].ut_mins);
+                                                                                    
+
+                                                                                    //if (trail[i].date != `${year}-${mon}-${day}`)  {
+                                                                                        ut_total += parseFloat(trail[i].ut_total);
+                                                                                    //}
                                                                                 }
                                                                             }
 
@@ -1282,7 +1788,7 @@ function computeSalary(id) {
 
                                                                             PAYSLIP.push({'name' : "Absent", 'row': '7', 'col': '1'})
                                                                             PAYSLIP.push({'name' : absent.toLocaleString(), 'row': '7', 'col': '2'})
-                                                                      
+
                                                                         } else {
                                                                             earned = salaryRate;
                                                                             details.push({"ABSENT (total)" : {"value" : 0, "op" : "-"}});
@@ -1319,6 +1825,7 @@ function computeSalary(id) {
                                                                                 let PERMINUTE_RATE = RATE / 60;
 
                                                                                 tardiness = (PERMINUTE_RATE * totalMinutesLate);
+
                                                                             } else if (rateType == 'monthly') {
                                                                                 let RATE = parseInt(rate) * 12;
                                                                                 let DAILY_RATE = RATE / 365;
@@ -1348,441 +1855,152 @@ function computeSalary(id) {
 
                                                                         PAYSLIP.push({'name' : "Holiday", 'row': '10', 'col': '1'})
                                                                         PAYSLIP.push({'name' : 0, 'row': '10', 'col': '2'})
-                                                                        
-                                                                        earned = earned + 0//;
-                                                                            
-                                                                        details.push({"OVERTIME (total)" : {"value" : 0, "op" : "+"}});
+
+                                                                        earned = earned + ot_total;
+                                                                        details.push({"OVERTIME (total)" : {"value" : ot_total.toFixed(2), "op" : "+"}});
+
                                                                         PAYSLIP.push({'name' : "Overtime", 'row': '11', 'col': '1'})
-                                                                        PAYSLIP.push({'name' : 0, 'row': '11', 'col': '2'})
+                                                                        PAYSLIP.push({'name' : ot_total.toFixed(2), 'row': '11', 'col': '2'})
                                                                      
                                                                         net = earned;
 
                                                                         details.push({"EARNED" : {"value" : earned.toLocaleString(), "highlight" : "", "op" : "+"}});
 
-                                                                        $.ajax({
-                                                                            type: 'POST',
-                                                                            url: '../php/determine_period.php',
-                                                                            data : {
-                                                                                id: id,
-                                                                            }, success: function(res) {
-                                                                                let sss_contri = 0;
-                                                                                let pbig_contri = 0;
-                                                                                let phil_contri = 0;
 
-                                                                                if (res == 'second-half') {  
-                                                                                    $.ajax({
-                                                                                        type: 'POST',
-                                                                                        url: '../php/fetch_first_halfperiod.php',
-                                                                                        data: {
-                                                                                            id: id,
-                                                                                        },
-                                                                                        success: function(res) {
-                                                                                            try {
-                                                                                                res = JSON.parse(res);
-                                                                                                let s = salaryRate + parseFloat(res.salary_rate);
+                                                                        let sss_contri = 0;
+                                                                        let pbig_contri = 0;
+                                                                        let phil_contri = 0;
 
-                                                                                                if (SSS != 'undefined' && SSS != null) {
-                                                                                                    for (let i = 0; i < SSS.length; i++) {
-                                                                                                        if (SSS[i][2] == 'Over') {
-                                                                                                            if (s >= SSS[i][1]) {
-                                                                                                                sss_contri = SSS[i][6];
-                                                                                                                break;
-                                                                                                            }
-                                                                                                        } else {
-                                                                                                            if (s >= SSS[i][1] && s <= SSS[i][2]) {
-                                                                                                                sss_contri = SSS[i][6];
-                                                                                                                break;
-                                                                                                            }
+                                                                        if (PAYSCHED == 'twice-monthly') {
+                                                                      
+                                                                            $.ajax({
+                                                                                type: 'POST',
+                                                                                url: '../php/determine_period.php',
+                                                                                data : {
+                                                                                    id: id,
+                                                                                    from: from,
+                                                                                }, success: function(res) {
+                                                                                  
+                                                                                    if (PERIOD == 'second-half') {
+                                                                                        try {
+                                                                                            res = JSON.parse(res);
+                                                                                            
+                                                                                            let s = earned + parseFloat(res.earnings);
+                                                                                          
+
+                                                                                            if (SSS != 'undefined' && SSS != null) {
+                                                                                                for (let i = 0; i < SSS.length; i++) {
+                                                                                                    let arr = Object.values(SSS[i]);
+                                                                                                    if (arr[2] == 'Over') {
+
+                                                                                                        if (s >= arr[1]) {
+                                                                                                            sss_contri = arr[6];
+                                                                                                            
+                                                                                                            break;
+                                                                                                        }
+
+                                                                                                    } else {
+
+                                                                                                        let arr = Object.values(SSS[i]);
+                                                                                                        
+                                                                                                        if (s >= arr[1] && s <= arr[2]) {
+                                                                                                            sss_contri = arr[6];
+                                                                                                            
+                                                                                                            break;
                                                                                                         }
                                                                                                     }
                                                                                                 }
-                
-                                                                                                if (PAGIBIG != 'undefined' && PAGIBIG != null) {
-                                                                                                    let d = PAGIBIG;
-                                                                                                    if (d.includes("%")) {
-                                                                                                        d = d.replace(/%/g, '');
-                                                                                                        d = parseFloat(d);
-                
-                                                                                                        d = d / 100;
-                                                                                                        d = s * d;
-                                                                                                        
-                                                                                                    } else {
-                                                                                                        d = parseFloat(d);
-                                                                                                    }
-                                                                                                    pbig_contri = d;
-                                                                                                }
-                
-                                                                                                if (PHILHEALTH != 'undefined' && PHILHEALTH != null) {
-                                                                                                    let d = PHILHEALTH;
-                                                                                                    if (d.includes("%")) {
-                                                                                                        d = d.replace(/%/g, '');
-                                                                                                        d = parseFloat(d);
-                
-                                                                                                        d = d / 100;
-                                                                                                        d = s * d;
-                                                                                                        
-                                                                                                    } else {
-                                                                                                        d = parseFloat(d);
-                                                                                                    }
-                                                                                                    phil_contri = d;
-                                                                                                }
-
-                                                                                                sss_contri = sss_contri - parseFloat(res.sss);
-                                                                                                phil_contri = phil_contri - parseFloat(res.phil);
-                                                                                                pbig_contri = pbig_contri - parseFloat(res.pbig);
-
-                                                                                                deductions[`deduc${id}`] = {"sss" : sss_contri, "pbig" : pbig_contri, "phil" : phil_contri};
-
-                                                                                                D[`d${id}`] = {'sss' : deductions[`deduc${id}`].sss, 'phil' : deductions[`deduc${id}`].phil, 'pbig' : deductions[`deduc${id}`].pbig};
-                            
-                                                                                                if (deductions.hasOwnProperty(`deduc${id}`)) {
-                                                                                                    total_deductions = total_deductions + parseFloat(deductions[`deduc${id}`].sss);
-                                                                                                    total_deductions = total_deductions + parseFloat(deductions[`deduc${id}`].phil);
-                                                                                                    total_deductions = total_deductions + parseFloat(deductions[`deduc${id}`].pbig);
-
-                                                                                                    details.push({"SSS" : {"value" : deductions[`deduc${id}`].sss, "op" : "-"}});
-                                                                                                    details.push({"PHILHEALTH" : {"value" : deductions[`deduc${id}`].phil, "op" : "-"}});
-                                                                                                    details.push({"PAG-IBIG" : {"value" : deductions[`deduc${id}`].pbig, "op" : "-"}});
-
-                                                                                                    PAYSLIP.push({'name' : "SSS", 'row': '6', 'col': '3'})
-                                                                                                    PAYSLIP.push({'name' : deductions[`deduc${id}`].sss, 'row': '6', 'col': '4'})
-                                                                                                    PAYSLIP.push({'name' : "PhilHealth", 'row': '7', 'col': '3'})
-                                                                                                    PAYSLIP.push({'name' : deductions[`deduc${id}`].phil, 'row': '7', 'col': '4'})
-                                                                                                    PAYSLIP.push({'name' : "Pag-IBIG", 'row': '8', 'col': '3'})
-                                                                                                    PAYSLIP.push({'name' : deductions[`deduc${id}`].pbig, 'row': '6', 'col': '4'})
-                                                                                                } else {
-
-                                                                                                    details.push({"SSS" : {"value" : 0, "op" : "-"}});
-                                                                                                    details.push({"PHILHEALTH" : {"value" : 0, "op" : "-"}});
-                                                                                                    details.push({"PAG-IBIG" : {"value" : 0, "op" : "-"}});
-
-
-                                                                                                    PAYSLIP.push({'name' : "SSS", 'row': '6', 'col': '3'})
-                                                                                                    PAYSLIP.push({'name' : 0, 'row': '6', 'col': '4'})
-                                                                                                    PAYSLIP.push({'name' : "PhilHealth", 'row': '7', 'col': '3'})
-                                                                                                    PAYSLIP.push({'name' : 0, 'row': '7', 'col': '4'})
-                                                                                                    PAYSLIP.push({'name' : "Pag-IBIG", 'row': '8', 'col': '3'})
-                                                                                                    PAYSLIP.push({'name' : 0, 'row': '8', 'col': '4'})
-                                                                                                }
-                                                                                                
-                                                                                                total_deductions = total_deductions + parseInt(adjustment);
-                                                                                                total_deductions = total_deductions + parseInt(CA);
-                                                                                                total_deductions = total_deductions + parseInt(charges);
-                                                                                                total_deductions = total_deductions + parseInt(sss_loan);
-                                                                                                total_deductions = total_deductions + parseInt(pbig_loan);
-                                                                                                total_deductions = total_deductions + parseInt(company_loan);
-
-                                                                                                PAYSLIP.push({'name' : "Adjustment", 'row': '9', 'col': '3'})
-                                                                                                PAYSLIP.push({'name' : adjustment, 'row': '9', 'col': '4'})
-                                                                                                PAYSLIP.push({'name' : "Cash Advance", 'row': '10', 'col': '3'})
-                                                                                                PAYSLIP.push({'name' : CA, 'row': '10', 'col': '4'})
-                                                                                                PAYSLIP.push({'name' : "Charges", 'row': '11', 'col': '3'})
-                                                                                                PAYSLIP.push({'name' : charges, 'row': '11', 'col': '4'})
-                                                                                                PAYSLIP.push({'name' : "SSS Loan", 'row': '12', 'col': '3'})
-                                                                                                PAYSLIP.push({'name' : sss_loan, 'row': '12', 'col': '4'})
-                                                                                                PAYSLIP.push({'name' : "Pag-IBIG Loan", 'row': '13', 'col': '3'})
-                                                                                                PAYSLIP.push({'name' : pbig_loan, 'row': '13', 'col': '4'})
-                                                                                                PAYSLIP.push({'name' : "Company Loan", 'row': '14', 'col': '3'})
-                                                                                                PAYSLIP.push({'name' : company_loan, 'row': '14', 'col': '4'})
-
-                                                                                                PAYSLIP.push({'name' : "Total Deductions", 'row': '15', 'col': '3', 'bold' : true})
-                                                                                                PAYSLIP.push({'name' : total_deductions.toLocaleString(), 'row': '15', 'col': '4', 'bold' : true})
-
-
-                                                                                                PAYSLIP.push({'name' : "Total Earnings", 'row': '15', 'col': '1', 'bold' : true})
-                                                                                                PAYSLIP.push({'name' : earned.toLocaleString(), 'row': '15', 'col': '2', 'bold' : true})
-
-
-                                                                                                details.push({"ADJUSTMENT" : {"value" : adjustment, "op" : "-"}});
-                                                                                                details.push({"CASH ADVANCE" : {"value" : CA, "op" : "-"}});
-                                                                                                details.push({"CHARGES" : {"value" : charges, "op" : "-"}});
-                                                                                                details.push({"SSS LOAN" : {"value" : sss_loan, "op" : "-"}});
-                                                                                                details.push({"PAG-IBIG LOAN" : {"value" : pbig_loan, "op" : "-"}});
-                                                                                                details.push({"COMPANY LOAN" : {"value" : company_loan, "op" : "-"}});
-                                                                                                details.push({"TOTAL DEDUCTIONS" : {"value" : total_deductions.toLocaleString(), "highlight" : "", "op" : "-"}});
-                                                                                                
-                                                                                                net = net - total_deductions;
-
-                                                                                                if (sched != 'None') {
-                                                                                                    $.ajax({
-                                                                                                        type: 'POST',
-                                                                                                        url: '../php/determine_period.php',
-                                                                                                        data: {
-                                                                                                            id: id,
-                                                                                                        }, success: function(res) {
-
-                                                                                                            let amount = 0;
-                                                                                                            let penalty = 0;
-
-                                                                                                            if (sched[0].pay_sched == 'twice-monthly') {
-                                                                                                
-                                                                                                                //class has allowance
-                                                                                                                if (allowanceResponseBody  != 'None') {
-                                                                                                            
-
-                                                                                                                    for (let i = 0; i < allowanceResponseBody.length; i++) {
-                                                                                                                        console.log("ALLO 1428");
-                                                                                                                        console.log(allowanceResponseBody[i].amount);
-                                                                                                                        if (allowanceResponseBody[i].detail == 'twice monthly') { //twice monthly allowance
-                                                                                                                            amount += parseInt(allowanceResponseBody[i].amount);
-                                                                                                                        } else {
-                                                                                                                            if (res == 'second-half') {
-                                                                                                                                amount += parseInt(allowanceResponseBody[i].amount);
-                                                                                                                            }
-                                                                                                                        }
-                            
-                                                                                                                        
-                                                                                                                        let allowanceID = parseInt(allowanceResponseBody[i].id);
-                                
-                                                                                                                        if (allowancePenalty != 'None') {
-                                                                                                                            
-                                                                                                                            for (let k = 0; k < allowancePenalty.length; k++) {
-                                                                                                                                
-                                                                                                                                if (parseInt(allowancePenalty[k].allowance) == allowanceID) {
-                                                                                                                                    
-                                                                                                                                    let deduction = allowancePenalty[k].deduction;
-                                    
-                                                                                                                                    //percentage
-                                                                                                                                    if (deduction.includes("%")) {
-                                                                                                                                        deduction = deduction.replace(/%/g, '');
-                                                                                                                                        deduction = parseFloat(deduction);
-                                    
-                                                                                                                                        if (allowancePenalty[k].type == 'absent') {
-                                                                                                                                            let numOfAbsent = parseInt($(`#cal${id}`).val()) - days_worked;
-                                    
-                                                                                                                                            deduction = deduction * numOfAbsent;
-                                                                                                                                            deduction = deduction / 100;
-                                    
-                                                                                                                                            let deducted = amount * deduction;
-                                                                                                                                            penalty = deducted;
-                                                                                                                                            amount = amount - deducted;
-                                    
-                                                                                                                                        } else {
-                                                                                                                                            let type = allowancePenalty[k].type.split("|");
-                                                                                                                                            let lateMins = parseInt(type[1]);
-                                                                                                                                            let numOfLate = 0;
-                                                                                                                                            for (let j = 0; j < trail.length; j++) {
-                                                                                                                                                if (parseInt(trail[j].late_mins) >= lateMins) {
-                                                                                                                                                    numOfLate += 1;
-                                                                                                                                                }
-                                                                                                                                            }
-                                                                                                                                            deduction = deduction * numOfLate;
-                                                                                                                                            deduction = deduction / 100;
-                                    
-                                                                                                                                            let deducted = amount * deduction;
-                                                                                                                                            penalty = deducted;
-                                                                                                                                            amount = amount - deducted;
-                                                                                                                                        }
-                                    
-                                                                                                                                    } else {
-                                                                                                                                        deduction = parseFloat(deduction);
-                                    
-                                                                                                                                        if (allowancePenalty[k].type == 'absent') {
-                                                                                                                                            let numOfAbsent = parseInt($(`#cal${id}`).val()) - days_worked;
-                                    
-                                                                                                                                            deduction = deduction * numOfAbsent;
-                                                                                                                                            amount = amount - deduction;
-                                    
-                                                                                                                                        } else {
-                                                                                                                                            let type = allowancePenalty[k].type.split("|");
-                                                                                                                                            let lateMins = parseInt(type[1]);
-                                                                                                                                            let numOfLate = 0;
-                                                                                                                                            for (let j = 0; j < trail.length; j++) {
-                                                                                                                                                if (parseInt(trail[j].late_mins) >= lateMins) {
-                                                                                                                                                    numOfLate += 1;
-                                                                                                                                                }
-                                                                                                                                            }
-                                                                                                                                            deduction = deduction * numOfLate;
-                                                                                                                                            penalty = deduction;
-                                                                                                                                            amount = amount - deduction;
-                                                                                                                                        }
-                                                                                                                                    }
-                                                                                                                                
-                                                                                                                                }
-                                                                                                                            }
-
-                                                                                                                            
-
-                                                                                                                            
-                                                                                                                        }
-
-                                                                                                                        
-                                                                                                                        
-                                                                                                                    }
-                                                                                                                }
-                                                                                                            } else if (sched[0].pay_sched == 'monthly') {
-                                                                                                                if (allowanceResponseBody != 'None') {
-                                                                                                                    for (let i = 0; i < allowanceResponseBody.length; i++) {
-                                                                                                                        console.log("ALLO 1573");
-                                                                                                                        console.log(allowanceResponseBody[i].amount);
-                                
-                                                                                                                        if (allowanceResponseBody[i].detail == 'monthly') {
-                                                                                                                            amount += parseInt(allowanceResponseBody[i].amount);
-                                                                                                                        }
-                                
-                                                                                                                        let allowanceID = parseInt(allowanceResponseBody[i].id);
-                                
-                                                                                                                        if (allowancePenalty != 'None') {
-                                                                                                                            for (let k = 0; k < allowancePenalty.length; k++) {
-                                                                                                                                if (parseInt(allowancePenalty[k].allowance) == allowanceID) {
-                                                                                                                                    let deduction = allowancePenalty[k].deduction;
-                                    
-                                                                                                                                    //percentage
-                                                                                                                                    if (deduction.includes("%")) {
-                                                                                                                                        deduction = deduction.replace(/%/g, '');
-                                                                                                                                        deduction = parseFloat(deduction);
-                                    
-                                                                                                                                        if (allowancePenalty[k].type == 'absent') {
-                                                                                                                                            let numOfAbsent = parseInt($(`#cal${id}`).val()) - days_worked;
-                                    
-                                                                                                                                            deduction = deduction * numOfAbsent;
-                                                                                                                                            deduction = deduction / 100;
-                                    
-                                                                                                                                            let deducted = amount * deduction;
-                                                                                                                                            penalty = deducted;
-                                                                                                                                            amount = amount - deducted;
-                                    
-                                                                                                                                        } else {
-                                                                                                                                            let type = allowancePenalty[k].type.split("|");
-                                                                                                                                            let lateMins = parseInt(type[1]);
-                                                                                                                                            let numOfLate = 0;
-                                                                                                                                            for (let j = 0; j < trail.length; j++) {
-                                                                                                                                                if (parseInt(trail[j].late_mins) >= lateMins) {
-                                                                                                                                                    numOfLate += 1;
-                                                                                                                                                }
-                                                                                                                                            }
-                                                                                                                                            deduction = deduction * numOfLate;
-                                                                                                                                            deduction = deduction / 100;
-                                    
-                                                                                                                                            let deducted = amount * deduction;
-                                                                                                                                            penalty = deducted;
-                                                                                                                                            amount = amount - deducted;
-                                                                                                                                        }
-                                    
-                                                                                                                                    } else {
-                                                                                                                                        deduction = parseFloat(deduction);
-                                    
-                                                                                                                                        if (allowancePenalty[k].type == 'absent') {
-                                                                                                                                            let numOfAbsent = parseInt($(`#cal${id}`).val()) - days_worked;
-                                    
-                                                                                                                                            deduction = deduction * numOfAbsent;
-                                                                                                                                            amount = amount - deduction;
-                                    
-                                                                                                                                        } else {
-                                                                                                                                            let type = allowancePenalty[k].type.split("|");
-                                                                                                                                            let lateMins = parseInt(type[1]);
-                                                                                                                                            let numOfLate = 0;
-                                                                                                                                            for (let j = 0; j < trail.length; j++) {
-                                                                                                                                                if (parseInt(trail[j].late_mins) >= lateMins) {
-                                                                                                                                                    numOfLate += 1;
-                                                                                                                                                }
-                                                                                                                                            }
-                                                                                                                                            deduction = deduction * numOfLate;
-                                                                                                                                            penalty = deduction;
-                                                                                                                                            amount = amount - deduction;
-                                                                                                                                        }
-                                                                                                                                    }
-                                                                                                                                
-                                                                                                                                }
-                                                                                                                            }
-                                                                                                                        }
-                                
-                                                                                                                    }
-                                                                                                                }
-                                                                                                            }
-
-                                                                                                            details.push({"ALLOWANCE (total)" : {"value" : amount.toLocaleString(), "op" : "+"}});
-                                                                                                            details.push({"ALLOWANCE PENALTY" : {"value" : penalty.toFixed(2), "op" : "-"}});
-
-                                                                                                            net = net + amount;
-
-                                                                                                            PAYSLIP.push({'name' : "Allowance", 'row': '16', 'col': '1', 'bold' : true})
-                                                                                                            PAYSLIP.push({'name' : amount.toLocaleString(), 'row': '16', 'col': '2', 'bold' : true})
-
-                                                                                                            PAYSLIP.push({'name' : "Net Earnings", 'row': '17', 'col': '1', 'span' : '3', 'align' : 'right', 'bold' : true, 'margin' : '15px'})
-                                                                                                            PAYSLIP.push({'name' : net.toLocaleString(), 'row': '17', 'col': '2', 'bold' : true})
-
-                                                                                                            PAYSLIP.push({'name' : "Signature", 'row': '18', 'col': '1', 'span' : '2', 'align' : 'center', 'border':'2px solid rgba(0,0,0,.6)'})
-
-                                                                                                            PAYSLIPS.push(PAYSLIP);
-                                                                                                            PAYSLIP = [];
-
-                                                                                                            details.push({"NET" : {"value" : net.toLocaleString(), "highlight" : ""}});
-                                                                                                        
-                                                                                                            
-                                                                                                            $(`#gross-pay${id}`).html(earned.toLocaleString());
-                                                                                                            $(`#net-pay${id}`).html(net.toLocaleString());
-
-                                                                                                            id = parseInt(id);
-                                                                                                            
-                                                                                                            if (ALLDetails.length < id + 1) {
-                                                                                                                for (let i = id; i > 0; i--) {
-                                                                                                                    ALLDetails[i] = " ";
-                                                                                                                    if (ALLDetails[i - 1] != null || ALLDetails[i - 1] != undefined) {
-                                                                                                                        break;
-                                                                                                                    }
-                                                                                                                }
-                                                                                                            }
-
-
-                                                                                                            ALLDetails[id] = details;
-                                                                                                            
-                                                                                                            console.log(ALLDetails[id]);
-
-                                                                                                            let x = 0;
-                                                                                                            for (let i = 0; i < ALLDetails.length; i++) {
-                                                                                                                if (typeof ALLDetails[i] === 'object') {
-                                                                                                                    x += 1;
-                                                                                                                }
-                                                                                                            }
-
-                                                                                                            console.log(PAYSLIPS);
-                                                                                                            console.log(ALLDetails);
-
-                                                                                                            
-                                                                                                            $("#available-payslip").html(`Available: ${x}`);
-
-
-                                                                                                        }
-                                                                                                    });
-
-                                                                                                } else {
-                                                                                                    errorNotification("Please update your settings.", "warning");
-                                                                                                }
-
-                                                                                            } catch (err) {
-                                                                                                console.log(err);
+                                                                                               
                                                                                             }
+
+            
+                                                                                            if (PAGIBIG != 'undefined' && PAGIBIG != null) {
+                                                                                                let d = PAGIBIG;
+                                                                                                if (d.includes("%")) {
+                                                                                                    d = d.replace(/%/g, '');
+                                                                                                    d = parseFloat(d);
+            
+                                                                                                    d = d / 100;
+                                                                                                    d = s * d;
+                                                                                                    
+                                                                                                } else {
+                                                                                                    d = parseFloat(d);
+                                                                                                }
+                                                                                                pbig_contri = d;
+                                                                                            }
+            
+                                                                                            if (PHILHEALTH != 'undefined' && PHILHEALTH != null) {
+                                                                                                let d = PHILHEALTH;
+                                                                                                if (d.includes("%")) {
+                                                                                                    d = d.replace(/%/g, '');
+                                                                                                    d = parseFloat(d);
+            
+                                                                                                    d = d / 100;
+                                                                                                    d = s * d;
+                                                                                                    
+                                                                                                } else {
+                                                                                                    d = parseFloat(d);
+                                                                                                }
+                                                                                                phil_contri = d;
+                                                                                            }
+
+                                                                                            
+                                                                                         
+
+
+                                                                                            sss_contri = sss_contri - parseFloat(res.sss);
+                                                                                            phil_contri = phil_contri - parseFloat(res.phil);
+                                                                                            pbig_contri = pbig_contri - parseFloat(res.pbig);
+
+                                                                                        } catch (err) {
+                                                                                            console.log(err);
                                                                                         }
-                                                                                    })
 
-                                                                                } else {
+                                                                                     
 
-                                                                                    if (firsHalfDeduction != 'undefined' && firsHalfDeduction != null) {
-                                                                                        sss_contri = firsHalfDeduction;
-                                                                                        pbig_contri = firsHalfDeduction;
-                                                                                        phil_contri = firsHalfDeduction;
+                                                                                        
+                                                                                    
+                                                                                    } else {
+                                                                                        if (sss_first_half != 'undefined' && sss_first_half != null) {
+                                                                                            sss_contri = sss_first_half;
+                                                                                        }
+                                                                                        if (pbig_first_half != 'undefined' && pbig_first_half != null) {
+                                                                                            pbig_contri = pbig_first_half;
+                                                                                        }
+                                                                                        if (phil_first_half != 'undefined' && phil_first_half != null) {
+                                                                                            phil_contri = phil_first_half;
+                                                                                        }
                                                                                     }
+
+
+                                                                                   
+                                                                                    
 
                                                                                     deductions[`deduc${id}`] = {"sss" : sss_contri, "pbig" : pbig_contri, "phil" : phil_contri};
 
                                                                                     D[`d${id}`] = {'sss' : deductions[`deduc${id}`].sss, 'phil' : deductions[`deduc${id}`].phil, 'pbig' : deductions[`deduc${id}`].pbig};
                 
                                                                                     if (deductions.hasOwnProperty(`deduc${id}`)) {
-                                                                                        total_deductions = total_deductions + parseFloat(deductions[`deduc${id}`].sss);
-                                                                                        total_deductions = total_deductions + parseFloat(deductions[`deduc${id}`].phil);
-                                                                                        total_deductions = total_deductions + parseFloat(deductions[`deduc${id}`].pbig);
+                                                                                        let sss, phil, pbig;
+                                                                                        sss = parseFloat(deductions[`deduc${id}`].sss);
+                                                                                        phil = parseFloat(deductions[`deduc${id}`].phil);
+                                                                                        pbig = parseFloat(deductions[`deduc${id}`].pbig);
 
-                                                                                        details.push({"SSS" : {"value" : deductions[`deduc${id}`].sss, "op" : "-"}});
-                                                                                        details.push({"PHILHEALTH" : {"value" : deductions[`deduc${id}`].phil, "op" : "-"}});
-                                                                                        details.push({"PAG-IBIG" : {"value" : deductions[`deduc${id}`].pbig, "op" : "-"}});
+                                                                                        total_deductions = total_deductions + sss;
+                                                                                        total_deductions = total_deductions + phil;
+                                                                                        total_deductions = total_deductions + pbig;
 
+                                                                                        details.push({"SSS" : {"value" : sss.toFixed(2), "op" : "-"}});
+                                                                                        details.push({"PHILHEALTH" : {"value" : phil.toFixed(2), "op" : "-"}});
+                                                                                        details.push({"PAG-IBIG" : {"value" : pbig.toFixed(2), "op" : "-"}});
+                                                                                        
                                                                                         PAYSLIP.push({'name' : "SSS", 'row': '6', 'col': '3'})
-                                                                                        PAYSLIP.push({'name' : deductions[`deduc${id}`].sss, 'row': '6', 'col': '4'})
+                                                                                        PAYSLIP.push({'name' : sss.toFixed(2), 'row': '6', 'col': '4'})
                                                                                         PAYSLIP.push({'name' : "PhilHealth", 'row': '7', 'col': '3'})
-                                                                                        PAYSLIP.push({'name' : deductions[`deduc${id}`].phil, 'row': '7', 'col': '4'})
+                                                                                        PAYSLIP.push({'name' : phil.toFixed(2), 'row': '7', 'col': '4'})
                                                                                         PAYSLIP.push({'name' : "Pag-IBIG", 'row': '8', 'col': '3'})
-                                                                                        PAYSLIP.push({'name' : deductions[`deduc${id}`].pbig, 'row': '6', 'col': '4'})
+                                                                                        PAYSLIP.push({'name' : pbig.toFixed(2), 'row': '8', 'col': '4'})
+                                                                                       
                                                                                     } else {
 
                                                                                         details.push({"SSS" : {"value" : 0, "op" : "-"}});
@@ -1837,242 +2055,630 @@ function computeSalary(id) {
                                                                                     net = net - total_deductions;
 
                                                                                     if (sched != 'None') {
-                                                                                        $.ajax({
-                                                                                            type: 'POST',
-                                                                                            url: '../php/determine_period.php',
-                                                                                            data: {
-                                                                                                id: id,
-                                                                                            }, success: function(res) {
 
-                                                                                                let amount = 0;
-                                                                                                let penalty = 0;
+                                                                                        let amount = 0;
+                                                                                        let penalty = 0;
 
-                                                                                                if (sched[0].pay_sched == 'twice-monthly') {
-                                                                                    
-                                                                                                    //class has allowance
-                                                                                                    if (allowanceResponseBody  != 'None') {
-                                                                                                
+                                                                                        if (sched[0].pay_sched == 'twice-monthly') {
+                                                                            
+                                                                                            //class has allowance
+                                                                                            if (allowanceResponseBody  != 'None') {
+                                                                                        
+                                                                                                for (let i = 0; i < allowanceResponseBody.length; i++) {
 
-                                                                                                        for (let i = 0; i < allowanceResponseBody.length; i++) {
-                                                                                                            console.log("ALLO 1428");
-                                                                                                            console.log(allowanceResponseBody[i].amount);
-                                                                                                            if (allowanceResponseBody[i].detail == 'twice monthly') { //twice monthly allowance
-                                                                                                                amount += parseInt(allowanceResponseBody[i].amount);
-                                                                                                            } else {
-                                                                                                                if (res == 'second-half') {
-                                                                                                                    amount += parseInt(allowanceResponseBody[i].amount);
-                                                                                                                }
-                                                                                                            }
-                
+                                                                                                    if (allowanceResponseBody[i].detail == 'twice monthly') { //twice monthly allowance
+                                                                                                        amount += parseInt(allowanceResponseBody[i].amount);
+                                                                                                    } else {
+                                                                                                        if (PERIOD == 'second-half') {
+                                                                                                            amount += parseInt(allowanceResponseBody[i].amount);
+                                                                                                        }
+                                                                                                    }
+                                                                                                    
+                                                                                                    let allowanceID = parseInt(allowanceResponseBody[i].id);
+            
+                                                                                                    if (allowancePenalty != 'None') {
+                                                                                                        
+                                                                                                        for (let k = 0; k < allowancePenalty.length; k++) {
                                                                                                             
-                                                                                                            let allowanceID = parseInt(allowanceResponseBody[i].id);
-                    
-                                                                                                            if (allowancePenalty != 'None') {
+                                                                                                            if (parseInt(allowancePenalty[k].allowance) == allowanceID) {
                                                                                                                 
-                                                                                                                for (let k = 0; k < allowancePenalty.length; k++) {
-                                                                                                                    
-                                                                                                                    if (parseInt(allowancePenalty[k].allowance) == allowanceID) {
-                                                                                                                        
-                                                                                                                        let deduction = allowancePenalty[k].deduction;
-                        
-                                                                                                                        //percentage
-                                                                                                                        if (deduction.includes("%")) {
-                                                                                                                            deduction = deduction.replace(/%/g, '');
-                                                                                                                            deduction = parseFloat(deduction);
-                        
-                                                                                                                            if (allowancePenalty[k].type == 'absent') {
-                                                                                                                                let numOfAbsent = parseInt($(`#cal${id}`).val()) - days_worked;
-                        
-                                                                                                                                deduction = deduction * numOfAbsent;
-                                                                                                                                deduction = deduction / 100;
-                        
-                                                                                                                                let deducted = amount * deduction;
-                                                                                                                                penalty = deducted;
-                                                                                                                                amount = amount - deducted;
-                        
-                                                                                                                            } else {
-                                                                                                                                let type = allowancePenalty[k].type.split("|");
-                                                                                                                                let lateMins = parseInt(type[1]);
-                                                                                                                                let numOfLate = 0;
-                                                                                                                                for (let j = 0; j < trail.length; j++) {
-                                                                                                                                    if (parseInt(trail[j].late_mins) >= lateMins) {
-                                                                                                                                        numOfLate += 1;
-                                                                                                                                    }
-                                                                                                                                }
-                                                                                                                                deduction = deduction * numOfLate;
-                                                                                                                                deduction = deduction / 100;
-                        
-                                                                                                                                let deducted = amount * deduction;
-                                                                                                                                penalty = deducted;
-                                                                                                                                amount = amount - deducted;
-                                                                                                                            }
-                        
-                                                                                                                        } else {
-                                                                                                                            deduction = parseFloat(deduction);
-                        
-                                                                                                                            if (allowancePenalty[k].type == 'absent') {
-                                                                                                                                let numOfAbsent = parseInt($(`#cal${id}`).val()) - days_worked;
-                        
-                                                                                                                                deduction = deduction * numOfAbsent;
-                                                                                                                                amount = amount - deduction;
-                        
-                                                                                                                            } else {
-                                                                                                                                let type = allowancePenalty[k].type.split("|");
-                                                                                                                                let lateMins = parseInt(type[1]);
-                                                                                                                                let numOfLate = 0;
-                                                                                                                                for (let j = 0; j < trail.length; j++) {
-                                                                                                                                    if (parseInt(trail[j].late_mins) >= lateMins) {
-                                                                                                                                        numOfLate += 1;
-                                                                                                                                    }
-                                                                                                                                }
-                                                                                                                                deduction = deduction * numOfLate;
-                                                                                                                                penalty = deduction;
-                                                                                                                                amount = amount - deduction;
+                                                                                                                let deduction = allowancePenalty[k].deduction;
+                
+                                                                                                                //percentage
+                                                                                                                if (deduction.includes("%")) {
+                                                                                                                    deduction = deduction.replace(/%/g, '');
+                                                                                                                    deduction = parseFloat(deduction);
+                
+                                                                                                                    if (allowancePenalty[k].type == 'absent') {
+                                                                                                                        let numOfAbsent = parseInt($(`#cal${id}`).val()) - days_worked;
+                
+                                                                                                                        deduction = deduction * numOfAbsent;
+                                                                                                                        deduction = deduction / 100;
+                
+                                                                                                                        let deducted = amount * deduction;
+                                                                                                                        penalty = deducted;
+                                                                                                                        amount = amount - deducted;
+                
+                                                                                                                    } else {
+                                                                                                                        let type = allowancePenalty[k].type.split("|");
+                                                                                                                        let lateMins = parseInt(type[1]);
+                                                                                                                        let numOfLate = 0;
+                                                                                                                        for (let j = 0; j < trail.length; j++) {
+                                                                                                                            if (parseInt(trail[j].late_mins) >= lateMins) {
+                                                                                                                                numOfLate += 1;
                                                                                                                             }
                                                                                                                         }
-                                                                                                                    
+                                                                                                                        deduction = deduction * numOfLate;
+                                                                                                                        deduction = deduction / 100;
+                
+                                                                                                                        let deducted = amount * deduction;
+                                                                                                                        penalty = deducted;
+                                                                                                                        amount = amount - deducted;
+                                                                                                                    }
+                
+                                                                                                                } else {
+                                                                                                                    deduction = parseFloat(deduction);
+                
+                                                                                                                    if (allowancePenalty[k].type == 'absent') {
+                                                                                                                        let numOfAbsent = parseInt($(`#cal${id}`).val()) - days_worked;
+                
+                                                                                                                        deduction = deduction * numOfAbsent;
+                                                                                                                        amount = amount - deduction;
+                
+                                                                                                                    } else {
+                                                                                                                        let type = allowancePenalty[k].type.split("|");
+                                                                                                                        let lateMins = parseInt(type[1]);
+                                                                                                                        let numOfLate = 0;
+                                                                                                                        for (let j = 0; j < trail.length; j++) {
+                                                                                                                            if (parseInt(trail[j].late_mins) >= lateMins) {
+                                                                                                                                numOfLate += 1;
+                                                                                                                            }
+                                                                                                                        }
+                                                                                                                        deduction = deduction * numOfLate;
+                                                                                                                        penalty = deduction;
+                                                                                                                        amount = amount - deduction;
                                                                                                                     }
                                                                                                                 }
-
-                                                                                                            }
                                                                                                             
+                                                                                                            }
                                                                                                         }
+                                                                                                        
                                                                                                     }
 
-                                                                                                } else if (sched[0].pay_sched == 'monthly') {
-                                                                                                    if (allowanceResponseBody != 'None') {
-                                                                                                        for (let i = 0; i < allowanceResponseBody.length; i++) {
-                                                                                                           
-                                                                                                            if (allowanceResponseBody[i].detail == 'monthly') {
-                                                                                                                amount += parseInt(allowanceResponseBody[i].amount);
-                                                                                                            }
-                    
-                                                                                                            let allowanceID = parseInt(allowanceResponseBody[i].id);
-                    
-                                                                                                            if (allowancePenalty != 'None') {
-                                                                                                                for (let k = 0; k < allowancePenalty.length; k++) {
-                                                                                                                    if (parseInt(allowancePenalty[k].allowance) == allowanceID) {
-                                                                                                                        let deduction = allowancePenalty[k].deduction;
-                        
-                                                                                                                        //percentage
-                                                                                                                        if (deduction.includes("%")) {
-                                                                                                                            deduction = deduction.replace(/%/g, '');
-                                                                                                                            deduction = parseFloat(deduction);
-                        
-                                                                                                                            if (allowancePenalty[k].type == 'absent') {
-                                                                                                                                let numOfAbsent = parseInt($(`#cal${id}`).val()) - days_worked;
-                        
-                                                                                                                                deduction = deduction * numOfAbsent;
-                                                                                                                                deduction = deduction / 100;
-                        
-                                                                                                                                let deducted = amount * deduction;
-                                                                                                                                penalty = deducted;
-                                                                                                                                amount = amount - deducted;
-                        
-                                                                                                                            } else {
-                                                                                                                                let type = allowancePenalty[k].type.split("|");
-                                                                                                                                let lateMins = parseInt(type[1]);
-                                                                                                                                let numOfLate = 0;
-                                                                                                                                for (let j = 0; j < trail.length; j++) {
-                                                                                                                                    if (parseInt(trail[j].late_mins) >= lateMins) {
-                                                                                                                                        numOfLate += 1;
-                                                                                                                                    }
-                                                                                                                                }
-                                                                                                                                deduction = deduction * numOfLate;
-                                                                                                                                deduction = deduction / 100;
-                        
-                                                                                                                                let deducted = amount * deduction;
-                                                                                                                                penalty = deducted;
-                                                                                                                                amount = amount - deducted;
-                                                                                                                            }
-                        
-                                                                                                                        } else {
-                                                                                                                            deduction = parseFloat(deduction);
-                        
-                                                                                                                            if (allowancePenalty[k].type == 'absent') {
-                                                                                                                                let numOfAbsent = parseInt($(`#cal${id}`).val()) - days_worked;
-                        
-                                                                                                                                deduction = deduction * numOfAbsent;
-                                                                                                                                amount = amount - deduction;
-                        
-                                                                                                                            } else {
-                                                                                                                                let type = allowancePenalty[k].type.split("|");
-                                                                                                                                let lateMins = parseInt(type[1]);
-                                                                                                                                let numOfLate = 0;
-                                                                                                                                for (let j = 0; j < trail.length; j++) {
-                                                                                                                                    if (parseInt(trail[j].late_mins) >= lateMins) {
-                                                                                                                                        numOfLate += 1;
-                                                                                                                                    }
-                                                                                                                                }
-                                                                                                                                deduction = deduction * numOfLate;
-                                                                                                                                penalty = deduction;
-                                                                                                                                amount = amount - deduction;
+                                                                                                    
+                                                                                                    
+                                                                                                }
+                                                                                            }
+                                                                                        } else if (sched[0].pay_sched == 'monthly') {
+                                                                                            if (allowanceResponseBody != 'None') {
+                                                                                                for (let i = 0; i < allowanceResponseBody.length; i++) {
+            
+                                                                                                    if (allowanceResponseBody[i].detail == 'monthly') {
+                                                                                                        amount += parseInt(allowanceResponseBody[i].amount);
+                                                                                                    }
+            
+                                                                                                    let allowanceID = parseInt(allowanceResponseBody[i].id);
+            
+                                                                                                    if (allowancePenalty != 'None') {
+                                                                                                        for (let k = 0; k < allowancePenalty.length; k++) {
+                                                                                                            if (parseInt(allowancePenalty[k].allowance) == allowanceID) {
+                                                                                                                let deduction = allowancePenalty[k].deduction;
+                
+                                                                                                                //percentage
+                                                                                                                if (deduction.includes("%")) {
+                                                                                                                    deduction = deduction.replace(/%/g, '');
+                                                                                                                    deduction = parseFloat(deduction);
+                
+                                                                                                                    if (allowancePenalty[k].type == 'absent') {
+                                                                                                                        let numOfAbsent = parseInt($(`#cal${id}`).val()) - days_worked;
+                
+                                                                                                                        deduction = deduction * numOfAbsent;
+                                                                                                                        deduction = deduction / 100;
+                
+                                                                                                                        let deducted = amount * deduction;
+                                                                                                                        penalty = deducted;
+                                                                                                                        amount = amount - deducted;
+                
+                                                                                                                    } else {
+                                                                                                                        let type = allowancePenalty[k].type.split("|");
+                                                                                                                        let lateMins = parseInt(type[1]);
+                                                                                                                        let numOfLate = 0;
+                                                                                                                        for (let j = 0; j < trail.length; j++) {
+                                                                                                                            if (parseInt(trail[j].late_mins) >= lateMins) {
+                                                                                                                                numOfLate += 1;
                                                                                                                             }
                                                                                                                         }
-                                                                                                                    
+                                                                                                                        deduction = deduction * numOfLate;
+                                                                                                                        deduction = deduction / 100;
+                
+                                                                                                                        let deducted = amount * deduction;
+                                                                                                                        penalty = deducted;
+                                                                                                                        amount = amount - deducted;
+                                                                                                                    }
+                
+                                                                                                                } else {
+                                                                                                                    deduction = parseFloat(deduction);
+                
+                                                                                                                    if (allowancePenalty[k].type == 'absent') {
+                                                                                                                        let numOfAbsent = parseInt($(`#cal${id}`).val()) - days_worked;
+                
+                                                                                                                        deduction = deduction * numOfAbsent;
+                                                                                                                        amount = amount - deduction;
+                
+                                                                                                                    } else {
+                                                                                                                        let type = allowancePenalty[k].type.split("|");
+                                                                                                                        let lateMins = parseInt(type[1]);
+                                                                                                                        let numOfLate = 0;
+                                                                                                                        for (let j = 0; j < trail.length; j++) {
+                                                                                                                            if (parseInt(trail[j].late_mins) >= lateMins) {
+                                                                                                                                numOfLate += 1;
+                                                                                                                            }
+                                                                                                                        }
+                                                                                                                        deduction = deduction * numOfLate;
+                                                                                                                        penalty = deduction;
+                                                                                                                        amount = amount - deduction;
                                                                                                                     }
                                                                                                                 }
+                                                                                                            
                                                                                                             }
-                    
                                                                                                         }
                                                                                                     }
+            
                                                                                                 }
-
-                                                                                                details.push({"ALLOWANCE (total)" : {"value" : amount.toLocaleString(), "op" : "+"}});
-                                                                                                details.push({"ALLOWANCE PENALTY" : {"value" : penalty.toFixed(2), "op" : "-"}});
-
-                                                                                                net = net + amount;
-
-                                                                                                PAYSLIP.push({'name' : "Allowance", 'row': '16', 'col': '1', 'bold' : true})
-                                                                                                PAYSLIP.push({'name' : amount.toLocaleString(), 'row': '16', 'col': '2', 'bold' : true})
-
-                                                                                                PAYSLIP.push({'name' : "Net Earnings", 'row': '17', 'col': '1', 'span' : '3', 'align' : 'right', 'bold' : true, 'margin' : '15px'})
-                                                                                                PAYSLIP.push({'name' : net.toLocaleString(), 'row': '17', 'col': '2', 'bold' : true})
-
-                                                                                                PAYSLIP.push({'name' : "Signature", 'row': '18', 'col': '1', 'span' : '2', 'align' : 'center', 'border':'2px solid rgba(0,0,0,.6)'})
-
-                                                                                                PAYSLIPS.push(PAYSLIP);
-                                                                                                PAYSLIP = [];
-
-                                                                                                details.push({"NET" : {"value" : net.toLocaleString(), "highlight" : ""}});
-                                                                                                
-                                                                                                $(`#gross-pay${id}`).html(earned.toLocaleString());
-                                                                                                $(`#net-pay${id}`).html(net.toLocaleString());
-
-                                                                                                id = parseInt(id);
-                                                                                                
-                                                                                                if (ALLDetails.length < id + 1) {
-                                                                                                    for (let i = id; i > 0; i--) {
-                                                                                                        ALLDetails[i] = " ";
-                                                                                                        if (ALLDetails[i - 1] != null || ALLDetails[i - 1] != undefined) {
-                                                                                                            break;
-                                                                                                        }
-                                                                                                    }
-                                                                                                }
-
-                                                                                                ALLDetails[id] = details;
-
-                                                                                                let x = 0;
-                                                                                                for (let i = 0; i < ALLDetails.length; i++) {
-                                                                                                    if (typeof ALLDetails[i] === 'object') {
-                                                                                                        x += 1;
-                                                                                                    }
-                                                                                                }
-                                                                                                
-                                                                                                $("#available-payslip").html(`Available: ${x}`);
-
                                                                                             }
-                                                                                        });
+                                                                                        }
+
+                                                                                        details.push({"ALLOWANCE (total)" : {"value" : amount.toLocaleString(), "op" : "+"}});
+                                                                                        details.push({"ALLOWANCE PENALTY" : {"value" : penalty.toFixed(2), "op" : "-"}});
+
+                                                                                        net = net + amount;
+
+                                                                                        PAYSLIP.push({'name' : "Allowance", 'row': '16', 'col': '1', 'bold' : true})
+                                                                                        PAYSLIP.push({'name' : amount.toLocaleString(), 'row': '16', 'col': '2', 'bold' : true})
+
+                                                                                        PAYSLIP.push({'name' : "Net Earnings", 'row': '17', 'col': '1', 'span' : '3', 'align' : 'right', 'bold' : true, 'margin' : '15px'})
+                                                                                        PAYSLIP.push({'name' : net.toLocaleString(), 'row': '17', 'col': '2', 'bold' : true})
+
+                                                                                        PAYSLIP.push({'name' : "Signature", 'row': '18', 'col': '1', 'span' : '2', 'align' : 'center', 'border':'2px solid rgba(0,0,0,.6)'})
+
+                                                                                        for (let i = 0; i < PAYSLIPS.length; i++) {
+                                                                                            if (PAYSLIP[3].name == PAYSLIPS[i][3].name) {
+                                                                                                PAYSLIPS.splice(i, 1);
+                                                                                            }
+                                                                                        }
+
+                                                                                        PAYSLIPS.push(PAYSLIP);
+                                   
+                                                                                        PAYSLIP = [];
+
+                                                                                        details.push({"NET" : {"value" : net.toLocaleString(), "highlight" : ""}});
+                                                                                    
+                                                                                        
+                                                                                        $(`#gross-pay${id}`).html(earned.toLocaleString());
+                                                                                        $(`#net-pay${id}`).html(net.toLocaleString());
+
+                                                                                        id = parseInt(id);
+                                                                                        
+                                                                                        if (ALLDetails.length < id + 1) {
+                                                                                            for (let i = id; i > 0; i--) {
+                                                                                                ALLDetails[i] = " ";
+                                                                                                if (ALLDetails[i - 1] != null || ALLDetails[i - 1] != undefined) {
+                                                                                                    break;
+                                                                                                }
+                                                                                            }
+                                                                                        }
+
+                                                                                        ALLDetails[id] = details;
+                                                                                        
+                                                                                        if (PAYSCHED == 'twice-monthly') {
+                                                                                            update_payroll_file(PAYSCHED, from, to, name, id, responseBody.class, className, ALLDetails[id][0]['RATE'], ALLDetails[id][1]['RATE TYPE'], ALLDetails[id][2]['WORKING DAYS'], ALLDetails[id][3]['DAYS WORKED'], ALLDetails[id][4]['SALARY RATE'], ALLDetails[id][5]['ABSENT (total)'].value, ALLDetails[id][6]['BASIC'], ALLDetails[id][7]['UNDERTIME (total)'].value, ALLDetails[id][8]['TARDINESS (total)'].value, ALLDetails[id][9]['HOLIDAYS (total)'].value, ALLDetails[id][10]['OVERTIME (total)'].value, ALLDetails[id][11]['EARNED'].value, ALLDetails[id][12]['SSS'].value, ALLDetails[id][13]['PHILHEALTH'].value, ALLDetails[id][14]['PAG-IBIG'].value, ALLDetails[id][15]['ADJUSTMENT'].value, ALLDetails[id][16]['CASH ADVANCE'].value, ALLDetails[id][17]['CHARGES'].value, ALLDetails[id][18]['SSS LOAN'].value, ALLDetails[id][19]['PAG-IBIG LOAN'].value, ALLDetails[id][20]['COMPANY LOAN'].value, ALLDetails[id][21]['TOTAL DEDUCTIONS'].value, ALLDetails[id][22]['ALLOWANCE (total)'].value, ALLDetails[id][23]['ALLOWANCE PENALTY'].value, ALLDetails[id][24]['NET'].value);
+                                                                                        } else {
+                                                                                            if (PAYSCHED == 'monthly') {
+                                                                                                update_payroll_file(PAYSCHED, MON, MON, name, id, responseBody.class, className, ALLDetails[id][0]['RATE'], ALLDetails[id][1]['RATE TYPE'], ALLDetails[id][2]['WORKING DAYS'], ALLDetails[id][3]['DAYS WORKED'], ALLDetails[id][4]['SALARY RATE'], ALLDetails[id][5]['ABSENT (total)'].value, ALLDetails[id][6]['BASIC'], ALLDetails[id][7]['UNDERTIME (total)'].value, ALLDetails[id][8]['TARDINESS (total)'].value, ALLDetails[id][9]['HOLIDAYS (total)'].value, ALLDetails[id][10]['OVERTIME (total)'].value, ALLDetails[id][11]['EARNED'].value, ALLDetails[id][12]['SSS'].value, ALLDetails[id][13]['PHILHEALTH'].value, ALLDetails[id][14]['PAG-IBIG'].value, ALLDetails[id][15]['ADJUSTMENT'].value, ALLDetails[id][16]['CASH ADVANCE'].value, ALLDetails[id][17]['CHARGES'].value, ALLDetails[id][18]['SSS LOAN'].value, ALLDetails[id][19]['PAG-IBIG LOAN'].value, ALLDetails[id][20]['COMPANY LOAN'].value, ALLDetails[id][21]['TOTAL DEDUCTIONS'].value, ALLDetails[id][22]['ALLOWANCE (total)'].value, ALLDetails[id][23]['ALLOWANCE PENALTY'].value, ALLDetails[id][24]['NET'].value);
+                                                                                            }
+                                                                                        }
+
+                                                                                        let x = 0;
+                                                                                        for (let i = 0; i < ALLDetails.length; i++) {
+                                                                                            if (typeof ALLDetails[i] === 'object') {
+                                                                                                x += 1;
+                                                                                            }
+                                                                                        }
+
+                                                                                        console.log(x);
+                                                                                        
+                                                                                        $("#available-payslip").html(`Available: ${x}`);
+
+                                                                                           
 
                                                                                     } else {
                                                                                         errorNotification("Please update your settings.", "warning");
                                                                                     }
                                                                                 }
-                                                                                
-                                                                            }
-                                                                        });
+                                                                            })
 
-                                                                        
+                                                                        } else if (PAYSCHED == 'monthly') {
+                                                                            let s = earned;
+
+                                                                            if (SSS != 'undefined' && SSS != null) {
+                                                                                for (let i = 0; i < SSS.length; i++) {
+                                                                                    let arr = Object.values(SSS[i]);
+                                                                                    if (arr[2] == 'Over') {
+
+                                                                                        if (s >= arr[1]) {
+                                                                                            sss_contri = arr[6];
+                                                                                            
+                                                                                            break;
+                                                                                        }
+
+                                                                                    } else {
+
+                                                                                        let arr = Object.values(SSS[i]);
+                                                                                        
+                                                                                        if (s >= arr[1] && s <= arr[2]) {
+                                                                                            sss_contri = arr[6];
+                                                                                            
+                                                                                            break;
+                                                                                        }
+                                                                                    }
+                                                                                }
+                                                                            }
+
+                                                                            if (PAGIBIG != 'undefined' && PAGIBIG != null) {
+                                                                                let d = PAGIBIG;
+                                                                                if (d.includes("%")) {
+                                                                                    d = d.replace(/%/g, '');
+                                                                                    d = parseFloat(d);
+
+                                                                                    d = d / 100;
+                                                                                    d = s * d;
+                                                                                    
+                                                                                } else {
+                                                                                    d = parseFloat(d);
+                                                                                }
+                                                                                pbig_contri = d;
+                                                                            }
+
+                                                                            if (PHILHEALTH != 'undefined' && PHILHEALTH != null) {
+                                                                                let d = PHILHEALTH;
+                                                                                if (d.includes("%")) {
+                                                                                    d = d.replace(/%/g, '');
+                                                                                    d = parseFloat(d);
+
+                                                                                    d = d / 100;
+                                                                                    d = s * d;
+                                                                                    
+                                                                                } else {
+                                                                                    d = parseFloat(d);
+                                                                                }
+                                                                                phil_contri = d;
+                                                                            }
+
+                                                                            deductions[`deduc${id}`] = {"sss" : sss_contri, "pbig" : pbig_contri, "phil" : phil_contri};
+
+                                                                            D[`d${id}`] = {'sss' : deductions[`deduc${id}`].sss, 'phil' : deductions[`deduc${id}`].phil, 'pbig' : deductions[`deduc${id}`].pbig};
+        
+                                                                            if (deductions.hasOwnProperty(`deduc${id}`)) {
+                                                                                let sss, phil, pbig;
+                                                                                sss = parseFloat(deductions[`deduc${id}`].sss);
+                                                                                phil = parseFloat(deductions[`deduc${id}`].phil);
+                                                                                pbig = parseFloat(deductions[`deduc${id}`].pbig);
+
+                                                                                total_deductions = total_deductions + sss;
+                                                                                total_deductions = total_deductions + phil;
+                                                                                total_deductions = total_deductions + pbig;
+
+                                                                                details.push({"SSS" : {"value" : sss.toFixed(2), "op" : "-"}});
+                                                                                details.push({"PHILHEALTH" : {"value" : phil.toFixed(2), "op" : "-"}});
+                                                                                details.push({"PAG-IBIG" : {"value" : pbig.toFixed(2), "op" : "-"}});
+                                                                                
+                                                                                PAYSLIP.push({'name' : "SSS", 'row': '6', 'col': '3'})
+                                                                                PAYSLIP.push({'name' : sss.toFixed(2), 'row': '6', 'col': '4'})
+                                                                                PAYSLIP.push({'name' : "PhilHealth", 'row': '7', 'col': '3'})
+                                                                                PAYSLIP.push({'name' : phil.toFixed(2), 'row': '7', 'col': '4'})
+                                                                                PAYSLIP.push({'name' : "Pag-IBIG", 'row': '8', 'col': '3'})
+                                                                                PAYSLIP.push({'name' : pbig.toFixed(2), 'row': '8', 'col': '4'})
+
+                                                                                
+                                                                            } else {
+
+                                                                                details.push({"SSS" : {"value" : 0, "op" : "-"}});
+                                                                                details.push({"PHILHEALTH" : {"value" : 0, "op" : "-"}});
+                                                                                details.push({"PAG-IBIG" : {"value" : 0, "op" : "-"}});
+
+
+                                                                                PAYSLIP.push({'name' : "SSS", 'row': '6', 'col': '3'})
+                                                                                PAYSLIP.push({'name' : 0, 'row': '6', 'col': '4'})
+                                                                                PAYSLIP.push({'name' : "PhilHealth", 'row': '7', 'col': '3'})
+                                                                                PAYSLIP.push({'name' : 0, 'row': '7', 'col': '4'})
+                                                                                PAYSLIP.push({'name' : "Pag-IBIG", 'row': '8', 'col': '3'})
+                                                                                PAYSLIP.push({'name' : 0, 'row': '8', 'col': '4'})
+                                                                            }
+
+                                                                            
+                                                                            
+                                                                            total_deductions = total_deductions + parseInt(adjustment);
+                                                                            total_deductions = total_deductions + parseInt(CA);
+                                                                            total_deductions = total_deductions + parseInt(charges);
+                                                                            total_deductions = total_deductions + parseInt(sss_loan);
+                                                                            total_deductions = total_deductions + parseInt(pbig_loan);
+                                                                            total_deductions = total_deductions + parseInt(company_loan);
+
+                                                                            PAYSLIP.push({'name' : "Adjustment", 'row': '9', 'col': '3'})
+                                                                            PAYSLIP.push({'name' : adjustment, 'row': '9', 'col': '4'})
+                                                                            PAYSLIP.push({'name' : "Cash Advance", 'row': '10', 'col': '3'})
+                                                                            PAYSLIP.push({'name' : CA, 'row': '10', 'col': '4'})
+                                                                            PAYSLIP.push({'name' : "Charges", 'row': '11', 'col': '3'})
+                                                                            PAYSLIP.push({'name' : charges, 'row': '11', 'col': '4'})
+                                                                            PAYSLIP.push({'name' : "SSS Loan", 'row': '12', 'col': '3'})
+                                                                            PAYSLIP.push({'name' : sss_loan, 'row': '12', 'col': '4'})
+                                                                            PAYSLIP.push({'name' : "Pag-IBIG Loan", 'row': '13', 'col': '3'})
+                                                                            PAYSLIP.push({'name' : pbig_loan, 'row': '13', 'col': '4'})
+                                                                            PAYSLIP.push({'name' : "Company Loan", 'row': '14', 'col': '3'})
+                                                                            PAYSLIP.push({'name' : company_loan, 'row': '14', 'col': '4'})
+
+                                                                            PAYSLIP.push({'name' : "Total Deductions", 'row': '15', 'col': '3', 'bold' : true})
+                                                                            PAYSLIP.push({'name' : total_deductions.toLocaleString(), 'row': '15', 'col': '4', 'bold' : true})
+
+                                                                            PAYSLIP.push({'name' : "Total Earnings", 'row': '15', 'col': '1', 'bold' : true})
+                                                                            PAYSLIP.push({'name' : earned.toLocaleString(), 'row': '15', 'col': '2', 'bold' : true})
+
+                                                                            details.push({"ADJUSTMENT" : {"value" : adjustment, "op" : "-"}});
+                                                                            details.push({"CASH ADVANCE" : {"value" : CA, "op" : "-"}});
+                                                                            details.push({"CHARGES" : {"value" : charges, "op" : "-"}});
+                                                                            details.push({"SSS LOAN" : {"value" : sss_loan, "op" : "-"}});
+                                                                            details.push({"PAG-IBIG LOAN" : {"value" : pbig_loan, "op" : "-"}});
+                                                                            details.push({"COMPANY LOAN" : {"value" : company_loan, "op" : "-"}});
+                                                                            details.push({"TOTAL DEDUCTIONS" : {"value" : total_deductions.toLocaleString(), "highlight" : "", "op" : "-"}});
+                                                                            
+                                                                            net = net - total_deductions;
+
+                                                                            if (sched != 'None') {
+
+                                                                                let amount = 0;
+                                                                                let penalty = 0;
+
+                                                                                if (sched[0].pay_sched == 'twice-monthly') {
+                                                                    
+                                                                                    //class has allowance
+                                                                                    if (allowanceResponseBody  != 'None') {
+                                                                                
+
+                                                                                        for (let i = 0; i < allowanceResponseBody.length; i++) {
+
+                                                                                            if (allowanceResponseBody[i].detail == 'twice monthly') { //twice monthly allowance
+                                                                                                amount += parseInt(allowanceResponseBody[i].amount);
+                                                                                            } else {
+                                                                                                if (PERIOD == 'second-half') {
+                                                                                                    amount += parseInt(allowanceResponseBody[i].amount);
+                                                                                                }
+                                                                                            }
+
+                                                                                            
+                                                                                            let allowanceID = parseInt(allowanceResponseBody[i].id);
+    
+                                                                                            if (allowancePenalty != 'None') {
+                                                                                                
+                                                                                                for (let k = 0; k < allowancePenalty.length; k++) {
+                                                                                                    
+                                                                                                    if (parseInt(allowancePenalty[k].allowance) == allowanceID) {
+                                                                                                        
+                                                                                                        let deduction = allowancePenalty[k].deduction;
+        
+                                                                                                        //percentage
+                                                                                                        if (deduction.includes("%")) {
+                                                                                                            deduction = deduction.replace(/%/g, '');
+                                                                                                            deduction = parseFloat(deduction);
+        
+                                                                                                            if (allowancePenalty[k].type == 'absent') {
+                                                                                                                let numOfAbsent = parseInt($(`#cal${id}`).val()) - days_worked;
+        
+                                                                                                                deduction = deduction * numOfAbsent;
+                                                                                                                deduction = deduction / 100;
+        
+                                                                                                                let deducted = amount * deduction;
+                                                                                                                penalty = deducted;
+                                                                                                                amount = amount - deducted;
+        
+                                                                                                            } else {
+                                                                                                                let type = allowancePenalty[k].type.split("|");
+                                                                                                                let lateMins = parseInt(type[1]);
+                                                                                                                let numOfLate = 0;
+                                                                                                                for (let j = 0; j < trail.length; j++) {
+                                                                                                                    if (parseInt(trail[j].late_mins) >= lateMins) {
+                                                                                                                        numOfLate += 1;
+                                                                                                                    }
+                                                                                                                }
+                                                                                                                deduction = deduction * numOfLate;
+                                                                                                                deduction = deduction / 100;
+        
+                                                                                                                let deducted = amount * deduction;
+                                                                                                                penalty = deducted;
+                                                                                                                amount = amount - deducted;
+                                                                                                            }
+        
+                                                                                                        } else {
+                                                                                                            deduction = parseFloat(deduction);
+        
+                                                                                                            if (allowancePenalty[k].type == 'absent') {
+                                                                                                                let numOfAbsent = parseInt($(`#cal${id}`).val()) - days_worked;
+        
+                                                                                                                deduction = deduction * numOfAbsent;
+                                                                                                                amount = amount - deduction;
+        
+                                                                                                            } else {
+                                                                                                                let type = allowancePenalty[k].type.split("|");
+                                                                                                                let lateMins = parseInt(type[1]);
+                                                                                                                let numOfLate = 0;
+                                                                                                                for (let j = 0; j < trail.length; j++) {
+                                                                                                                    if (parseInt(trail[j].late_mins) >= lateMins) {
+                                                                                                                        numOfLate += 1;
+                                                                                                                    }
+                                                                                                                }
+                                                                                                                deduction = deduction * numOfLate;
+                                                                                                                penalty = deduction;
+                                                                                                                amount = amount - deduction;
+                                                                                                            }
+                                                                                                        }
+                                                                                                    
+                                                                                                    }
+                                                                                                }
+
+                                                                                            }
+                                                                                            
+                                                                                        }
+                                                                                    }
+
+                                                                                } else if (sched[0].pay_sched == 'monthly') {
+                                                                                    if (allowanceResponseBody != 'None') {
+                                                                                        for (let i = 0; i < allowanceResponseBody.length; i++) {
+                                                                                            
+                                                                                            if (allowanceResponseBody[i].detail == 'monthly') {
+                                                                                                amount += parseInt(allowanceResponseBody[i].amount);
+                                                                                            }
+    
+                                                                                            let allowanceID = parseInt(allowanceResponseBody[i].id);
+    
+                                                                                            if (allowancePenalty != 'None') {
+                                                                                                for (let k = 0; k < allowancePenalty.length; k++) {
+                                                                                                    if (parseInt(allowancePenalty[k].allowance) == allowanceID) {
+                                                                                                        let deduction = allowancePenalty[k].deduction;
+        
+                                                                                                        //percentage
+                                                                                                        if (deduction.includes("%")) {
+                                                                                                            deduction = deduction.replace(/%/g, '');
+                                                                                                            deduction = parseFloat(deduction);
+        
+                                                                                                            if (allowancePenalty[k].type == 'absent') {
+                                                                                                                let numOfAbsent = parseInt($(`#cal${id}`).val()) - days_worked;
+        
+                                                                                                                deduction = deduction * numOfAbsent;
+                                                                                                                deduction = deduction / 100;
+        
+                                                                                                                let deducted = amount * deduction;
+                                                                                                                penalty = deducted;
+                                                                                                                amount = amount - deducted;
+        
+                                                                                                            } else {
+                                                                                                                let type = allowancePenalty[k].type.split("|");
+                                                                                                                let lateMins = parseInt(type[1]);
+                                                                                                                let numOfLate = 0;
+                                                                                                                for (let j = 0; j < trail.length; j++) {
+                                                                                                                    if (parseInt(trail[j].late_mins) >= lateMins) {
+                                                                                                                        numOfLate += 1;
+                                                                                                                    }
+                                                                                                                }
+                                                                                                                deduction = deduction * numOfLate;
+                                                                                                                deduction = deduction / 100;
+        
+                                                                                                                let deducted = amount * deduction;
+                                                                                                                penalty = deducted;
+                                                                                                                amount = amount - deducted;
+                                                                                                            }
+        
+                                                                                                        } else {
+                                                                                                            deduction = parseFloat(deduction);
+        
+                                                                                                            if (allowancePenalty[k].type == 'absent') {
+                                                                                                                let numOfAbsent = parseInt($(`#cal${id}`).val()) - days_worked;
+        
+                                                                                                                deduction = deduction * numOfAbsent;
+                                                                                                                amount = amount - deduction;
+        
+                                                                                                            } else {
+                                                                                                                let type = allowancePenalty[k].type.split("|");
+                                                                                                                let lateMins = parseInt(type[1]);
+                                                                                                                let numOfLate = 0;
+                                                                                                                for (let j = 0; j < trail.length; j++) {
+                                                                                                                    if (parseInt(trail[j].late_mins) >= lateMins) {
+                                                                                                                        numOfLate += 1;
+                                                                                                                    }
+                                                                                                                }
+                                                                                                                deduction = deduction * numOfLate;
+                                                                                                                penalty = deduction;
+                                                                                                                amount = amount - deduction;
+                                                                                                            }
+                                                                                                        }
+                                                                                                    
+                                                                                                    }
+                                                                                                }
+                                                                                            }
+    
+                                                                                        }
+                                                                                    }
+                                                                                }
+
+                                                                                details.push({"ALLOWANCE (total)" : {"value" : amount.toLocaleString(), "op" : "+"}});
+                                                                                details.push({"ALLOWANCE PENALTY" : {"value" : penalty.toFixed(2), "op" : "-"}});
+
+                                                                                net = net + amount;
+
+                                                                                PAYSLIP.push({'name' : "Allowance", 'row': '16', 'col': '1', 'bold' : true})
+                                                                                PAYSLIP.push({'name' : amount.toLocaleString(), 'row': '16', 'col': '2', 'bold' : true})
+
+                                                                                PAYSLIP.push({'name' : "Net Earnings", 'row': '17', 'col': '1', 'span' : '3', 'align' : 'right', 'bold' : true, 'margin' : '15px'})
+                                                                                PAYSLIP.push({'name' : net.toLocaleString(), 'row': '17', 'col': '2', 'bold' : true})
+
+                                                                                PAYSLIP.push({'name' : "Signature", 'row': '18', 'col': '1', 'span' : '2', 'align' : 'center', 'border':'2px solid rgba(0,0,0,.6)'})
+
+                                                                                
+                                                                                for (let i = 0; i < PAYSLIPS.length; i++) {
+                                                                                    if (PAYSLIP[3].name == PAYSLIPS[i][3].name) {
+                                                                                        PAYSLIPS.splice(i, 1);
+                                                                                    }
+                                                                                }
+                                                                                PAYSLIPS.push(PAYSLIP);
+
+                                                                               
+                                                                                
+                                                                                PAYSLIP = [];
+
+                                                                                details.push({"NET" : {"value" : net.toLocaleString(), "highlight" : ""}});
+                                                                                
+                                                                                $(`#gross-pay${id}`).html(earned.toLocaleString());
+                                                                                $(`#net-pay${id}`).html(net.toLocaleString());
+
+                                                                                id = parseInt(id);
+                                                                                
+                                                                                if (ALLDetails.length < id + 1) {
+                                                                                    for (let i = id; i > 0; i--) {
+                                                                                        ALLDetails[i] = " ";
+                                                                                        if (ALLDetails[i - 1] != null || ALLDetails[i - 1] != undefined) {
+                                                                                            break;
+                                                                                        }
+                                                                                    }
+                                                                                }
+
+                                                                                ALLDetails[id] = details;
+
+                                                                                if (PAYSCHED == 'twice-monthly') {
+                                                                                    update_payroll_file(PAYSCHED, from, to, name, id, responseBody.class, className, ALLDetails[id][0]['RATE'], ALLDetails[id][1]['RATE TYPE'], ALLDetails[id][2]['WORKING DAYS'], ALLDetails[id][3]['DAYS WORKED'], ALLDetails[id][4]['SALARY RATE'], ALLDetails[id][5]['ABSENT (total)'].value, ALLDetails[id][6]['BASIC'], ALLDetails[id][7]['UNDERTIME (total)'].value, ALLDetails[id][8]['TARDINESS (total)'].value, ALLDetails[id][9]['HOLIDAYS (total)'].value, ALLDetails[id][10]['OVERTIME (total)'].value, ALLDetails[id][11]['EARNED'].value, ALLDetails[id][12]['SSS'].value, ALLDetails[id][13]['PHILHEALTH'].value, ALLDetails[id][14]['PAG-IBIG'].value, ALLDetails[id][15]['ADJUSTMENT'].value, ALLDetails[id][16]['CASH ADVANCE'].value, ALLDetails[id][17]['CHARGES'].value, ALLDetails[id][18]['SSS LOAN'].value, ALLDetails[id][19]['PAG-IBIG LOAN'].value, ALLDetails[id][20]['COMPANY LOAN'].value, ALLDetails[id][21]['TOTAL DEDUCTIONS'].value, ALLDetails[id][22]['ALLOWANCE (total)'].value, ALLDetails[id][23]['ALLOWANCE PENALTY'].value, ALLDetails[id][24]['NET'].value);
+
+                                                                                } else {
+                                                                                    if (PAYSCHED == 'monthly') {
+                                                                                        update_payroll_file(PAYSCHED, MON, MON, name, id, responseBody.class, className, ALLDetails[id][0]['RATE'], ALLDetails[id][1]['RATE TYPE'], ALLDetails[id][2]['WORKING DAYS'], ALLDetails[id][3]['DAYS WORKED'], ALLDetails[id][4]['SALARY RATE'], ALLDetails[id][5]['ABSENT (total)'].value, ALLDetails[id][6]['BASIC'], ALLDetails[id][7]['UNDERTIME (total)'].value, ALLDetails[id][8]['TARDINESS (total)'].value, ALLDetails[id][9]['HOLIDAYS (total)'].value, ALLDetails[id][10]['OVERTIME (total)'].value, ALLDetails[id][11]['EARNED'].value, ALLDetails[id][12]['SSS'].value, ALLDetails[id][13]['PHILHEALTH'].value, ALLDetails[id][14]['PAG-IBIG'].value, ALLDetails[id][15]['ADJUSTMENT'].value, ALLDetails[id][16]['CASH ADVANCE'].value, ALLDetails[id][17]['CHARGES'].value, ALLDetails[id][18]['SSS LOAN'].value, ALLDetails[id][19]['PAG-IBIG LOAN'].value, ALLDetails[id][20]['COMPANY LOAN'].value, ALLDetails[id][21]['TOTAL DEDUCTIONS'].value, ALLDetails[id][22]['ALLOWANCE (total)'].value, ALLDetails[id][23]['ALLOWANCE PENALTY'].value, ALLDetails[id][24]['NET'].value);
+                                                                                    }
+                                                                                }
+
+                                                                                let x = 0;
+
+                                                                                for (let i = 0; i < ALLDetails.length; i++) {
+                                                                                    if (typeof ALLDetails[i] === 'object') {
+                                                                                        x += 1;
+                                                                                    }
+                                                                                }
+
+                                                                                console.log(x);
+                                                                                
+                                                                                $("#available-payslip").html(`Available: ${x}`);
+
+                                                                                   
+
+                                                                            } else {
+                                                                                errorNotification("Please update your settings.", "warning");
+                                                                            }
+                                                                            
+                                                                        }
     
                                                                     }
                                                                     
@@ -2086,7 +2692,6 @@ function computeSalary(id) {
                                                     
                                                 }
                                             })
-                                            
                                             
                                             
                                         } catch(err) {
@@ -2108,9 +2713,67 @@ function computeSalary(id) {
     })
 }
 
+function update_payroll_file(paysched, col1, col2, name, serial, _class, class_name, rate, rate_type, working_days, days_worked, salary_rate, absent, basic, ut, tard, holi, ot, earned, sss, phil, pbig, adjustment, cash_advance, charges, sss_loan, pbig_loan, company_loan, total_deductions, allowance, penalty, net) {
+
+    salary_rate = salary_rate.replace(/,/g, '');
+    salary_rate = parseFloat(salary_rate);
+    absent = absent.replace(/,/g, '');
+    absent = parseFloat(absent);
+    basic = basic.replace(/,/g, '');
+    basic = parseFloat(basic);
+    earned = earned.replace(/,/g, '');
+    earned = parseFloat(earned);
+    total_deductions = total_deductions.replace(/,/g, '');
+    total_deductions = parseFloat(total_deductions);
+    allowance = allowance.replace(/,/g, '');
+    allowance = parseFloat(allowance);
+    net = net.replace(/,/g, '');
+    net = parseFloat(net);
+
+    $.ajax({
+        type: 'POST',
+        url: '../php/update_payroll_file.php',
+        data: {
+            paysched: paysched,
+            col1: col1,
+            col2: col2,
+            name: name,
+            serial: serial,
+            class: _class,
+            class_name: class_name,
+            rate: rate,
+            rate_type: rate_type,
+            working_days: working_days,
+            days_worked: days_worked,
+            salary_rate: salary_rate,
+            absent: absent,
+            basic: basic,
+            ut: ut,
+            tard: tard,
+            holi: holi,
+            ot: ot,
+            earned: earned,
+            sss: sss,
+            phil: phil,
+            pbig: pbig,
+            adjustment: adjustment,
+            cash_advance: cash_advance,
+            charges: charges,
+            sss_loan: sss_loan,
+            pbig_loan: pbig_loan,
+            company_loan: company_loan,
+            total_deductions: total_deductions,
+            allowance: allowance,
+            penalty: penalty,
+            net: net
+
+        }, success: function(res) {
+            console.log(res);
+        }
+    })
+}
 
 function createTableFromObject(obj) {
-    // Create table element
     
     let maxRow = 0;
     let maxCol = 0;
@@ -2133,7 +2796,6 @@ function createTableFromObject(obj) {
             if (item) {
                 cell.textContent = item.name;
                 if (item.hasOwnProperty('span')) {
-                    
                     cell.colSpan = parseInt(item.span);
                 }
                 if (item.hasOwnProperty('align')) {
@@ -2158,7 +2820,11 @@ function createTableFromObject(obj) {
     
 }
 
+
+
 function generatePayslips() {
+    $(".payroll-document").remove();
+
     try {
         $("#pages").remove();
     } catch (err) {
@@ -2170,14 +2836,21 @@ function generatePayslips() {
     </div>`);
 
     PAYSLIPS.forEach(function(index) {
-        var table = createTableFromObject(index);
-        document.getElementById("pages").appendChild(table);
+        let arr = Object.values(index);
+        console.log(arr);
+        if (parseFloat(arr[39].name) > 0) {
+            var table = createTableFromObject(index);
+            document.getElementById("pages").appendChild(table);
+        }
+        
     })
 
     window.print();
 }
 
-function generateFile(staffs){
+var file_created = false;
+
+function generateFile(res, staffs_len){
 
     let promise;
 
@@ -2187,8 +2860,9 @@ function generateFile(staffs){
                 type: 'POST',
                 url: '../php/generateFile.php',
                 data: {
-                    data: staffs,
+                    data: res,
                     paysched: PAYSCHED,
+                    period: PERIOD,
                     from: from,
                     to: to
                 },
@@ -2204,7 +2878,7 @@ function generateFile(staffs){
                 type: 'POST',
                 url: '../php/generateFile.php',
                 data: {
-                    data: staffs,
+                    data: res,
                     paysched: PAYSCHED,
                     mon: MON
                 },
@@ -2216,148 +2890,48 @@ function generateFile(staffs){
     }
 
     promise.then(
-        function(res) {
-            console.log(res);
-        }
-    )
-    
-}
+        function(result) {
+            responseBody = res;
 
+            if (result == 'exists') {
+                errorNotification("File already exists.", "danger");
+                file_created = true;
+            }
 
-$(".payroll").on("click", function(event){
-    event.stopImmediatePropagation();
-
-    if (PAYSCHED != null || PAYSCHED !== 'undefined') {
-        if (PAYSCHED == 'twice-monthly') {
-            document.body.insertAdjacentHTML("afterbegin", `
-                <div class="pop-up-window">
-                    <div class="window-content pt-5" style="position:relative;">
-                        ${close_icon}
-                        <p class="text-center text-white" style="font-size:20px;">GENERATE PAYROLL FILE</p>
-                        <hr>
-                        <div style="display:flex;flex-direction:column;min-width:20vw;color:#fff;">
-                            <span>From date: </span>
-                            <input type="date" id="from" />
-                            <span>To date:</span>
-                            <input type="date" id="to" />
-                            <br>
-                            <input type="button" value="PROCEED"/>
-                        </div>
-                    </div>
-                </div>
-            `);
-
-            $(".close-window").click(function(){
-                $(".pop-up-window").remove();
-            })
-
-            $("input[type='button']").click(function(event){
-                event.stopImmediatePropagation();
-                if ($("#from").val() !== '' && $("#to").val() !== '') {
-                    from = $("#from").val();
-                    to = $("#to").val();
-                    $(".pop-up-window").remove();
-                    proceed();
-                } else {
-                    errorNotification("Please select date to proceed.", "warning");
-                }
-            })
-            
-        } else {
-
-            const currentDate = new Date();
-
-            // Get the current year and month in the format "YYYY-MM"
-            const yearMonth = currentDate.toISOString().slice(0, 7);
-
-
-
-            document.body.insertAdjacentHTML("afterbegin", `
-                <div class="pop-up-window">
-                    <div class="window-content pt-5" style="position:relative;">
-                        ${close_icon}
-                        <p class="text-center text-white" style="font-size:20px;">GENERATE PAYROLL FILE</p>
-                        <hr>
-                        <div style="display:flex;flex-direction:column;min-width:20vw;color:#fff;">
-                            <span>Select month: </span>
-                            <input type="month" value="${yearMonth}" id="MON"/>
-                            <br>
-                            <input type="button" value="PROCEED"/>
-                        </div>
-                    </div>
-                </div>
-            `);
-
-            $(".close-window").click(function(){
-                $(".pop-up-window").remove();
-            })
-
-            $("input[type='button']").click(function(event){
-                event.stopImmediatePropagation();
-                if ($("#MON").val() !== '') {
-                    MON = $("#MON").val();
-                    $(".pop-up-window").remove();
-                    proceed();
-                } else {
-                    errorNotification("Please select month to proceed.", "warning");
-                }
-            })
-        }
-    }
-
-    function proceed() {
-        $.ajax({
-            type: 'POST',
-            url: '../php/staffs.php',
-            success: function(res){
-                let content = "";
-                let responseBody;
-                let staffs_len
-
-                try {
-                    res = JSON.parse(res);
-
-                    generateFile(res);
-    
-                    responseBody = res;
-                    staffs_len = res.length;
-                    
-                    for (let i = 0; i < res.length; i++) {
-                        content += `
-                        <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
-                            <td>${res[i].name}</td>
-                            <td><input type="number" id="cal${res[i].serialnumber}" style="margin-bottom:-1px;" placeholder="Enter calendar working days"/></td>
-                            <td id="gross-pay${res[i].serialnumber}">0</td>
-                            <td>
+            if (!file_created) {
+                var content = "";
+                for (let i = 0; i < res.length; i++) {
+                    content += `
+                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                        <td>${res[i].name}</td>
+                        <td><input type="number" id="cal${res[i].serialnumber}" style="margin-bottom:-1px;" placeholder="Enter calendar working days"/></td>
+                        <td id="gross-pay${res[i].serialnumber}">0</td>
+                        <td>
+                        <label class="switch" data-s="${res[i].serialnumber}" style="margin-bottom:-20px">
+                            <input id="sss-cbbox" type="checkbox" checked>
+                            <span class="slider round"></span>
+                        </label>
+                        </td>
+                        <td>
                             <label class="switch" data-s="${res[i].serialnumber}" style="margin-bottom:-20px">
-                                <input id="sss-cbbox" type="checkbox" checked>
+                                <input id="phil-cbox" type="checkbox" checked>
                                 <span class="slider round"></span>
                             </label>
-                            </td>
-                            <td>
-                                <label class="switch" data-s="${res[i].serialnumber}" style="margin-bottom:-20px">
-                                    <input id="phil-cbox" type="checkbox" checked>
-                                    <span class="slider round"></span>
-                                </label>
-                            </td>
-                            <td>
-                                <label class="switch" data-s="${res[i].serialnumber}" style="margin-bottom:-20px">
-                                    <input id="pbig-cbox" type="checkbox" checked>
-                                    <span class="slider round"></span>
-                                </label>
-                            </td>
-                            <td id="net-pay${res[i].serialnumber}">0</td>
-                            <td id="paid${res[i].serialnumber}">Not paid</td>
-                            <td><button class="action-button mr-1 compute-salary" data-id="${res[i].serialnumber}">COMPUTE</button>
-                            
-                            <button class="action-button mr-1 payslip${res[i].serialnumber} view-details" data-class="${res[i].class}" data-id="${res[i].serialnumber}" data-name="${res[i].name}" data-position="${res[i].position}" style="background:orange;display:none;">DETAILS</button>
-                            <button class="action-button trail mr-1" data-id="${res[i].serialnumber}">TRAIL</button>
-                            
-                        </tr>`;
-                    }
-                    
-                } catch(err) {
-                    console.log(err);
+                        </td>
+                        <td>
+                            <label class="switch" data-s="${res[i].serialnumber}" style="margin-bottom:-20px">
+                                <input id="pbig-cbox" type="checkbox" checked>
+                                <span class="slider round"></span>
+                            </label>
+                        </td>
+                        <td id="net-pay${res[i].serialnumber}">0</td>
+                        <td id="paid${res[i].serialnumber}">Not paid</td>
+                        <td>
+                        <button class="action-button mr-1 payslip${res[i].serialnumber} view-details" data-class="${res[i].class}" data-id="${res[i].serialnumber}" data-name="${res[i].name}" data-position="${res[i].position}" style="background:orange;display:none;">DETAILS</button>
+                        <button class="action-button mr-1 compute-salary" data-id="${res[i].serialnumber}">COMPUTE</button>
+                        
+                        <button class="action-button trail mr-1" data-id="${res[i].serialnumber}">TRAIL</button>
+                    </tr>`;
                 }
 
                 let txt = "";
@@ -2398,7 +2972,7 @@ $(".payroll").on("click", function(event){
                     <div class="window-content pt-5" style="position:relative;">
                         ${close_icon}
                         <p class="text-center text-white" style="font-size:20px;">PAYROLL (${txt})</p>
-                        <div class="payroll-header-buttons" style="display:flex;justify-content:space-between;align-items:end;"><div style="color:#fff;display:flex;"><button class="action-button add-holiday mr-2">ADD HOLIDAY</button><button class="action-button remove-holiday mr-2">REMOVE HOLIDAY</button><button class="action-button contribution-tables">CONTRIBUTIONS</button></div>
+                        <div class="payroll-header-buttons" style="display:flex;justify-content:space-between;align-items:end;"><div style="color:#fff;display:flex;"><button class="action-button add-holiday mr-2">ADD HOLIDAY</button><button class="action-button remove-holiday mr-2">REMOVE HOLIDAY</button></div>
                         <div style="display:flex;flex-direction:column;color:#fff;align-items:center;"><span id="available-payslip">Available: 0</span><button class="action-button generate-payslip">GENERATE PAYSLIP</button></div>
                         </div>
                         <hr>
@@ -2427,8 +3001,164 @@ $(".payroll").on("click", function(event){
                                 </tbody>
                             </table>
                         </div>
+                        <br>
+                        <div style="text-align:right;">
+                            <button class="action-button print-payroll-document">PRINT DOCUMENT</button>
+                        </div>
                     </div>
                 </div>`);
+
+                $(".print-payroll-document").click(function(event){
+                    event.stopImmediatePropagation();
+
+                    $(".payroll-document").remove();
+                    $(".pages").remove();
+
+                    let tbody_content = "";
+                    let total_net = 0;
+                    for (let i = 0; i < ALLDetails.length; i++) {
+                        let employee = false;
+                        let name;
+                        for (let j = 0; j < res.length; j++) {
+                            if (parseInt(res[j].serialnumber) == i) {
+                                employee = true;
+                                name = res[j].name;
+                                break;
+                            }
+                        }
+
+                        if (typeof ALLDetails[i] === 'object') {
+                            tbody_content += `
+                            <tr>
+                                <td>${name}</td>
+                                <td>${ALLDetails[i][4]['SALARY RATE']}</td>
+                                <td>${ALLDetails[i][5]['ABSENT (total)'].value}</td>
+                                <td>${ALLDetails[i][7]['UNDERTIME (total)'].value}</td>
+                                <td>${ALLDetails[i][8]['TARDINESS (total)'].value}</td>
+                                <td>${ALLDetails[i][6]['BASIC']}</td>
+                                <td>${ALLDetails[i][9]['HOLIDAYS (total)'].value}</td>
+                                <td>${ALLDetails[i][10]['OVERTIME (total)'].value}</td>
+                                <td>${ALLDetails[i][11]['EARNED'].value}</td>
+                                <td>${ALLDetails[i][12]['SSS'].value}</td>
+                                <td>${ALLDetails[i][13]['PHILHEALTH'].value}</td>
+                                <td>${ALLDetails[i][14]['PAG-IBIG'].value}</td>
+                                <td>${ALLDetails[i][15]['ADJUSTMENT'].value}</td>
+                                <td>${ALLDetails[i][16]['CASH ADVANCE'].value}</td>
+                                <td>${ALLDetails[i][17]['CHARGES'].value}</td>
+                                <td>${ALLDetails[i][18]['SSS LOAN'].value}</td>
+                                <td>${ALLDetails[i][19]['PAG-IBIG LOAN'].value}</td>
+                                <td>${ALLDetails[i][20]['COMPANY LOAN'].value}</td>
+                                <td>${ALLDetails[i][21]['TOTAL DEDUCTIONS'].value}</td>
+                                <td>${ALLDetails[i][22]['ALLOWANCE (total)'].value}</td>
+                                <td>${ALLDetails[i][24]['NET'].value}</td>
+                            </tr>`;
+
+                            let net = ALLDetails[i][24]['NET'].value
+                            net = net.replace(/,/g, '');
+                            net = parseFloat(net);
+                            total_net += net;
+                        } else {
+                            if (employee) {
+                                tbody_content += `
+                                <tr>
+                                    <td>${name}</td>
+                                    <td>0</td>
+                                    <td>0</td>
+                                    <td>0</td>
+                                    <td>0</td>
+                                    <td>0</td>
+                                    <td>0</td>
+                                    <td>0</td>
+                                    <td>0</td>
+                                    <td>0</td>
+                                    <td>0</td>
+                                    <td>0</td>
+                                    <td>0</td>
+                                    <td>0</td>
+                                    <td>0</td>
+                                    <td>0</td>
+                                    <td>0</td>
+                                    <td>0</td>
+                                    <td>0</td>
+                                    <td>0</td>
+                                    <td>0</td>
+                                </tr>`;
+                            }
+                            
+                        }
+                        
+                    }
+
+                    tbody_content += `
+                    <tr>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td>${total_net.toFixed(2)}</td>
+                    </tr>`;
+
+                    document.body.insertAdjacentHTML("afterbegin",`
+                    <div class="payroll-document" style="display:none;margin-top:100px;">
+                        <h5 class="text-center">${COMPANY_NAME}</h5>
+                        <p class="text-center">${COMPANY_ADD}</p>
+                        <h6 class="text-center">PAYROLL</h6>
+                        <p class="text-center">${txt}</p>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th rowspan="2" style="text-align:center;">Name of Employees</th>
+                                    <th colspan="7" style="text-align:center;">COMPENSATION</th>
+                                    <th rowspan="2">Earnings</th>
+                                    <th colspan="9" style="text-align:center;">DEDUCTIONS</th>
+                                    <th rowspan="2" style="text-align:center;">Total Deductions</th>
+                                    <th rowspan="2">Allowance</th>
+                                    <th rowspan="2">Net Pay</th>
+                                </tr>
+                                <tr>
+                                    <th>SALARY RATE</th>
+                                    <th>ABSENT</th>
+                                    <th>UNDERTIME</th>
+                                    <th>TARDINESS</th>
+                                    <th>BASIC</th>
+                                    <th>HOLIDAY</th>
+                                    <th>OVERTIME</th>
+                                    <th>SSS</th>
+                                    <th>PHILHEALTH</th>
+                                    <th>PAG-IBIG</th>
+                                    <th>ADJUSTMENT</th>
+                                    <th>CASH ADVANCE</th>
+                                    <th>CHARGES</th>
+                                    <th>SSS LOAN</th>
+                                    <th>PAG-IBIG LOAN</th>
+                                    <th>COMPANY LOAN</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${tbody_content}
+                            </tbody>
+                        </table>
+                    </div>`);
+
+                    window.print();
+                })
+                
 
                 $(".add-working-days").click(function(event){
                     event.stopImmediatePropagation();
@@ -2513,7 +3243,7 @@ $(".payroll").on("click", function(event){
                 $("input[type='checkbox']").change(function(event){
                     let snum = $(this).parent("label").data("s");
 
-                    if ($(`#net-pay${snum}`).html() === '0') {
+                    if ($(`#net-pay${snum}`).html() === '0' || $(`#net-pay${snum}`).html() === '0.00') {
                         $(this).prop('checked', !$(this).prop('checked'));
                     } else {
                         let net = $(`#net-pay${snum}`).html();
@@ -2608,8 +3338,6 @@ $(".payroll").on("click", function(event){
                 $(".trail").click(function(event){
                     event.stopImmediatePropagation();
                     let serial = $(this).data("id");
-
-                    
 
                     let promise;
                     if (PAYSCHED == 'twice-monthly') {
@@ -2756,128 +3484,14 @@ $(".payroll").on("click", function(event){
                         $(".close-window").click(function(){
                             $(".third-layer-overlay").remove();
                         })
-                        
     
                     } else {
                         errorNotification("Cannot process your request.", "danger");
                     }
-    
                     
                 })
     
-                //CONTRIBUTION TABLES
-                $(".contribution-tables").on("click", function(event){
-                    event.stopImmediatePropagation();
-                    let help = "";
-                    help += `
-                    <svg class="help" style="margin-top:-3px;margin-left:5px;cursor:pointer;" xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" class="bi bi-question-circle-fill" viewBox="0 0 16 16">
-                    <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0M5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247m2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z"/>
-                    </svg>
-                    <span class="tip" style="display:none;position:absolute;top:-200%;left:20%;padding:10px;z-index:1000;background:var(--teal);box-shadow:0 0 5px rgba(0,0,0,.5);border-radius:4px 4px 4px 0;color:#fff;">This will be applied to all employees.</span>`;
-
-                    let help2 = "";
-                    help2 += `
-                    <svg class="help" style="margin-top:-3px;margin-left:5px;cursor:pointer;" xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" class="bi bi-question-circle-fill" viewBox="0 0 16 16">
-                    <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0M5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247m2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z"/>
-                    </svg>
-                    <span class="tip" style="display:none;position:absolute;top:-300%;left:35%;padding:10px;z-index:1000;background:var(--teal);box-shadow:0 0 5px rgba(0,0,0,.5);border-radius:4px 4px 4px 0;color:#fff;">SSS, PhilHealth and Pag-IBIG first half deduction.</span>`;
-
-                    let philVal = "";
-                    let pbigVal = "";
-                    if (PAGIBIG != 'undefined' && PAGIBIG != null) {
-                        pbigVal = PAGIBIG;
-                    }
-                    if (PHILHEALTH != 'undefined' && PHILHEALTH != null) {
-                        philVal = PHILHEALTH;
-                    }
-                    let firstHalfDed = "";
-                    if (PAYSCHED == 'twice-monthly') {
-                        firstHalfDed += `
-                        <span style="position:relative;">First half deduction: ${help2}</span>
-                        <input type="number" id="first-half-deduction" placeholder="Enter amount"/>
-                        `;
-                    }
-
-                    document.body.insertAdjacentHTML("afterbegin", `
-                    <div class="third-layer-overlay">
-                        <div class="tlo-wrapper pt-5" style="position:relative;">
-                            ${close_icon}
-                            <p class="text-white text-center" style="font-size:20px;">CONTRIBUTIONS</p>
-                            <br>
-                            <hr>
-                            <div class="contribution-tables-wrapper">
-                                <span>SSS (Excel file):</span>
-                                <input type="file" id="sss-excel-file"/>
-                                <span style="position:relative;">PhilHealth: ${help}</span>
-                                <input type="text" id="phil-contri" value="${philVal}" placeholder="Fixed or Percentage"/>
-                                <span style="position:relative;">Pag-IBIG: ${help}</span>
-                                <input type="text" id="pbig-contri" value="${pbigVal}" placeholder="Fixed or Percentage"/>
-                                ${firstHalfDed}
-                                <br>
-                                <input type="button" value="ADD CONTRIBUTIONS"/>
-                            </div>
-                        </div>
-                    </div>
-                    `);
-
-                    $("svg").on("mouseover", function(event){
-                        $(this).parent("span").children("span.tip").show();
-                    })
-                     $("svg").on("mouseout", function(event){
-                        $(this).parent("span").children("span.tip").hide();
-                    })
-
-                    document.getElementById('sss-excel-file').addEventListener('change', function(event) {
-                        var file = event.target.files[0];
-                        var reader = new FileReader();
-                        
-                        reader.onload = function(event) {
-                            var data = new Uint8Array(event.target.result);
-                            var workbook = XLSX.read(data, {type: 'array'});
-                            
-                            // Assuming the first sheet is the one you want to read
-                            var sheet = workbook.Sheets[workbook.SheetNames[0]];
-                            
-                            // Convert the sheet to JSON format
-                            var jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-                        
-                            SSS = jsonData;
-                        };
-                        
-                        reader.readAsArrayBuffer(file);
-                    });
-
-                    $("input[type='button']").click(function(event){
-                        event.stopImmediatePropagation();
-                        
-                        if ($("#phil-contri").val() !== '') {
-                            PHILHEALTH = $("#phil-contri").val();
-                        } else {
-                            PHILHEALTH = undefined;
-                        }
-
-                        if ($("#first-half-deduction").val() !== '') {
-                            firsHalfDeduction = $("#first-half-deduction").val();
-                        } else {
-                            firsHalfDeduction = undefined;
-                        }
-
-                        if ($("#pbig-contri").val() !== ''){
-                            PAGIBIG = $("#pbig-contri").val();
-                        } else {
-                            PAGIBIG = undefined;
-                        }
-                        
-                        $(".third-layer-overlay").remove();
-
-                        successNotification("Contributions added.", "success");
-                    })
-
-                    $(".close-window").click(function(event){
-                        $(".third-layer-overlay").remove();
-                    })
-
-                })
+                
     
     
                 $(".add-deductions").on("click", function(event){
@@ -2939,7 +3553,7 @@ $(".payroll").on("click", function(event){
                                 formDataObject[key] = 0;
                             }
                         });
-                           
+                        
                         deductions[`deduc${serialID}`] = {"sss" : formDataObject.sss, "pbig" : formDataObject.pbig, "phil" : formDataObject.phil}
                         successNotification("Deductions added.", "success");
                         $(".third-layer-overlay").remove();
@@ -2962,7 +3576,7 @@ $(".payroll").on("click", function(event){
                         success: function(res){
                             try {
                                 res = JSON.parse(res);
-                               
+                            
                                 for (let i = 0; i < res.length; i++) {
                                     const date = new Date(res[i].date);
     
@@ -3024,7 +3638,7 @@ $(".payroll").on("click", function(event){
                                         data: {
                                             id: formDataObject.id,
                                         }, success: function(res){
-                                          
+                                        
                                             if (res.includes('success')) {
                                                 successNotification("Selected holiday removed.", "success");
                                                 $(".third-layer-overlay").remove();
@@ -3122,7 +3736,7 @@ $(".payroll").on("click", function(event){
                                             class: formDataObject.class,
                                             date: formDataObject.date,
                                         }, success: function(res){
-       
+    
                                             if (res.includes('success')) {
                                                 successNotification("Holiday added.", "success");
                                                 $(".third-layer-overlay").remove();
@@ -3151,8 +3765,7 @@ $(".payroll").on("click", function(event){
     
                     else {
                         computeSalary(id);
-                        
-                        $(this).remove();
+                        //$(this).remove();
                         $(`.payslip${id}`).css("display", "inline");
                     }
                 })
@@ -3174,7 +3787,7 @@ $(".payroll").on("click", function(event){
                     reportArr.push(id);
                     reportArr.push(CLASS);
                     reportArr.push(class_name);
-                  
+                
                     for (let i = 0; i < ALLDetails[id].length; i++) {
                         for (let key in ALLDetails[id][i]) {
                             let NAME = key;
@@ -3429,6 +4042,1641 @@ $(".payroll").on("click", function(event){
                         success: function(res) {}
                     })
                 })
+            }
+        }
+    )
+    
+}
+
+function confirmation_window(title, btn, continueCallback, cancelCallback) {
+    document.body.insertAdjacentHTML("afterbegin", `
+    <div class="confirmation-overlay">
+        <div class="con-wrapper" style="min-width:25vw;">
+            <p class="text-center text-white" style="font-size:20px">${title}</p>
+            <hr>
+            <div class="btns">
+                <button id="continue" style="background:var(--teal);">${btn}</button>
+                <button id="cancel"  style="background:var(--teal);">CANCEL</button>
+            </div>
+        </div>
+    </div>`);
+
+    $("#continue").click(function(event){
+        event.stopImmediatePropagation();
+        continueCallback();
+
+    })
+
+    $("#cancel").click(function(event){
+        event.stopImmediatePropagation();
+        cancelCallback();
+
+    })
+}
+
+function delete_file(title, btn, col1, col2, x) {
+
+    confirmation_window(title, btn, function() {
+        if (PAYSCHED == 'twice-monthly') {
+            col1 = "0" + col1;
+        }
+
+        $.ajax({
+            type: 'POST',
+            url: '../php/delete_payroll_file.php',
+            data: {
+                paysched: PAYSCHED,
+                col1: col1,
+                col2: col2
+            },
+            success: function(res) {
+                if (res == 'deleted') {
+                    $(`.file${x}`).remove();
+                    successNotification('File deleted.', 'success');
+                }
+            }
+        })
+
+        $(".confirmation-overlay").remove();
+    }, function() {
+        //cancelled
+        $(".confirmation-overlay").remove();
+    })
+}
+
+
+$(".payroll").on("click", function(event){
+    event.stopImmediatePropagation();
+
+    $.ajax({
+        type: 'POST',
+        url: '../php/files_history.php',
+        data : {
+            paysched: PAYSCHED,
+        },
+        success: function(res) {
+            try {
+                res = JSON.parse(res);
+   
+                let file = "";
+                for (let i = 0; i < res.length; i++) {
+                    if (PAYSCHED == 'twice-monthly') {  
+
+                        let recent = "";
+                        if (i == 0) {
+                            recent += `<div style="position:absolute;top:7px;left:7px;font-size:12px;color:#fff;">Recent</div>`;
+                        }
+
+                        let year = "";
+                        year += `<div style="position:absolute;bottom:7px;left:7px;font-size:15px;color:#fff;">${res[i].from_date.split("-")[0]}</div>`;
+
+                        let monthIndex = parseInt(res[i].from_date.split("-")[1]) - 1;
+                        let mon = months[monthIndex];
+
+                        file += `
+                        <div class="file file${i}" style="position:relative;" data-col1="${res[i].from_date}" data-col2="${res[i].to_date}">
+                            ${recent}
+                            ${year}
+                            <div class="menu">
+                                <svg class="dropdown-toggle" id="svgdropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#fff" class="bi bi-three-dots-vertical" viewBox="0 0 16 16">
+                                    <path d="M9.5 13a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0m0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0m0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0"/>
+                                </svg>
+                                <div class="dropdown-menu" aria-labelledby="svgdropdown">
+                                    <a class="dropdown-item" onclick="this.parentNode.parentNode.parentNode.click();">Open file</a>
+                                    <a class="dropdown-item" onclick=" delete_file('DELETE PAYROLL FILE', 'CONFIRM', '${res[i].from_date}', '${res[i].to_date}', '${i}')">Delete file</a>
+                                </div>
+                            </div>
+                            <div style="position:absolute;top:60%;transform:translateY(-60%);width:calc(100% - 10px);">
+                                <p class="text-white text-center" style="font-size:17px;">${mon} ${res[i].from_date.split("-")[2]}-${res[i].to_date.split("-")[2]}</p>
+                            </div>
+                        </div>`;
+
+                    } else {
+
+                        if (PAYSCHED == 'monthly') {
+                            let recent = "";
+                            if (i == 0) {
+                                recent += `<div style="position:absolute;top:7px;left:7px;font-size:12px;color:#fff;">Recent</div>`;
+                            }
+
+                            file += `
+                            <div class="file file${i}" style="position:relative;" data-col1="${res[i].month}" data-col2="${res[i].year}">
+                                ${recent}
+                                <div class="menu">
+                                    <svg class="dropdown-toggle" id="svgdropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#fff" class="bi bi-three-dots-vertical" viewBox="0 0 16 16">
+                                        <path d="M9.5 13a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0m0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0m0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0"/>
+                                    </svg>
+                                    <div class="dropdown-menu" aria-labelledby="svgdropdown">
+                                        <a class="dropdown-item" onclick="this.parentNode.parentNode.parentNode.click();">Open file</a>
+                                        <a class="dropdown-item" onclick="delete_file('DELETE PAYROLL FILE', 'CONFIRM', '${res[i].month}', '${res[i].year}', '${i}')">Delete file</a>
+                                    </div>
+                                </div>
+                                <div style="position:absolute;top:50%;transform:translateY(-50%);width:calc(100% - 10px);">
+                                    <p class="text-white text-center" style="font-size:17px;">${months[parseInt(res[i].month) - 1]} ${res[i].year}</p>
+                                </div>
+                            </div>`;
+                        }
+
+                    }
+                }
+                
+                document.body.insertAdjacentHTML("afterbegin", `
+                <div class="pop-up-window">
+                    <div class="window-content pt-5" style="position:relative;min-width:35vw;">
+                        ${close_icon}
+                        <p class="text-center text-white" style="font-size:20px;">PAYROLL FILES HISTORY</p>
+                        <hr>
+                        <div class="payroll-files-container">
+                            ${file}
+                        </div>
+                        <hr>
+                        <button class="action-button generate-new">Create new file</button>
+                    </div>
+                </div>`);
+
+                $(".menu").click(function(event){
+                    event.stopImmediatePropagation();
+                    var dropdownMenu = this.querySelector('.dropdown-menu');
+                    if (!dropdownMenu.classList.contains('show')) {
+                        dropdownMenu.classList.add('show');
+                    } else {
+                        dropdownMenu.classList.remove('show');
+                    }
+                })
+
+                $(".file").click(function(event){
+                    event.stopImmediatePropagation();
+
+                    if (PAYSCHED == 'twice-monthly') {
+                        from = $(this).data("col1");
+                        to = $(this).data("col2");
+                        
+                    } else if (PAYSCHED == 'monthly') {
+                        MON = `${$(this).data("col2")}-${$(this).data("col1")}`;
+                    }
+
+                    $.ajax({
+                        type: 'POST',
+                        url: '../php/fetch_file.php',
+                        data: {
+                            paysched: PAYSCHED,
+                            col1: $(this).data("col1"),
+                            col2: $(this).data("col2")
+
+                        },success: function(res) {
+                            try {
+                                res = JSON.parse(res);
+
+                                var content = "";
+                                $(".pop-up-window").remove();
+
+                                let x = 0;
+                                for (let i = 0; i < res.length; i++) {
+                                    PERIOD = res[i].period;
+
+                                    PAYSLIP.push({'name' : COMPANY_NAME, 'row': '1', 'col': '1', 'span' : '4', 'align': 'center', 'bold' : true, 'size' : '20'})
+
+                                    if (PAYSCHED == 'twice-monthly') {
+                                        let d = new Date(res[i].from_date);
+                                        let d2 = new Date(res[i].to_date);
+                                        let m = months[d.getMonth()];
+                                        let day = d.getDate();
+                                        let day_2 = d2.getDate();
+                                        let year = d.getFullYear();
+
+                                        PAYSLIP.push({'name' : `${m} ${day}-${day_2}, ${year}`, 'row': '2', 'col': '3', 'span': '2', 'align': 'right'})
+                                    } else if (PAYSCHED == 'monthly') {
+                                        
+                                        let year = res[i].year;
+                                        let month = res[i].month;
+                                        // Create a Date object
+                                        let date = new Date(year, month - 1); // Month is 0-based in JavaScript
+
+                                        // Format the date as "MMM YYYY"
+                                        let formattedDate = date.toLocaleString('default', { month: 'short', year: 'numeric' });
+                                        PAYSLIP.push({'name' : `${formattedDate}`, 'row': '2', 'col': '3', 'span': '2', 'align': 'right'})
+                                    }
+
+                                    PAYSLIP.push({'name' : 'Name:', 'row': '3', 'col': '1'})
+                                    PAYSLIP.push({'name' : res[i].name, 'row': '3', 'col': '2', 'span': '3', 'align': 'left'})
+                                    PAYSLIP.push({'name' : 'COMPENSATIONS', 'row': '5', 'col': '1', 'span' : '2', 'align': 'center', 'bold' : true})
+                                    PAYSLIP.push({'name' : 'DEDUCTIONS', 'row': '5', 'col': '2', 'span' : '2', 'align': 'center', 'bold' : true})
+                                    PAYSLIP.push({'name' : 'Basic', 'row': '6', 'col': '1'})
+                                    PAYSLIP.push({'name' : res[i].basic, 'row': '6', 'col': '2'})
+                                    PAYSLIP.push({'name' : "Absent", 'row': '7', 'col': '1'})
+                                    PAYSLIP.push({'name' : res[i].absent, 'row': '7', 'col': '2'})         
+                                    PAYSLIP.push({'name' : "Undertime", 'row': '8', 'col': '1'})
+                                    PAYSLIP.push({'name' : res[i].ut_total, 'row': '8', 'col': '2'})
+                                    PAYSLIP.push({'name' : "Tardiness", 'row': '9', 'col': '1'})
+                                    PAYSLIP.push({'name' : res[i].tardiness, 'row': '9', 'col': '2'})
+                                    PAYSLIP.push({'name' : "Holiday", 'row': '10', 'col': '1'})
+                                    PAYSLIP.push({'name' : res[i].holiday, 'row': '10', 'col': '2'})
+                                    PAYSLIP.push({'name' : "Overtime", 'row': '11', 'col': '1'})
+                                    PAYSLIP.push({'name' : res[i].ot_total, 'row': '11', 'col': '2'})
+                                    PAYSLIP.push({'name' : "SSS", 'row': '6', 'col': '3'})
+                                    PAYSLIP.push({'name' : res[i].sss, 'row': '6', 'col': '4'})
+                                    PAYSLIP.push({'name' : "PhilHealth", 'row': '7', 'col': '3'})
+                                    PAYSLIP.push({'name' : res[i].phil, 'row': '7', 'col': '4'})
+                                    PAYSLIP.push({'name' : "Pag-IBIG", 'row': '8', 'col': '3'})
+                                    PAYSLIP.push({'name' : res[i].pbig, 'row': '8', 'col': '4'})
+                                    PAYSLIP.push({'name' : "Adjustment", 'row': '9', 'col': '3'})
+                                    PAYSLIP.push({'name' : res[i].adjustment, 'row': '9', 'col': '4'})
+                                    PAYSLIP.push({'name' : "Cash Advance", 'row': '10', 'col': '3'})
+                                    PAYSLIP.push({'name' : res[i].cash_advance, 'row': '10', 'col': '4'})
+                                    PAYSLIP.push({'name' : "Charges", 'row': '11', 'col': '3'})
+                                    PAYSLIP.push({'name' : res[i].charges, 'row': '11', 'col': '4'})
+                                    PAYSLIP.push({'name' : "SSS Loan", 'row': '12', 'col': '3'})
+                                    PAYSLIP.push({'name' : res[i].sss_loan, 'row': '12', 'col': '4'})
+                                    PAYSLIP.push({'name' : "Pag-IBIG Loan", 'row': '13', 'col': '3'})
+                                    PAYSLIP.push({'name' : res[i].pbig_loan, 'row': '13', 'col': '4'})
+                                    PAYSLIP.push({'name' : "Company Loan", 'row': '14', 'col': '3'})
+                                    PAYSLIP.push({'name' : res[i].company_loan, 'row': '14', 'col': '4'})
+                                    PAYSLIP.push({'name' : "Total Deductions", 'row': '15', 'col': '3', 'bold' : true})
+                                    PAYSLIP.push({'name' : res[i].total_deductions, 'row': '15', 'col': '4', 'bold' : true})
+                                    PAYSLIP.push({'name' : "Total Earnings", 'row': '15', 'col': '1', 'bold' : true})
+                                    PAYSLIP.push({'name' : res[i].earnings, 'row': '15', 'col': '2', 'bold' : true})
+                                    PAYSLIP.push({'name' : "Allowance", 'row': '16', 'col': '1', 'bold' : true})
+                                    PAYSLIP.push({'name' : res[i].allowance, 'row': '16', 'col': '2', 'bold' : true})
+                                    PAYSLIP.push({'name' : "Net Earnings", 'row': '17', 'col': '1', 'span' : '3', 'align' : 'right', 'bold' : true, 'margin' : '15px'})
+                                    PAYSLIP.push({'name' : res[i].net, 'row': '17', 'col': '2', 'bold' : true})
+
+                                    PAYSLIP.push({'name' : "Signature", 'row': '18', 'col': '1', 'span' : '2', 'align' : 'center', 'border':'2px solid rgba(0,0,0,.6)'})
+
+                                    PAYSLIPS.push(PAYSLIP);
+                                    PAYSLIP = [];
+                                    details = [];
+                                                                                                        
+                                    details.push({"RATE" : res[i].rate});
+                                    details.push({"RATE TYPE" : res[i].rate_type});
+                                    details.push({"WORKING DAYS" : res[i].working_days});
+                                    details.push({"DAYS WORKED" : res[i].days_worked});
+                                    details.push({"SALARY RATE" : res[i].salary_rate});
+                                    details.push({"ABSENT (total)" : {"value" : res[i].absent, "op" : "-"}});
+                                    details.push({"BASIC" : res[i].basic});
+                                    
+                                    details.push({"UNDERTIME (total)" : {"value" : res[i].ut_total, "op" : "-"}});
+                                    details.push({"TARDINESS (total)" : {"value" : res[i].tardiness, "op" : "-"}});
+                                    details.push({"HOLIDAYS (total)" : {"value" : res[i].holiday, "op" : "+"}});
+
+                                    details.push({"OVERTIME (total)" : {"value" : res[i].ot_total, "op" : "+"}});
+
+                                    details.push({"EARNED" : {"value" : res[i].earnings, "highlight" : "", "op" : "+"}});
+                                    details.push({"SSS" : {"value" : res[i].sss, "op" : "-"}});
+                                    details.push({"PHILHEALTH" : {"value" : res[i].phil, "op" : "-"}});
+                                    details.push({"PAG-IBIG" : {"value" : res[i].pbig, "op" : "-"}});
+                                    details.push({"ADJUSTMENT" : {"value" : res[i].adjustment, "op" : "-"}});
+
+                                    details.push({"CASH ADVANCE" :{"value" : res[i].cash_advance, "op" : "-"}});
+                                    details.push({"CHARGES" : {"value" : res[i].charges, "op" : "-"}});
+                                    details.push({"SSS LOAN" : {"value" : res[i].sss_loan, "op" : "-"}});
+                                    details.push({"PAG-IBIG LOAN" :{"value" : res[i].pbig_loan, "op" : "-"}});
+                                    details.push({"COMPANY LOAN" : {"value" : res[i].company_loan, "op" : "-"}});
+                                    details.push({"TOTAL DEDUCTIONS" : {"value" : res[i].total_deductions, "highlight" : "", "op" : "-"}});
+                                    details.push({"ALLOWANCE (total)" : {"value" : res[i].allowance, "op" : "+"}});
+                                    details.push({"ALLOWANCE PENALTY" : {"value" : res[i].allowance_penalty, "op" : "-"}});
+                                    details.push({"NET" : {"value" : res[i].net, "highlight" : ""}});
+
+                                    ALLDetails[res[i].serialnumber] = details;
+
+                                    x += 1;
+                                    
+                                    
+                                    content += `
+                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                                        <td>${res[i].name}</td>
+                                        <td><input type="number" id="cal${res[i].serialnumber}" value="${res[i].working_days}" style="margin-bottom:-1px;" placeholder="Enter calendar working days"/></td>
+                                        <td id="gross-pay${res[i].serialnumber}">${res[i].earnings}</td>
+                                        <td>
+                                        <label class="switch" data-s="${res[i].serialnumber}" style="margin-bottom:-20px">
+                                            <input id="sss-cbbox" type="checkbox" checked>
+                                            <span class="slider round"></span>
+                                        </label>
+                                        </td>
+                                        <td>
+                                            <label class="switch" data-s="${res[i].serialnumber}" style="margin-bottom:-20px">
+                                                <input id="phil-cbox" type="checkbox" checked>
+                                                <span class="slider round"></span>
+                                            </label>
+                                        </td>
+                                        <td>
+                                            <label class="switch" data-s="${res[i].serialnumber}" style="margin-bottom:-20px">
+                                                <input id="pbig-cbox" type="checkbox" checked>
+                                                <span class="slider round"></span>
+                                            </label>
+                                        </td>
+                                        <td id="net-pay${res[i].serialnumber}">${res[i].net}</td>
+                                        <td>
+                                        <button class="action-button mr-1 payslip${res[i].serialnumber} view-details" data-class="${res[i].class}" data-id="${res[i].serialnumber}" data-name="${res[i].name}" style="background:orange;display:none;">DETAILS</button>
+                                        <button class="action-button mr-1 compute-salary" data-id="${res[i].serialnumber}">COMPUTE</button>
+                                        <button class="action-button trail mr-1" data-id="${res[i].serialnumber}">TRAIL</button>
+                                    </tr>`;
+
+                                }
+
+                                let txt = "";
+                                if (PAYSCHED != null || PAYSCHED !== 'undefined') { 
+                                    if (PAYSCHED == 'twice-monthly') {
+                                        let newdate = new Date(from);
+                                        let newdate2 = new Date(to);
+                                        let _mon = months[newdate.getMonth()];
+                                        let _d1 = newdate.getDate();
+                                        let _d2 = newdate2.getDate();
+                                        let _year = newdate.getFullYear();
+                                        txt += `${_mon} ${_d1}-${_d2}, ${_year}`;
+                                    } else {
+                                        txt = `${formatDate(MON)}`;
+                                    }
+                                }
+
+                                function formatDate(inputDate) {
+                                    // Split the inputDate into year and month parts
+                                    const [year, month] = inputDate.split('-');
+                                
+                                    // Convert month from numeric string to integer
+                                    const monthNumber = parseInt(month, 10);
+                                
+                                    // Create a Date object with the year and month
+                                    const date = new Date(year, monthNumber - 1);
+                                
+                                    // Get the month name in abbreviated form (e.g., 'Apr')
+                                    const monthName = date.toLocaleString('default', { month: 'short' });
+                                
+                                    // Format the result as 'MMM YYYY'
+                                    return `${monthName} ${year}`;
+                                }
+
+                                document.body.insertAdjacentHTML("afterbegin", `
+                                <div class="pop-up-window">
+                                    <div class="window-content pt-5" style="position:relative;">
+                                        ${close_icon}
+                                        <p class="text-center text-white" style="font-size:20px;">PAYROLL (${txt})</p>
+                                        <div class="payroll-header-buttons" style="display:flex;justify-content:space-between;align-items:end;"><div style="color:#fff;display:flex;"><button class="action-button add-holiday mr-2">ADD HOLIDAY</button><button class="action-button remove-holiday mr-2">REMOVE HOLIDAY</button></div>
+                                        <div style="display:flex;flex-direction:column;color:#fff;align-items:center;"><span id="available-payslip">Available: 0</span><button class="action-button generate-payslip">GENERATE PAYSLIP</button></div>
+                                        </div>
+                                        <hr>
+                                        <div class="text-white mb-2" style="margin-top:-10px;">Employees: <span class="text-center">${res.length}</span></div>
+                                        <div class="table-container" style="max-height:60vh;overflow:auto;max-width:70vw;min-width:50vw;">
+                                            <table>
+                                                <thead>
+                                                    <tr>
+                                                        <td>NAME OF EMPLOYEE</td>
+                                                        <td style="display:flex;align-items:center;">WORKING DAYS &nbsp; 
+                                                            <svg style="cursor:pointer;" class="add-working-days" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-square-fill" viewBox="0 0 16 16">
+                                                            <path d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm6.5 4.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3a.5.5 0 0 1 1 0"/>
+                                                            </svg>
+                                                        </td>
+                                                        <td>EARNED</td>
+                                                        <td>SSS</td>
+                                                        <td>PHILHEALTH</td>
+                                                        <td>PAG-IBIG</td>
+                                                        <td>NET PAY</td>
+                                                        <td>ACTION</td>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="tbody">
+                                                    ${content}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <br>
+                                        <div style="text-align:right;">
+                                            <button class="action-button print-payroll-document">PRINT DOCUMENT</button>
+                                        </div>
+                                    </div>
+                                </div>`);
+
+
+                                
+                                $(".print-payroll-document").click(function(event){
+                                    event.stopImmediatePropagation();
+
+                                    $(".payroll-document").remove();
+                                    $(".pages").remove();
+
+                                    let tbody_content = "";
+                                    let total_net = 0;
+                                    for (let i = 0; i < ALLDetails.length; i++) {
+                                        if (typeof ALLDetails[i] === 'object') {
+                                            let name;
+                                            for (let j = 0; j < res.length; j++) {
+                                                if (parseInt(res[j].serialnumber) == i) {
+                                                    name = res[j].name;
+                                                    break;
+                                                }
+                                            }
+
+                                            tbody_content += `
+                                            <tr>
+                                                <td>${name}</td>
+                                                <td>${ALLDetails[i][4]['SALARY RATE']}</td>
+                                                <td>${ALLDetails[i][5]['ABSENT (total)'].value}</td>
+                                                <td>${ALLDetails[i][7]['UNDERTIME (total)'].value}</td>
+                                                <td>${ALLDetails[i][8]['TARDINESS (total)'].value}</td>
+                                                <td>${ALLDetails[i][6]['BASIC']}</td>
+                                                <td>${ALLDetails[i][9]['HOLIDAYS (total)'].value}</td>
+                                                <td>${ALLDetails[i][10]['OVERTIME (total)'].value}</td>
+                                                <td>${ALLDetails[i][11]['EARNED'].value}</td>
+                                                <td>${ALLDetails[i][12]['SSS'].value}</td>
+                                                <td>${ALLDetails[i][13]['PHILHEALTH'].value}</td>
+                                                <td>${ALLDetails[i][14]['PAG-IBIG'].value}</td>
+                                                <td>${ALLDetails[i][15]['ADJUSTMENT'].value}</td>
+                                                <td>${ALLDetails[i][16]['CASH ADVANCE'].value}</td>
+                                                <td>${ALLDetails[i][17]['CHARGES'].value}</td>
+                                                <td>${ALLDetails[i][18]['SSS LOAN'].value}</td>
+                                                <td>${ALLDetails[i][19]['PAG-IBIG LOAN'].value}</td>
+                                                <td>${ALLDetails[i][20]['COMPANY LOAN'].value}</td>
+                                                <td>${ALLDetails[i][21]['TOTAL DEDUCTIONS'].value}</td>
+                                                <td>${ALLDetails[i][22]['ALLOWANCE (total)'].value}</td>
+                                                <td>${ALLDetails[i][24]['NET'].value}</td>
+                                            </tr>`;
+                                            
+                                            let net = ALLDetails[i][24]['NET'].value
+                                            net = net.replace(/,/g, '');
+                                            net = parseFloat(net);
+                                            total_net += net;
+                                        }
+                                        
+                                    }
+
+                                    tbody_content += `
+                                    <tr>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td>${total_net.toFixed(2)}</td>
+                                    </tr>`;
+
+                                    document.body.insertAdjacentHTML("afterbegin",`
+                                    <div class="payroll-document" style="display:none;margin-top:100px;">
+                                        <h5 class="text-center">${COMPANY_NAME}</h5>
+                                        <p class="text-center">${COMPANY_ADD}</p>
+                                        <h6 class="text-center">PAYROLL</h6>
+                                        <p class="text-center">${txt}</p>
+                                        <table>
+                                            <thead>
+                                                <tr>
+                                                    <th rowspan="2" style="text-align:center;">Name of Employees</th>
+                                                    <th colspan="7" style="text-align:center;">COMPENSATION</th>
+                                                    <th rowspan="2">Earnings</th>
+                                                    <th colspan="9" style="text-align:center;">DEDUCTIONS</th>
+                                                    <th rowspan="2" style="text-align:center;">Total Deductions</th>
+                                                    <th rowspan="2">Allowance</th>
+                                                    <th rowspan="2">Net Pay</th>
+                                                </tr>
+                                                <tr>
+                                                    <th>SALARY RATE</th>
+                                                    <th>ABSENT</th>
+                                                    <th>UNDERTIME</th>
+                                                    <th>TARDINESS</th>
+                                                    <th>BASIC</th>
+                                                    <th>HOLIDAY</th>
+                                                    <th>OVERTIME</th>
+                                                    <th>SSS</th>
+                                                    <th>PHILHEALTH</th>
+                                                    <th>PAG-IBIG</th>
+                                                    <th>ADJUSTMENT</th>
+                                                    <th>CASH ADVANCE</th>
+                                                    <th>CHARGES</th>
+                                                    <th>SSS LOAN</th>
+                                                    <th>PAG-IBIG LOAN</th>
+                                                    <th>COMPANY LOAN</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                ${tbody_content}
+                                            </tbody>
+                                        </table>
+                                    </div>`);
+
+                                    window.print();
+                                })
+
+                                $("#available-payslip").html(`Available: ${x}`);
+
+                                $(".add-working-days").click(function(event){
+                                    event.stopImmediatePropagation();
+                
+                                    let ops ="";
+                                    for (let i = 0; i < ALL_CLASS.length; i++) {
+                                        ops += `
+                                        <option style="border-bottom:1px solid rgba(0,0,0,0.1);" value="${ALL_CLASS[i].class}">${ALL_CLASS[i].class_name}</option>`;
+                                    }
+                
+                                    let ops2 = "";
+                                    for (let i = 0; i < ALL_SERIAL.length; i++) {
+                                        ops2 += `
+                                        <option style="border-bottom:1px solid rgba(0,0,0,0.1);" value="${ALL_SERIAL[i].serial}">${ALL_SERIAL[i].name}</option>`;
+                                    }
+                
+                                    document.body.insertAdjacentHTML("afterbegin", `
+                                    <div class="third-layer-overlay">
+                                        <div class="tlo-wrapper pt-5" style="min-width:400px;position:relative;">
+                                            ${close_icon}
+                                            <p class="text-white text-center" style="font-size:20px;">ADD WORKING DAYS</p>
+                                            <hr>
+                                            <div style="display:flex;flex-direction:column;color:#fff;">
+                                                <span>SELECT BY:</span>
+                                                <select id="select-by">
+                                                    <option value="class">Class</option>
+                                                    <option value="employee">Employee</option>
+                                                </select>
+                                                <span>SELECT MULTIPLE: (Hold CTRL)</span>
+                                                <select id="selection" multiple>
+                                                    ${ops}
+                                                </select>
+                                                <span>WORKING DAYS:</span>
+                                                <input type="number" id="working-days" placeholder="Enter working days"/>
+                                                <br>
+                                                <input type="button" value="ADD"/>
+                                            </div>
+                                        </div>
+                                    </div>`);
+                
+                                    $("input[type='button']").click(function(event){
+                                        event.stopImmediatePropagation();
+                                        let selected = $("#selection").val();
+                                        let workingDays = $("#working-days").val();
+                
+                                        if ($("#select-by").val() == 'class') {
+                                            if (selected.length > 0) {
+                                                for (let i = 0; i < selected.length; i++) {
+                                                    for (let j = 0; j < ALL_SERIAL.length; j++){
+                                                        if (ALL_SERIAL[j].class == selected[i]) {
+                                                            $(`#cal${ALL_SERIAL[j].serial}`).val(workingDays);
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        } else {
+                                            if (selected.length > 0) {
+                                                for (let i = 0; i < selected.length; i++) {
+                                                    $(`#cal${selected[i]}`).val(workingDays);
+                                                }
+                                            }
+                                        }
+                
+                                        successNotification("Working days added.", "success");
+                                        $(".third-layer-overlay").remove();
+                                    })
+                
+                                    $("select#select-by").change(function(event){
+                                        if ($(this).val() === 'class') {
+                                            $("select#selection").html(ops);
+                                        } else {
+                                            $("select#selection").html(ops2);
+                                        }
+                                    })
+                
+                                    $(".close-window").click(function(event){
+                                        $(".third-layer-overlay").remove();
+                                    })
+                                })
+                
+                                $("input[type='checkbox']").change(function(event){
+                                    let snum = $(this).parent("label").data("s");
+                
+                                    if ($(`#net-pay${snum}`).html() === '0' || $(`#net-pay${snum}`).html() === '0.00') {
+                                        $(this).prop('checked', !$(this).prop('checked'));
+                                    } else {
+                                        let net = $(`#net-pay${snum}`).html();
+                                        net = net.replace(/,/g, '');
+                                        net = parseFloat(net);
+                
+                                        let td = ALLDetails[parseInt(snum)][21]['TOTAL DEDUCTIONS'].value;
+                                        td = td.replace(/,/g, '');
+                                        td = parseFloat(td);
+                
+                                        if ($(this).is(":checked")) {
+
+                                            ALLDetails[parseInt(snum)];
+                                            if ($(this).attr("id").includes("sss")) {
+                                                let ded = parseFloat(D[`d${snum}`].sss);
+                                                net = net - ded;
+                                                $(`#net-pay${snum}`).html(net.toLocaleString());
+                                                deductions[`deduc${snum}`]['sss'] = D[`d${snum}`].sss;
+                
+                                                td = td + ded;
+                
+                                                ALLDetails[parseInt(snum)][21]['TOTAL DEDUCTIONS'] = {'value' : td.toLocaleString(), 'highlight' : '', 'op' : '-'};
+                                                ALLDetails[parseInt(snum)][12]['SSS'] = {'value' : D[`d${snum}`].sss, 'op' : '-'};
+                                                ALLDetails[parseInt(snum)][24]['NET'] = {'value' : net.toLocaleString(), 'highlight' : ''};
+
+                                                
+                                            }
+                                            if ($(this).attr("id").includes("phil")) {
+                                                let ded = parseFloat(D[`d${snum}`].phil);
+                                                net = net - ded;
+                                                
+                                                $(`#net-pay${snum}`).html(net.toLocaleString());
+                                                td = td + ded;
+                                                
+                                                ALLDetails[parseInt(snum)][21]['TOTAL DEDUCTIONS'] = {'value' : td.toLocaleString(), 'highlight' : '', 'op' : '-'};                 
+                                                deductions[`deduc${snum}`]['phil'] = D[`d${snum}`].phil;
+                                                ALLDetails[parseInt(snum)][13]['PHILHEALTH'] = {'value' : D[`d${snum}`].phil, 'op' : '-'};
+                                                ALLDetails[parseInt(snum)][24]['NET'] = {'value' : net.toLocaleString(), 'highlight' : ''};
+
+                          
+                                            }
+                                            if ($(this).attr("id").includes("pbig")) {
+                                                let ded = parseFloat(D[`d${snum}`].pbig);
+                                                net = net - ded;
+                                                $(`#net-pay${snum}`).html(net.toLocaleString());
+                                                td = td + ded;
+                                                
+                                                ALLDetails[parseInt(snum)][21]['TOTAL DEDUCTIONS'] = {'value' : td.toLocaleString(), 'highlight' : '', 'op' : '-'};
+                                                deductions[`deduc${snum}`]['pbig'] = D[`d${snum}`].pbig;
+                                                ALLDetails[parseInt(snum)][14]['PAG-IBIG'] = {'value' : D[`d${snum}`].pbig, 'op' : '-'};
+                                                ALLDetails[parseInt(snum)][24]['NET'] = {'value' : net.toLocaleString(), 'highlight' : ''};
+
+                                            }
+
+                                            if (PAYSCHED == 'twice-monthly') {
+                                                $.ajax({
+                                                    type: 'POST',
+                                                    url: '../php/update_contri_file.php',
+                                                    data: {
+                                                        serial: snum,
+                                                        col1: from,
+                                                        col2: to,
+                                                        paysched: PAYSCHED,
+                                                        sss: D[`d${snum}`].sss,
+                                                        phil: D[`d${snum}`].phil,
+                                                        pbig: D[`d${snum}`].pbig,
+                                                        td: td,
+                                                        net: net,
+                                                    }, success:function(res) {
+                                                        console.log(res);
+                                                    }
+                                                })
+                                            } else if (PAYSCHED == 'monthly') {
+                                                $.ajax({
+                                                    type: 'POST',
+                                                    url: '../php/update_contri_file.php',
+                                                    data: {
+                                                        serial: snum,
+                                                        col1: MON,
+                                                        col2: MON,
+                                                        paysched: PAYSCHED,
+                                                        sss: D[`d${snum}`].sss,
+                                                        phil: D[`d${snum}`].phil,
+                                                        pbig: D[`d${snum}`].pbig,
+                                                        td: td,
+                                                        net: net,
+                                                    }, success:function(res) {
+                                                        console.log(res);
+                                                    }
+                                                })
+                                            }
+                                            
+                                            
+                                        } else {
+
+                                           
+
+                                            if ($(this).attr("id").includes("sss")) {
+                                                let ded = parseFloat(deductions[`deduc${snum}`].sss);
+                                                net = net + ded;
+                                                $(`#net-pay${snum}`).html(net.toLocaleString());
+                                                td = td - ded;
+                                                
+                                                ALLDetails[parseInt(snum)][21]['TOTAL DEDUCTIONS'] = {'value' : td.toLocaleString(), 'highlight' : '', 'op' : '-'};
+                                                deductions[`deduc${snum}`]['sss'] = 0;
+                                                ALLDetails[parseInt(snum)][12]['SSS'] = {'value' : deductions[`deduc${snum}`].sss, 'op' : '-'};
+                                                ALLDetails[parseInt(snum)][24]['NET'] = {'value' : net.toLocaleString(), 'highlight' : ''};
+
+                                        
+                                            }
+                                            if ($(this).attr("id").includes("phil")) {
+                                                
+                                                let ded = parseFloat(deductions[`deduc${snum}`].phil);
+                                                
+                                                net = net + ded;
+                                                $(`#net-pay${snum}`).html(net.toLocaleString());
+                                                td = td - ded;
+                                                
+                                                ALLDetails[parseInt(snum)][21]['TOTAL DEDUCTIONS'] = {'value' : td.toLocaleString(), 'highlight' : '', 'op' : '-'};
+                                                deductions[`deduc${snum}`]['phil'] = 0;
+                                                ALLDetails[parseInt(snum)][13]['PHILHEALTH'] = {'value' : deductions[`deduc${snum}`].phil, 'op' : '-'};
+                                                ALLDetails[parseInt(snum)][24]['NET'] = {'value' : net.toLocaleString(), 'highlight' : ''};
+
+                                            }
+                                            if ($(this).attr("id").includes("pbig")) {
+                                                
+                                                let ded = parseFloat(deductions[`deduc${snum}`].pbig);
+                                                td = td - ded;
+                                                
+                                                ALLDetails[parseInt(snum)][21]['TOTAL DEDUCTIONS'] = {'value' : td.toLocaleString(), 'highlight' : '', 'op' : '-'};
+                                                net = net + ded;
+                                                $(`#net-pay${snum}`).html(net.toLocaleString());
+                
+                                                deductions[`deduc${snum}`]['pbig'] = 0;
+                                                ALLDetails[parseInt(snum)][14]['PAG-IBIG'] = {'value' : deductions[`deduc${snum}`].pbig, 'op' : '-'};
+                                                ALLDetails[parseInt(snum)][24]['NET'] = {'value' : net.toLocaleString(), 'highlight' : ''};
+
+                                          
+                                            }
+
+                                            if (PAYSCHED == 'twice-monthly') {
+                                                $.ajax({
+                                                    type: 'POST',
+                                                    url: '../php/update_contri_file.php',
+                                                    data: {
+                                                        serial: snum,
+                                                        col1: from,
+                                                        col2: to,
+                                                        paysched: PAYSCHED,
+                                                        sss: deductions[`deduc${snum}`].sss,
+                                                        phil: deductions[`deduc${snum}`].phil,
+                                                        pbig: deductions[`deduc${snum}`].pbig,
+                                                        td: td,
+                                                        net: net,
+                                                    }, success:function(res) {
+                                                        console.log(res);
+                                                    }
+                                                })
+                                            } else if (PAYSCHED == 'monthly') {
+                                                $.ajax({
+                                                    type: 'POST',
+                                                    url: '../php/update_contri_file.php',
+                                                    data: {
+                                                        serial: snum,
+                                                        col1: MON,
+                                                        col2: MON,
+                                                        paysched: PAYSCHED,
+                                                        sss: deductions[`deduc${snum}`].sss,
+                                                        phil: deductions[`deduc${snum}`].phil,
+                                                        pbig: deductions[`deduc${snum}`].pbig,
+                                                        td: td,
+                                                        net: net,
+                                                    }, success:function(res) {
+                                                        console.log(res);
+                                                    }
+                                                })
+                                            }
+                                        }
+                                    }
+                
+                                })
+                    
+                                $(".trail").click(function(event){
+                                    event.stopImmediatePropagation();
+                                    let serial = $(this).data("id");
+                
+                                    let promise;
+                                    if (PAYSCHED == 'twice-monthly') {
+                                        promise = new Promise(function(resolve, reject){
+                                            $.ajax({
+                                                type: 'POST',
+                                                url: '../php/fetch_employee_trail.php',
+                                                data : {
+                                                    serial: serial,
+                                                    from: from,
+                                                    to: to
+                                                },
+                                                success: function(res) {
+                                                    resolve(res);
+                                                }
+                                            });
+                                        });
+                                        
+                                    } else if (PAYSCHED == 'monthly') {
+                                        promise = new Promise(function(resolve, reject){
+                                            $.ajax({
+                                                type: 'POST',
+                                                url: '../php/fetch_employee_trail.php',
+                                                data : {
+                                                    serial: serial,
+                                                    mon: MON
+                                                },
+                                                success: function(res) {
+                                                    resolve(res);
+                                                }
+                                            });
+                                        });
+                                    }
+                
+                                    promise.then(
+                                        function(res) {
+                                            let content = "";
+                                            try {
+                                                res = JSON.parse(res);
+                                                for (let i = 0; i < res.length; i++) {
+                                                    function convertTo12HourFormat(timeString) {
+                                                        const timePortion = timeString.split(' ')[1];
+                                                        const [hours, minutes] = timePortion.split(':').map(Number);
+                                                        const meridian = hours >= 12 ? 'PM' : 'AM';
+                                                        const hours12 = hours % 12 || 12;
+                                                        return `${hours12}:${minutes < 10 ? '0' : ''}${minutes} ${meridian}`;
+                                                    }
+                                                    const dateObj = new Date(res[i].date);
+                                                    const month = months[dateObj.getMonth()];
+                                                    const day = dateObj.getDate();
+                                                    const year = dateObj.getFullYear();
+                    
+                                                    content += `
+                                                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                                                        <td style="padding:5px;font-size:14px;">${res[i].name}</td>
+                                                        <td style="padding:5px;font-size:14px;">${CLASSES[res[i].class]}</td>
+                                                        <td style="padding:5px;font-size:14px;">${convertTo12HourFormat(res[i].start_time)}</td>
+                                                        <td style="padding:5px;font-size:14px;">${convertTo12HourFormat(res[i].end_time)}</td>
+                                                        <td style="padding:5px;font-size:14px;">${res[i].late_mins} (mins)</td>
+                                                        <td style="padding:5px;font-size:14px;">${parseFloat(res[i].total_hours).toFixed(2)} hrs</td>
+                                                        <td style="padding:5px;font-size:14px;">${res[i].ot_mins} (mins)</td>
+                                                        <td style="padding:5px;font-size:14px;">${res[i].ut_mins} (mins)</td>
+                                                        <td style="padding:5px;font-size:14px;">${month} ${day}, ${year}</td>
+                                                    </tr>`;
+                                                }
+                
+                                            } catch (err) {
+                                                console.log(err);
+                                                content += `
+                                                <tr>
+                                                    <td colspan="8" class="text-center pt-3">No item</td>
+                                                </tr>`;
+                                            }
+                                            document.body.insertAdjacentHTML("afterbegin", `
+                                            <div class="third-layer-overlay">
+                                                <div class="tlo-wrapper pt-5" style="min-width:500px;position:relative;">
+                                                    ${close_icon}
+                                                    <p class="text-white text-center" style="font-size:20px;">EMPLOYEE TRAIL</p>
+                                                    <hr>
+                                                    <div class="table-container"  style="max-height:40vh;overflow:auto;max-width:60vw;min-width:45vw;">
+                                                        <table>
+                                                            <thead>
+                                                                <tr>
+                                                                    <td>NAME</td>
+                                                                    <td>CLASS</td>
+                                                                    <td>TIME IN</td>
+                                                                    <td>TIME OUT</td>
+                                                                    <td>LATE</td>
+                                                                    <td>HOURS WORKED</td>
+                                                                    <td>OVERTIME</td>
+                                                                    <td>UNDERTIME</td>
+                                                                    <td>DATE</td>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                ${content}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            `);
+                                            $(".close-window").click(function(event){
+                                                $(".third-layer-overlay").remove();
+                                            })
+                                        }
+                                    )
+                                    
+                                })
+                    
+                                $(".generate-payslip").on("click", function(event){
+                                    event.stopImmediatePropagation();
+
+                                    let isEmpty = true;
+                    
+                                    for (let i = 0; i < ALLDetails.length; i++) {
+                                        if (typeof ALLDetails[i] === 'object') {
+                                            isEmpty = false;
+                                        }
+                                    }
+
+                    
+                                    if (!isEmpty) {
+                                        document.body.insertAdjacentHTML("afterbegin", `
+                                        <div class="third-layer-overlay">
+                                            <div class="tlo-wrapper pt-5" style="min-width:500px;position:relative;">
+                                                ${close_icon}
+                                                <p class="text-white text-center" style="font-size:20px;">GENERATE PAYSLIP</p>
+                                                <hr>
+                                                <div class="btns">
+                                                    <button id="continue" style="background:orange;">CONTINUE</button>
+                                                    <button id="cancel" class="action-button">CANCEL</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        `);
+                        
+                                        $("button").click(function(event){
+                                            event.stopImmediatePropagation();
+                                            if ($(this).attr("id").includes("continue")) {
+                                                generatePayslips();
+                                            }
+                                            $(".third-layer-overlay").remove();
+                                        })
+                        
+                                        $(".close-window").click(function(){
+                                            $(".third-layer-overlay").remove();
+                                        })
+                                        
+                    
+                                    } else {
+                                        errorNotification("Cannot process your request.", "danger");
+                                    }
+                                })
+                    
+                                
+
+                                $(".add-deductions").on("click", function(event){
+                                    event.stopImmediatePropagation();
+                                    let serialID = $(this).data("id");
+                
+                                    if (deductions.hasOwnProperty(`deduc${serialID}`)) {
+                                        document.body.insertAdjacentHTML("afterbegin", `
+                                        <div class="third-layer-overlay">
+                                            <div class="tlo-wrapper pt-5" style="position:relative;">
+                                                ${close_icon}
+                                                <p class="text-white text-center" style="font-size:20px;">DEDUCTIONS</p>
+                                                <br>
+                                                <hr>
+                                                <form id="addDeductionForm">
+                                                    <span>SSS (excel file):</span>
+                                                    <input type="number" placeholder="SSS Deduction" value="${deductions[`deduc${serialID}`].sss}" name="sss"/>
+                                                    <span>Pag-IBIG:</span>
+                                                    <input type="number" placeholder="Pag-IBIG Deduction" value="${deductions[`deduc${serialID}`].pbig}" name="pbig"/>
+                                                    <span>PhilHealth:</span>
+                                                    <input type="number" placeholder="PhilHealth Deduction" value="${deductions[`deduc${serialID}`].phil}" name="phil"/>
+                                                    <br>
+                                                    <input type="submit" value="ADD DEDUCTIONS"/>
+                                                </form>
+                                            </div>
+                                        </div>
+                                        `);
+                                    } else {
+                                        document.body.insertAdjacentHTML("afterbegin", `
+                                        <div class="third-layer-overlay">
+                                            <div class="tlo-wrapper pt-5" style="position:relative;">
+                                                ${close_icon}
+                                                <p class="text-white text-center" style="font-size:20px;">DEDUCTIONS</p>
+                                                <br>
+                                                <hr>
+                                                <form id="addDeductionForm">
+                                                    <span>SSS:</span>
+                                                    <input type="number" placeholder="SSS Deduction" name="sss"/>
+                                                    <span>Pag-IBIG:</span>
+                                                    <input type="number" placeholder="Pag-IBIG Deduction" name="pbig"/>
+                                                    <span>PhilHealth:</span>
+                                                    <input type="number" placeholder="PhilHealth Deduction" name="phil"/>
+                                                    <br>
+                                                    <input type="submit" value="ADD DEDUCTIONS"/>
+                                                </form>
+                                            </div>
+                                        </div>
+                                        `);
+                                    }
+                    
+                                    $("input[type='submit']").click(function(event){
+                                        event.preventDefault();
+                                        let data = new FormData(document.getElementById("addDeductionForm"));
+                                        var formDataObject = {};
+                                        let isNotEmpty = true;
+                                        data.forEach(function(value, key){
+                                            formDataObject[key] = value;
+                                            if (value === '') {
+                                                formDataObject[key] = 0;
+                                            }
+                                        });
+                                        
+                                        deductions[`deduc${serialID}`] = {"sss" : formDataObject.sss, "pbig" : formDataObject.pbig, "phil" : formDataObject.phil}
+                                        successNotification("Deductions added.", "success");
+                                        $(".third-layer-overlay").remove();
+                                            
+                                    })
+                    
+                                    $(".close-window").click(function(){
+                                        $(".third-layer-overlay").remove();
+                                    })
+                                })
+                
+                                $(".remove-holiday").on("click", function(event){
+                                    event.stopImmediatePropagation();
+                
+                                    let ops = "";
+                    
+                                    $.ajax({
+                                        type: 'POST',
+                                        url: '../php/fetchHolidaysDate.php',
+                                        success: function(res){
+                                            try {
+                                                res = JSON.parse(res);
+                                            
+                                                for (let i = 0; i < res.length; i++) {
+                                                    const date = new Date(res[i].date);
+                    
+                                                    // Get month, day, and year components
+                                                    const month = months[date.getMonth()];
+                                                    const day = date.getDate();
+                                                    const year = date.getFullYear();
+                    
+                                                    // Construct the formatted date string
+                                                    const formattedDate = `${month} ${day}, ${year}`;
+                    
+                                                    ops += `
+                                                    <option value="${res[i].id}">${formattedDate}</option>
+                                                    `;
+                                                }
+                    
+                                            } catch(err) {
+                                                console.log(err);
+                                            }
+                    
+                                            document.body.insertAdjacentHTML("afterbegin", `
+                                                <div class="third-layer-overlay">
+                                                    <div class="tlo-wrapper pt-5" style="position:relative;">
+                                                        ${close_icon}
+                                                        <p class="text-white text-center" style="font-size:20px;">REMOVE HOLIDAY BY DATE</p>
+                                                        <hr>
+                                                        <form id="removeHolidayForm">
+                                                            <span>SELECT DATE</span>
+                                                            <select name="id">
+                                                                <option value="">Select date</option>
+                                                                ${ops}
+                                                            </select>
+                                                            
+                                                            <br>
+                                                            <input type="submit" value="REMOVE HOLIDAY"/>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            `);
+                    
+                                            $("input[type='submit']").click(function(event){
+                                                event.preventDefault();
+                                                let data = new FormData(document.getElementById("removeHolidayForm"));
+                                                var formDataObject = {};
+                                                let isNotEmpty = true;
+                                                data.forEach(function(value, key){
+                                                    formDataObject[key] = value;
+                                                    if (value === '') {
+                                                        isNotEmpty = false;
+                                                    }
+                                                });
+                    
+                                                if (!isNotEmpty) {
+                                                    errorNotification("Fields must be filled out.", "warning");
+                                                } else {
+                                                    $.ajax({
+                                                        type: 'POST',
+                                                        url: '../php/remove_holidaypay.php',
+                                                        data: {
+                                                            id: formDataObject.id,
+                                                        }, success: function(res){
+                                                        
+                                                            if (res.includes('success')) {
+                                                                successNotification("Selected holiday removed.", "success");
+                                                                $(".third-layer-overlay").remove();
+                                                            }
+                                                        }
+                                                    })
+                                                }
+                                                
+                                            })
+                    
+                    
+                                            $(".close-window").click(function(){
+                                                $(".third-layer-overlay").remove();
+                                            })
+                    
+                                            
+                                        }
+                                    })
+                                })
+                    
+                                $(".add-holiday").on("click", function(event){
+                                    event.stopImmediatePropagation();
+                    
+                                    let ops = "";
+                    
+                                    $.ajax({
+                                        type: 'POST',
+                                        url: '../php/fetchHolidays.php',
+                                        success: function(res){
+                                            
+                                            try {
+                                                res = JSON.parse(res);
+                                                
+                                                for (let i = 0; i < res.length; i++) {
+                                                    ops += `
+                                                    <option value="${res[i].id}|${res[i].class}">${res[i].holiday_name}</option>
+                                                    `;
+                                                }
+                    
+                                            } catch(err) {
+                                                console.log(err);
+                                            }
+                    
+                                            document.body.insertAdjacentHTML("afterbegin", `
+                                                <div class="third-layer-overlay">
+                                                    <div class="tlo-wrapper pt-5" style="position:relative;">
+                                                        ${close_icon}
+                                                        <p class="text-white text-center" style="font-size:20px;">ADD HOLIDAY</p>
+                                                        <hr>
+                                                        <form id="addHolidayForm">
+                                                            <span>SELECT HOLIDAY</span>
+                                                            <select name="holiday">
+                                                                <option value="">Select holiday</option>
+                                                                ${ops}
+                                                            </select>
+                                                            <span>SELECT DATE</span>
+                                                            <input type="date" name="date"/>
+                                                            <br>
+                                                            <input type="submit" value="ADD HOLIDAY"/>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            `);
+                    
+                                            $("input[type='submit']").click(function(event){
+                                                event.preventDefault();
+                                                let data = new FormData(document.getElementById("addHolidayForm"));
+                                                var formDataObject = {};
+                                                let isNotEmpty = true;
+                                                data.forEach(function(value, key){
+                
+                                                    if (data.getAll(key).length > 1) {
+                                                        formDataObject[key] = data.getAll(key);
+                                                    } else {
+                                                        formDataObject[key] = value;
+                                                    }
+                    
+                                                    if (value === '') {
+                                                        isNotEmpty = false;
+                                                    }
+                                                });
+                
+                                                let val = formDataObject.holiday.split("|");
+                                                formDataObject['holiday'] = val[0];
+                                                formDataObject['class'] = val[1];
+                    
+                                                if (!isNotEmpty) {
+                                                    errorNotification("Fields must be filled out.", "warning");
+                                                } else {
+                                                    $.ajax({
+                                                        type: 'POST',
+                                                        url: '../php/add_holidaypay.php',
+                                                        data: {
+                                                            holiday: formDataObject.holiday,
+                                                            class: formDataObject.class,
+                                                            date: formDataObject.date,
+                                                        }, success: function(res){
+                    
+                                                            if (res.includes('success')) {
+                                                                successNotification("Holiday added.", "success");
+                                                                $(".third-layer-overlay").remove();
+                                                            }
+                                                        }
+                                                    })
+                                                }
+                                            })
+                    
+                    
+                                            $(".close-window").click(function(){
+                                                $(".third-layer-overlay").remove();
+                                            })
+                                        }
+                                    })
+                                })
+                    
+                                $(".compute-salary").on("click", function(event){
+                                    event.stopImmediatePropagation();
+                                    let id = $(this).data("id");
+                    
+                                    if ($(`#cal${id}`).val() === '') {
+                                        errorNotification("Please enter working days.", "warning");
+                                    } else {
+                                        computeSalary(id);
+                                        //$(this).remove();
+                                        $(`.payslip${id}`).css("display", "inline");
+                                    }
+                                })
+                    
+                                $(".view-details").on("click", function(event){
+                                    event.stopImmediatePropagation();
+                    
+                                    let id = $(this).data("id");
+                                    console.log(id);
+                                    let name = $(this).data("name");
+                                  
+                                    let CLASS = $(this).data("class");
+                                    let class_name = CLASSES[CLASS];
+                    
+                                    let content = "";
+                    
+                                    let reportArr = [];
+                                    reportArr.push(name);
+                                    reportArr.push(id);
+                                    reportArr.push(CLASS);
+                                    reportArr.push(class_name);
+                                
+                                    for (let i = 0; i < ALLDetails[id].length; i++) {
+                                        for (let key in ALLDetails[id][i]) {
+                                            let NAME = key;
+                                            if (ALLDetails[id][i].hasOwnProperty(key)) {
+                                                let value = ALLDetails[id][i][key];
+                                                
+                                                try {
+                                                    if (ALLDetails[id][i][key].hasOwnProperty('value')) {
+                    
+                                                        try {
+                                                            value = ALLDetails[id][i][key].value.toLocaleString();
+                                                        } catch (err) {
+                                                            value = ALLDetails[id][i][key].value;
+                                                        }
+                                                    }
+                    
+                                                    if (ALLDetails[id][i][key].hasOwnProperty('highlight')) {
+                                                        if (ALLDetails[id][i][key].hasOwnProperty('op')) {
+                                                            content += `
+                                                            <tr style="background:rgba(255,255,255,0.2);color: #000;border-bottom:1px solid rgba(0,0,0,0.1);">
+                                                                <td>${NAME}</td>
+                                                                <td>${ALLDetails[id][i][key].op} ${value}</td>
+                                                            </tr>`;
+                                                        } else {
+                                                            content += `
+                                                            <tr style="background:rgba(255,255,255,0.2);color: #000;border-bottom:1px solid rgba(0,0,0,0.1);">
+                                                                <td>${NAME}</td>
+                                                                <td>${value}</td>
+                                                            </tr>`;
+                                                        }
+                                                        
+                    
+                                                    } else {
+                                                        if (ALLDetails[id][i][key].hasOwnProperty('op')) {
+                                                            content += `
+                                                            <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                                                                <td>${NAME}</td>
+                                                                <td>${ALLDetails[id][i][key].op} ${value}</td>
+                                                            </tr>`;
+                                                        } else {
+                                                            content += `
+                                                            <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                                                                <td>${NAME}</td>
+                                                                <td>${value}</td>
+                                                            </tr>`;
+                                                        }
+                                                    } 
+                    
+                                                } catch(err) {
+                                                    console.log(err);
+                                                }
+                    
+                                                reportArr.push(value);
+                                                
+                                            }
+                                        }
+                                    }
+                                    
+                                    document.body.insertAdjacentHTML("afterbegin", `
+                                    <div class="third-layer-overlay">
+                                        <div class="tlo-wrapper pt-5" style="position:relative;">
+                                            ${close_icon}
+                                            <p class="text-white text-center" style="font-size:20px;">${name}</p>
+                                           
+                                            <hr>
+                                            <div class="table-container" style="max-height:40vh;overflow:auto;max-width:60vw;min-width:30vw;border-bottom:1px solid rgba(0,0,0,0.1);">
+                                                <table>
+                                                    <thead>
+                                                        <tr>
+                                                            <td>NAME</td>
+                                                            <td>VALUE</td>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="tbody">
+                                                        ${content}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                            <br>
+                                            <br>
+                                        </div>
+                                    </div>`);
+                
+                                    // <div style="text-align:center;">
+                                    //     <input type="button" data-details='{"name":"${reportArr[0]}", "serial":"${reportArr[1]}", "class": "${reportArr[2]}", "class_name":"${reportArr[3]}", "rate": "${reportArr[4]}", "rate_type": "${reportArr[5]}", "working_days": "${reportArr[6]}", "days_worked": "${reportArr[7]}", "salary_rate": "${reportArr[8]}", "absent":"${reportArr[9]}", "basic": "${reportArr[10]}", "ut_total": "${reportArr[11]}", "tardiness" : "${reportArr[12]}", "holiday": "${reportArr[13]}", "ot_total" : "${reportArr[14]}", "earnings" : "${reportArr[15]}", "sss" : "${reportArr[16]}", "phil" : "${reportArr[17]}", "pbig": "${reportArr[18]}", "adjustment": "${reportArr[19]}", "cash_advance": "${reportArr[20]}", "charges" : "${reportArr[21]}", "sss_loan": "${reportArr[22]}", "pbig_loan": "${reportArr[23]}", "company_loan" : "${reportArr[24]}", "total_deductions": "${reportArr[25]}", "allowance": "${reportArr[26]}", "allowance_penalty": "${reportArr[27]}", "net": "${reportArr[28]}" }' style="width:80%;background:var(--teal);color:#fff !important;" class="paid" value="PAID"/>
+                                    // </div>
+                    
+                                    $(".paid").click(function(event){
+                                        event.stopImmediatePropagation();
+                    
+                                        let details = $(this).data("details");
+                
+                                        details.salary_rate = details.salary_rate.replace(/,/g, '');
+                                        details.basic = details.basic.replace(/,/g, '');
+                                        details.holiday = details.holiday.replace(/,/g, '');
+                                        details.earnings = details.earnings.replace(/,/g, '');
+                                        details.allowance = details.allowance.replace(/,/g, '');
+                                        details.total_deductions = details.total_deductions.replace(/,/g, '');
+                                        details.net = details.net.replace(/,/g, '');
+                                        
+                                        if (PAYSCHED != null || PAYSCHED !== 'undefined') {
+                                            let d;
+                                        
+                                            if (PAYSCHED == 'twice-monthly') {
+                                                d = new Date(from);
+                                                
+                                            } else if (PAYSCHED == 'monthly') {
+                                                d = new Date();
+                                            }
+                
+                                            let mon = months[d.getMonth()];
+                                            let year = d.getFullYear();
+                
+                                            if (PAYSCHED == 'twice-monthly') {
+                                                $.ajax({
+                                                    type: 'POST',
+                                                    url: '../php/determine_period.php',
+                                                    data : {
+                                                        id: id,
+                                                    },
+                                                    success: function(res) {
+                                                        var period = res;
+                
+                                                        $.ajax({
+                                                            type: 'POST',
+                                                            url: '../php/employee_paid.php',
+                                                            data: {
+                                                                id: id,
+                                                                name: details.name,
+                                                                class: details.class,
+                                                                class_name: details.class_name,
+                                                                rate: details.rate,
+                                                                rate_type: details.rate_type,
+                                                                working_days: details.working_days,
+                                                                days_worked: details.days_worked,
+                                                                salary_rate: details.salary_rate,
+                                                                absent: details.absent,
+                                                                basic: details.basic,
+                                                                ut_total: details.ut_total,
+                                                                tardiness: details.tardiness,
+                                                                holiday: details.holiday,
+                                                                ot_total: details.ot_total,
+                                                                earnings: details.earnings,
+                                                                sss: details.sss,
+                                                                phil: details.phil,
+                                                                pbig: details.pbig,
+                                                                adjustment: details.adjustment,
+                                                                cash_advance: details.cash_advance,
+                                                                charges: details.charges,
+                                                                sss_loan: details.sss_loan,
+                                                                pbig_loan: details.pbig_loan,
+                                                                company_loan: details.company_loan,
+                                                                total_deductions: details.total_deductions,
+                                                                allowance: details.allowance,
+                                                                allowance_penalty: details.allowance_penalty,
+                                                                net: details.net,
+                                                                month: mon,
+                                                                year: year,
+                                                                paysched: PAYSCHED,
+                                                                period: period,
+                                                                from: from,
+                                                                to: to
+                                                            },
+                
+                                                            success: function(res) {
+
+                                                                if (res == 'paid') {
+                                                                    successNotification(`${name} is paid.`, "success");
+                                                                    $(`#paid${id}`).html("Paid");
+                                                                    $(".third-layer-overlay").remove();
+                                                                } 
+                                                            }
+                                                        })
+                                                    }
+                                                })
+
+                                            } else {
+                                                $.ajax({
+                                                    type: 'POST',
+                                                    url: '../php/employee_paid.php',
+                                                    data: {
+                                                        id: id,
+                                                        name: details.name,
+                                                        class: details.class,
+                                                        class_name: details.class_name,
+                                                        rate: details.rate,
+                                                        rate_type: details.rate_type,
+                                                        working_days: details.working_days,
+                                                        days_worked: details.days_worked,
+                                                        salary_rate: details.salary_rate,
+                                                        absent: details.absent,
+                                                        basic: details.basic,
+                                                        ut_total: details.ut_total,
+                                                        tardiness: details.tardiness,
+                                                        holiday: details.holiday,
+                                                        ot_total: details.ot_total,
+                                                        earnings: details.earnings,
+                                                        sss: details.sss,
+                                                        phil: details.phil,
+                                                        pbig: details.pbig,
+                                                        adjustment: details.adjustment,
+                                                        cash_advance: details.cash_advance,
+                                                        charges: details.charges,
+                                                        sss_loan: details.sss_loan,
+                                                        pbig_loan: details.pbig_loan,
+                                                        company_loan: details.company_loan,
+                                                        total_deductions: details.total_deductions,
+                                                        allowance: details.allowance,
+                                                        allowance_penalty: details.allowance_penalty,
+                                                        net: details.net,
+                                                        month: mon,
+                                                        year: year,
+                                                        paysched: PAYSCHED,
+                                                        period: '',
+                                                        from: '',
+                                                        to: ''
+                                                    },
+                                                    success: function(res) {
+                                                        if (res == 'paid') {
+                                                            successNotification(`${name} is paid.`, "success");
+                                                            $(`#paid${id}`).html("Paid");
+                                                            $(".third-layer-overlay").remove();
+                                                        } 
+                                                    }
+                                                })
+                                            }
+                                        }
+                                    })
+                    
+                                    $(".close-window").on("click", function(event){
+                                        event.stopImmediatePropagation();
+                                        $(".third-layer-overlay").remove();
+                                    })
+                
+                                })
+                    
+                                $(".close-window").on("click", function(event){
+                                    event.stopImmediatePropagation();
+                                    ALLDetails = [];
+                                    PAYSLIPS = [];
+
+                                    try {
+                                        document.getElementById("pages").innerHTML = "";
+                                    } catch (err) {
+                                        console.log(err);
+                                    }
+
+                                    $(".pop-up-window").remove();
+                
+                                    $.ajax({
+                                        type: 'POST',
+                                        url: '../php/remove_holidays.php',
+                                        success: function(res) {}
+                                    })
+                                })
+
+
+                            } catch (err) {
+                                console.log(err);
+                            }
+                        }
+                    })
+                })
+
+                $(".generate-new").click(function(event){
+                    event.stopImmediatePropagation();
+                    $(".pop-up-window").remove();
+                    newFile();
+                })
+
+                $(".close-window").click(function(event){
+                    event.stopImmediatePropagation();
+                    $(".pop-up-window").remove();
+                })
+
+            } catch (err) {
+                newFile();
+            }
+
+
+            function newFile() {
+                if (PAYSCHED != null || PAYSCHED !== 'undefined') {
+                    if (PAYSCHED == 'twice-monthly') {
+                        document.body.insertAdjacentHTML("afterbegin", `
+                            <div class="pop-up-window">
+                                <div class="window-content pt-5" style="position:relative;">
+                                    ${close_icon}
+                                    <p class="text-center text-white" style="font-size:20px;">GENERATE PAYROLL FILE</p>
+                                    <hr>
+                                    <div style="display:flex;flex-direction:column;min-width:20vw;color:#fff;">
+                                        <span>Select period:</span>
+                                        <select id="period">
+                                            <option value="first-half">First half</option>
+                                            <option value="second-half">Second half</option>
+                                        </select>
+                                        <span>From date: </span>
+                                        <input type="date" id="from" />
+                                        <span>To date:</span>
+                                        <input type="date" id="to" />
+                                        <br>
+                                        <input type="button" value="PROCEED"/>
+                                    </div>
+                                </div>
+                            </div>
+                        `);
+
+                        $("#from").on('change', function() {
+                            let date = new Date($(this).val());
+                            const year = date.getFullYear();
+                            const month = String(date.getMonth() + 1).padStart(2, '0'); // Ensure two-digit month
+                            const day = String(date.getDate()).padStart(2, '0');
+
+                            $("#to").val(`${year}-${month}-01`);
+                        }); 
+            
+                        $(".close-window").click(function(){
+                            $(".pop-up-window").remove();
+                        })
+            
+                        $("input[type='button']").click(function(event){
+                            event.stopImmediatePropagation();
+                            if ($("#from").val() !== '' && $("#to").val() !== '' && $("#period").val() !== '') {
+                                from = $("#from").val();
+                                to = $("#to").val();
+                                PERIOD = $("#period").val();
+                                $(".pop-up-window").remove();
+                                proceed();
+                            } else {
+                                errorNotification("Please select date to proceed.", "warning");
+                            }
+                        })
+                        
+                    } else {
+
+                        const currentDate = new Date();
+            
+                        // Get the current year and month in the format "YYYY-MM"
+                        const yearMonth = currentDate.toISOString().slice(0, 7);
+            
+            
+                        document.body.insertAdjacentHTML("afterbegin", `
+                            <div class="pop-up-window">
+                                <div class="window-content pt-5" style="position:relative;">
+                                    ${close_icon}
+                                    <p class="text-center text-white" style="font-size:20px;">GENERATE PAYROLL FILE</p>
+                                    <hr>
+                                    <div style="display:flex;flex-direction:column;min-width:20vw;color:#fff;">
+                                        <span>Select month: </span>
+                                        <input type="month" value="${yearMonth}" id="MON"/>
+                                        <br>
+                                        <input type="button" value="PROCEED"/>
+                                    </div>
+                                </div>
+                            </div>
+                        `);
+            
+                        $(".close-window").click(function(){
+                            $(".pop-up-window").remove();
+                        })
+            
+                        $("input[type='button']").click(function(event){
+                            event.stopImmediatePropagation();
+                            if ($("#MON").val() !== '') {
+                                MON = $("#MON").val();
+                                $(".pop-up-window").remove();
+                                proceed();
+                            } else {
+                                errorNotification("Please select month to proceed.", "warning");
+                            }
+                        })
+                    }
+                }
+            }
+        }
+    })
+
+    function proceed() {
+        $.ajax({
+            type: 'POST',
+            url: '../php/staffs.php',
+            success: function(res){
+                try {
+                    res = JSON.parse(res);
+
+                    generateFile(res, res.length);
+                    
+                } catch(err) {
+                    console.log(err);
+                }
+
+                
             }
         })
     }
@@ -3926,7 +6174,7 @@ $(".settings").on("click", function(event){
                                 <div>
                                     <span>Company name: (required)</span>
                                     <input type="text" name="compname" value="${compname}"  autocomplete="off" placeholder="Enter company name"/>
-                                    <span>Company address: (optional)</span>
+                                    <span>Company address: (required)</span>
                                     <input type="text" name="compadd" value="${compadd}" placeholder="Enter company address"/>
                                 </div>
                             </div>
@@ -5087,7 +7335,6 @@ function addStaff(){
             isNotEmpty = false;
         }
     });
-
     //formDataObject["serialnumber"] = 20;//SERIAL_NUMBER;
 
     var formData = new FormData();
@@ -5114,7 +7361,7 @@ function addStaff(){
             success: function(res){
                 console.log(res);
                 if (res == 'success') {
-                    //websocket.send(128);
+                    websocket.send(500);
 
                     $(".pop-up-window").remove();
                     $("input[type='text'], input[type='password'], input[type='number']").val('');
