@@ -13,28 +13,24 @@ if ($conn->connect_error) {
   die("Connection failed: " . $conn->connect_error);
 }
 
-if (isset($_POST['class'])) {
-  $class = $_POST['class'];
-  $type = $_POST['type'];
-  $allowance_id = $_POST['allowance_id'];
-  $allowance_name = $_POST['allowance_name'];
-  $deduction = $_POST['deduction'];
+if (isset($_POST['name'])) {
   
+  $type = $_POST['type'];
+  $allowance = $_POST['name'];
+  $deduction = $_POST['deduction'];
 
   $company_id = $_SESSION['companyid'];
 
 
-  $stmt = $conn->prepare("INSERT INTO allowance_penalty (company_id, type, allowance, allowance_name, deduction, class)
-  VALUES (?, ?, ?, ?, ?, ?)");
+  $stmt = $conn->prepare("INSERT INTO allowance_penalty (company_id, type, allowance_name, deduction)
+  VALUES (?, ?, ?, ?)");
 
-  $stmt->bind_param("isssss", $company_id, $type, $allowance_id, $allowance_name, $deduction, $class);
+  $stmt->bind_param("isss", $company_id, $type,  $allowance, $deduction);
 
   $data = array();
 
   if ($stmt->execute()) {
-    $data["message"] = "success";
-
-    echo json_encode($data);
+    echo 'success';
   }
 }
 

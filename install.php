@@ -227,6 +227,41 @@
 	    echo "Error creating table: " . $conn->error;
 	}
 
+	$sql = "CREATE TABLE IF NOT EXISTS logs (
+		id int(6) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+		company_id int(11) NOT NULL,
+		user varchar(100) NOT NULL,
+		log varchar(255) NOT NULL,
+		time_log DATETIME
+	)";
+
+	if ($conn->query($sql) === TRUE) {
+	    echo "<br>Table created successfully";
+	} else {
+	    echo "Error creating table: " . $conn->error;
+	}
+
+	$sql = "CREATE TABLE IF NOT EXISTS holidaysss (
+		id int(6) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+		company_id int(11) NOT NULL,
+		month int(2) NOT NULL,
+		year int(4) NOT NULL,
+		date DATE,
+		holiday_name varchar(100) NOT NULL,
+		percentage float(10, 2) NOT NULL,
+		employee varchar(100) NOT NULL,
+		serialnumber int(10) NOT NULL,
+		isvalid_date_before tinyint(1) NOT NULL,
+		isvalid_date_after tinyint(1) NOT NULL,
+		approved tinyint(1) NOT NULL
+	)";
+
+	if ($conn->query($sql) === TRUE) {
+	    echo "<br>Table created successfully";
+	} else {
+	    echo "Error creating table: " . $conn->error;
+	}
+
 	$sql = "CREATE TABLE IF NOT EXISTS users (
 		id int(6) NOT NULL AUTO_INCREMENT PRIMARY KEY,
 		company_id int(11) NOT NULL,
@@ -269,7 +304,9 @@
 		allowance_name varchar(30) NOT NULL,
 		amount int(10) NOT NULL,
 		detail varchar(20),
-		class varchar(5) NOT NULL
+		class varchar(5) NOT NULL,
+		serialnumber int(100) NOT NULL,
+		all_type varchar(255) NOT NULL
 	)";
 
 	if ($conn->query($sql) === TRUE) {
@@ -285,7 +322,9 @@
 		allowance_name varchar(100) NOT NULL,
 		type varchar(30) NOT NULL,
 		deduction varchar(10) NOT NULL,
-		class varchar(5) NOT NULL
+		class varchar(5) NOT NULL,
+		all_type varchar(200) NOT NULL,
+		serialnumber int(100) NOT NULL
 	)";
 
 	if ($conn->query($sql) === TRUE) {
@@ -363,6 +402,22 @@
 		contact_number varchar(20) NOT NULL,
 		notice_message varchar(100) NOT NULL,
 		date DATE
+	)";
+
+	if ($conn->query($sql) === TRUE) {
+	    echo "<br>Table created successfully";
+	} else {
+	    echo "Error creating table: " . $conn->error;
+	}
+
+	$sql = "CREATE TABLE IF NOT EXISTS employee_allowance(
+		id int(6) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+		company_id int(11) NOT NULL,
+		name varchar (30) NOT NULL,
+		serialnumber int(11) NOT NULL,
+		amount_name varchar(200) NOT NULL,
+		type varchar(100) NOT NULL,
+		amount float(10, 2) NOT NULL
 	)";
 
 	if ($conn->query($sql) === TRUE) {

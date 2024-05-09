@@ -424,7 +424,7 @@ $(document).ready(function() {
                             
                             }, success: function(res2) {
                                 if (res2 == 'approved') {
-                                    successNotification("Overtime approved.", "success");
+                                    successNotification("Dismissed.", "success");
                                     $(`#row${index}`).remove();
                                     
                                     res.splice(parseInt(index), 1);

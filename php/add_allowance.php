@@ -15,18 +15,30 @@ if ($conn->connect_error) {
 
 if (isset($_POST['class'])) {
   $class = $_POST['class'];
+ 
   $amount = $_POST['amount'];
   $type = $_POST['type'];
   $name = $_POST['name'];
+
+  if ($_POST['by'] == 'class') {
+    $stmt = $conn->prepare("INSERT INTO company_allowance (company_id, allowance_name, amount, detail, all_type, class)
+    VALUES (?, ?, ?, ?, ?, ?)");
+  
+    
+    $stmt->bind_param("isisss", $company_id, $name, $amount, $type, $_POST['by'], $class);
+  } else {
+    $stmt = $conn->prepare("INSERT INTO company_allowance (company_id, allowance_name, amount, detail, all_type, serialnumber)
+    VALUES (?, ?, ?, ?, ?, ?)");
+
+    
+    $stmt->bind_param("isisss", $company_id, $name, $amount, $type, $_POST['by'], $class);
+  }
   
 
   $company_id = $_SESSION['companyid'];
 
 
-  $stmt = $conn->prepare("INSERT INTO company_allowance (company_id, allowance_name, amount, detail, class)
-  VALUES (?, ?, ?, ?, ?)");
-
-  $stmt->bind_param("isiss", $company_id, $name, $amount, $type, $class);
+  
 
   $data = array();
 

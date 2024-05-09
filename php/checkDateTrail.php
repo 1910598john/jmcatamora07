@@ -31,11 +31,9 @@ if (isset($_POST['date'])) {
             $result = $conn->query($sql);
     
             if ($result->num_rows > 0) {
-    
-                checkDate2($conn, $serial, $company_id, $date2);
-    
+                checkDate2($conn, $serial, $company_id, $date2, 'Valid');
             } else {
-                echo 'did not work';
+                checkDate2($conn, $serial, $company_id, $date2, 'Invalid');
             }
 
         } else {
@@ -49,17 +47,14 @@ if (isset($_POST['date'])) {
                 $mins = intval($row['ut_mins']);
 
                 if ($mins > 0) {
-                    checkDate2($conn, $serial, $company_id, $date2);
+                    checkDate2($conn, $serial, $company_id, $date2, 'Invalid');
                 } else {
-                    echo 'worked';
+                    checkDate2($conn, $serial, $company_id, $date2, 'Valid');
                 }
 
-            } else {
-                echo 'did not work';
-            }
+            } 
         }
         
-
     } else {
 
         if ($_POST['type'] == 'ubh') {
@@ -73,9 +68,9 @@ if (isset($_POST['date'])) {
                 $mins = intval($row['ut_mins']);
 
                 if ($mins > 0) {
-                    echo 'undertime';
+                    echo 'Invalid';
                 } else {
-                    echo 'worked';
+                    echo 'Valid';
                 }
             }
 
@@ -90,9 +85,9 @@ if (isset($_POST['date'])) {
                 $mins = intval($row['ut_mins']);
 
                 if ($mins > 0) {
-                    echo 'undertime 92';
+                    echo 'Invalid';
                 } else {
-                    echo 'worked 94';
+                    echo 'Valid';
                 }
             }
 
@@ -103,7 +98,7 @@ if (isset($_POST['date'])) {
             $result = $conn->query($sql);
     
             if ($result->num_rows > 0) {
-                echo 'worked';
+                echo 'Valid';
                 
             }
         } else if ($_POST['type'] == 'aah') {
@@ -113,7 +108,7 @@ if (isset($_POST['date'])) {
             $result = $conn->query($sql);
     
             if ($result->num_rows > 0) {
-                echo 'worked';
+                echo 'Valid';
                 
             }
         }
@@ -122,7 +117,8 @@ if (isset($_POST['date'])) {
     
 }
 
-function checkDate2($conn, $serial, $company_id, $date2) {
+function checkDate2($conn, $serial, $company_id, $date2, $isValid) {
+    
     if ($_POST['type'] == 'abaah') {
         $sql = "SELECT date FROM staffs_trail WHERE date = '$date2' AND company_id = '$company_id' AND serialnumber = '$serial'";
     } else {
@@ -136,14 +132,25 @@ function checkDate2($conn, $serial, $company_id, $date2) {
             $row = $result->fetch_assoc();
             $mins = intval($row['ut_mins']);
     
+            $arr = array();
             if ($mins > 0) {
-                echo 'undertime';
+                
+                $arr[0] = $isValid;
+                $arr[1] = 'Invalid';
+                //echo 'undertime';
             } else {
-                echo 'worked';
+                $arr[0] = $isValid;
+                $arr[1] = 'Valid';
             }
 
+            echo json_encode($arr);
+
         } else {
-            echo 'worked';
+            $arr = array();
+            $arr[0] = $isValid;
+            $arr[1] = 'Valid';
+
+            echo json_encode($arr);
         }
     }
 }

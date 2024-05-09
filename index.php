@@ -47,7 +47,6 @@ if ((isset($_SESSION['username']))) {
                             </svg></span>
                         </div>
                         <input type="password" class="form-control" placeholder="Password" autocomplete="off" name="password" aria-label="Password" aria-describedby="basic-addon1">
-                        
                     </div>
                     <input onclick="loginAdmin()" style="width: 100%;background:var(--lg);color: var(--gray-dark);border:none;padding: 8px;border-radius: 4px;" type="submit" value="Login"/>
                 </form>

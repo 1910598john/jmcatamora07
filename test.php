@@ -1,9 +1,9 @@
 <?php 
-$value = "apple";
-$haystack = "orange";
+$details = array();
 
-// Incorrect usage: $haystack is a string, not an array
-$result = in_array($value, $haystack);
+$details["name"] = $_POST['name'];
+$details["username"] = $_POST['username'];
+$details["password"] = $_POST['password'];
 
-echo $result;
+echo json_encode($details);
 ?>
