@@ -21,8 +21,10 @@ if (isset($_POST['date'])) {
     $date = $_POST['date'];
     $date_before = $_POST['date_before'];
     $date_after = $_POST['date_after'];
+    $branch = $_POST['branch'];
+    $paysched = $_POST['paysched'];
 
-    $sql = "SELECT * FROM staffs_trail WHERE company_id = '". $_SESSION['companyid'] . "' AND date = '$date'";
+    $sql = "SELECT * FROM staffs_trail WHERE company_id = '". $_SESSION['companyid'] . "' AND date = '$date' AND branch = '$branch'";
     $result = $conn->query($sql);
 
     $data = array();
@@ -38,11 +40,11 @@ if (isset($_POST['date'])) {
         $data['present_on_holiday'] = $arr;
     }
     
-    fetch_staffs_before_holiday($conn, $date_before, $date_after, $_SESSION['companyid'], $data);
+    fetch_staffs_before_holiday($conn, $date_before, $date_after, $_SESSION['companyid'], $data, $branch);
 }
 
-function fetch_staffs_before_holiday($conn, $date_before, $date_after, $company_id, $data) {
-    $sql = "SELECT * FROM staffs_trail WHERE company_id = '". $_SESSION['companyid'] . "' AND date = '$date_before'";
+function fetch_staffs_before_holiday($conn, $date_before, $date_after, $company_id, $data, $branch) {
+    $sql = "SELECT * FROM staffs_trail WHERE company_id = '". $_SESSION['companyid'] . "' AND date = '$date_before' AND branch = '$branch'";
     $result = $conn->query($sql);
 
     $arr = array();
@@ -56,11 +58,11 @@ function fetch_staffs_before_holiday($conn, $date_before, $date_after, $company_
         $data['present_before_holiday'] = $arr;
     }
 
-    fetch_staffs_after_holiday($conn, $date_before, $date_after, $company_id, $data);
+    fetch_staffs_after_holiday($conn, $date_before, $date_after, $company_id, $data, $branch);
 }
 
-function fetch_staffs_after_holiday($conn, $date_before, $date_after, $company_id, $data) {
-    $sql = "SELECT * FROM staffs_trail WHERE company_id = '". $_SESSION['companyid'] . "' AND date = '$date_after'";
+function fetch_staffs_after_holiday($conn, $date_before, $date_after, $company_id, $data, $branch) {
+    $sql = "SELECT * FROM staffs_trail WHERE company_id = '". $_SESSION['companyid'] . "' AND date = '$date_after' AND branch = '$branch'";
     $result = $conn->query($sql);
 
     $arr = array();
@@ -75,12 +77,13 @@ function fetch_staffs_after_holiday($conn, $date_before, $date_after, $company_i
     }
 
     
-    fetch_staffs($conn, $data);
+    fetch_staffs($conn, $data, $branch);
    
 }
 
-function fetch_staffs($conn, $data) {
-    $sql = "SELECT name, serialnumber, class FROM staffs WHERE company_id = '". $_SESSION['companyid'] . "'";
+function fetch_staffs($conn, $data, $branch) {
+
+    $sql = "SELECT name, serialnumber, class FROM staffs WHERE company_id = '". $_SESSION['companyid'] . "' AND branch = '$branch'";
     $result = $conn->query($sql);
 
     $arr = array();

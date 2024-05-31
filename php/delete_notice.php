@@ -17,8 +17,9 @@ if (isset($_POST['serial'])) {
 
     $serialnumber = $_POST['serial'];
     $company_id = $_SESSION['companyid'];
+    $branch = $_POST['branch'];
 
-    $sql = "DELETE FROM notice WHERE serialnumber = '" . $serialnumber . "' AND company_id = '$company_id'";
+    $sql = "DELETE FROM notice WHERE serialnumber = '" . $serialnumber . "' AND branch = '$branch' AND company_id = '$company_id'";
 
     if ($conn->query($sql) === TRUE) {
       echo "success";

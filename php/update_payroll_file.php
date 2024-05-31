@@ -48,15 +48,17 @@ if (isset($_POST['serial'])) {
     $penalty = $_POST['penalty'];
     $net = $_POST['net'];
 
+    $branch = $_POST['branch'];
+
     $company_id = $_SESSION['companyid'];
 
     if ($paysched == 'twice-monthly') {
-        $sql = "UPDATE payroll_files SET working_days = '$working_days', days_worked = '$days_worked', salary_rate = '$salary_rate', absent = '$absent', basic = '$basic', ut_total = '$ut', tardiness = '$tard', holiday = '$holi', ot_total = '$ot', earnings = '$earned', sss = '$sss', phil = '$phil', pbig = '$pbig', adjustment = '$adjustment', cash_advance = '$cash_advance', charges = '$charges', sss_loan = '$sss_loan', pbig_loan = '$pbig_loan', company_loan = '$company_loan', total_deductions = '$total_deductions', allowance = '$allowance', allowance_penalty = '$penalty', net = '$net' WHERE serialnumber = '" . $snumber . "' AND company_id = '$company_id' AND from_date = '$col1' AND to_date = '$col2' ";
+        $sql = "UPDATE payroll_files SET working_days = '$working_days', days_worked = '$days_worked', salary_rate = '$salary_rate', absent = '$absent', basic = '$basic', ut_total = '$ut', tardiness = '$tard', holiday = '$holi', ot_total = '$ot', earnings = '$earned', sss = '$sss', phil = '$phil', pbig = '$pbig', adjustment = '$adjustment', cash_advance = '$cash_advance', charges = '$charges', sss_loan = '$sss_loan', pbig_loan = '$pbig_loan', company_loan = '$company_loan', total_deductions = '$total_deductions', allowance = '$allowance', allowance_penalty = '$penalty', net = '$net' WHERE serialnumber = '" . $snumber . "' AND company_id = '$company_id' AND from_date = '$col1' AND to_date = '$col2' AND branch = '$branch' AND paysched = '$paysched'";
     } else {
         $selectedMonth = date('m', strtotime($_POST['col1']));
         $selectedYear = date('Y', strtotime($_POST['col1']));
         if ($paysched == 'monthly') {
-            $sql = "UPDATE payroll_files SET working_days = '$working_days', days_worked = '$days_worked', salary_rate = '$salary_rate', absent = '$absent', basic = '$basic', ut_total = '$ut', tardiness = '$tard', holiday = '$holi', ot_total = '$ot', earnings = '$earned', sss = '$sss', phil = '$phil', pbig = '$pbig', adjustment = '$adjustment', cash_advance = '$cash_advance', charges = '$charges', sss_loan = '$sss_loan', pbig_loan = '$pbig_loan', company_loan = '$company_loan', total_deductions = '$total_deductions', allowance = '$allowance', allowance_penalty = '$penalty', net = '$net' WHERE serialnumber = '" . $snumber . "' AND company_id = '$company_id' AND month = '$selectedMonth' AND year = '$selectedYear'";
+            $sql = "UPDATE payroll_files SET working_days = '$working_days', days_worked = '$days_worked', salary_rate = '$salary_rate', absent = '$absent', basic = '$basic', ut_total = '$ut', tardiness = '$tard', holiday = '$holi', ot_total = '$ot', earnings = '$earned', sss = '$sss', phil = '$phil', pbig = '$pbig', adjustment = '$adjustment', cash_advance = '$cash_advance', charges = '$charges', sss_loan = '$sss_loan', pbig_loan = '$pbig_loan', company_loan = '$company_loan', total_deductions = '$total_deductions', allowance = '$allowance', allowance_penalty = '$penalty', net = '$net' WHERE serialnumber = '" . $snumber . "' AND company_id = '$company_id' AND month = '$selectedMonth' AND year = '$selectedYear' AND branch = '$branch' AND paysched = '$paysched'";
         }
     }
     

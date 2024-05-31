@@ -14,6 +14,7 @@ if ($conn->connect_error) {
 session_start();
 if (isset($_POST['id'])) {
     $serial = $_POST['id'];
+    
 
     $sql = "SELECT salary_rate, sss, phil, pbig FROM reports WHERE company_id = '". $_SESSION['companyid'] . "' AND serialnumber = '$serial' AND period = 'first-half' ORDER BY id DESC LIMIT 1";
     $result = $conn->query($sql);

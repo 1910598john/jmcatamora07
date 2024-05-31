@@ -14,6 +14,7 @@ if ($conn->connect_error) {
 session_start();
 if (isset($_POST['serial'])) {
     $snumber = $_POST['serial'];
+    $branch = $_POST['branch'];
     
     $sql = "SELECT file FROM staffs WHERE company_id = '". $_SESSION['companyid'] . "' AND serialnumber = '$snumber'";
     $result = $conn->query($sql);

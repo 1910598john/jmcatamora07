@@ -15,14 +15,17 @@ session_start();
 
 $company_id = $_SESSION['companyid'];
 
-if (isset($_POST['month'])) {
+if (isset($_POST['branch'])) {
+    $branch = $_POST['branch'];
     $month = $_POST['month'];
     $year = $_POST['year'];
-    $sql = "SELECT DISTINCT holiday_name, date, month, year FROM holidaysss WHERE company_id = '$company_id' AND month = '$month' AND year = '$year'";
+    $paysched = $_POST['paysched'];
+
+    $sql = "SELECT DISTINCT date, holiday_name FROM holidaysss WHERE company_id = '$company_id' AND branch = '$branch'  AND paysched = '$paysched'";
     $result = $conn->query($sql);
     
     if ($result->num_rows > 0) {
-    // output data of each row
+        // output data of each row
         $data = array();
         while($row = $result->fetch_assoc()) {
             $data[] = $row;

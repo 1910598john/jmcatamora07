@@ -12,20 +12,15 @@ if ($conn->connect_error) {
 }
 
 session_start();
-$branch = $_POST['branch'];
-$sql = "SELECT serialnumber, name, class FROM staffs WHERE company_id = '". $_SESSION['companyid'] . "' AND branch = '$branch'";
 
+$sql = "SELECT * FROM company_allowance WHERE company_id = '". $_SESSION['companyid'] . "'";
 $result = $conn->query($sql);
 
 if ($result->num_rows > 0) {
-// output data of each row
+    // output data of each row
     $data = array();
     while($row = $result->fetch_assoc()) {
-        $item = [];
-        $item["serial"] = $row['serialnumber'];
-        $item["name"] = $row['name'];
-        $item["class"] = $row['class'];
-        $data[] = $item;
+        $data[] = $row;
     }
 
     echo json_encode($data);

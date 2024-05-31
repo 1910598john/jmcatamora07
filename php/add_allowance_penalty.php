@@ -13,19 +13,19 @@ if ($conn->connect_error) {
   die("Connection failed: " . $conn->connect_error);
 }
 
-if (isset($_POST['name'])) {
+if (isset($_POST['allname'])) {
   
   $type = $_POST['type'];
-  $allowance = $_POST['name'];
+  $name = $_POST['allname'];
+  $allid = $_POST['allid'];
   $deduction = $_POST['deduction'];
-
   $company_id = $_SESSION['companyid'];
 
 
-  $stmt = $conn->prepare("INSERT INTO allowance_penalty (company_id, type, allowance_name, deduction)
-  VALUES (?, ?, ?, ?)");
+  $stmt = $conn->prepare("INSERT INTO allowance_penalty (company_id, type, allowance_id, allowance_name, deduction)
+  VALUES (?, ?, ?, ?, ?)");
 
-  $stmt->bind_param("isss", $company_id, $type,  $allowance, $deduction);
+  $stmt->bind_param("issss", $company_id, $type, $allid,  $name, $deduction);
 
   $data = array();
 

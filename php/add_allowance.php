@@ -13,39 +13,21 @@ if ($conn->connect_error) {
   die("Connection failed: " . $conn->connect_error);
 }
 
-if (isset($_POST['class'])) {
-  $class = $_POST['class'];
+if (isset($_POST['name'])) {
  
   $amount = $_POST['amount'];
   $type = $_POST['type'];
   $name = $_POST['name'];
-
-  if ($_POST['by'] == 'class') {
-    $stmt = $conn->prepare("INSERT INTO company_allowance (company_id, allowance_name, amount, detail, all_type, class)
-    VALUES (?, ?, ?, ?, ?, ?)");
-  
-    
-    $stmt->bind_param("isisss", $company_id, $name, $amount, $type, $_POST['by'], $class);
-  } else {
-    $stmt = $conn->prepare("INSERT INTO company_allowance (company_id, allowance_name, amount, detail, all_type, serialnumber)
-    VALUES (?, ?, ?, ?, ?, ?)");
-
-    
-    $stmt->bind_param("isisss", $company_id, $name, $amount, $type, $_POST['by'], $class);
-  }
-  
-
   $company_id = $_SESSION['companyid'];
 
-
   
-
-  $data = array();
+  $stmt = $conn->prepare("INSERT INTO company_allowance (company_id, name, amount, type)
+  VALUES (?, ?, ?, ?)");
+  
+  $stmt->bind_param("isss", $company_id, $name, $amount, $type);
 
   if ($stmt->execute()) {
-    $data["message"] = "success";
-
-    echo json_encode($data);
+    echo "success";
   }
 }
 

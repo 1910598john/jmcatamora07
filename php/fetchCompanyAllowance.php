@@ -14,9 +14,7 @@ if ($conn->connect_error) {
 session_start();
 
 
-    
-
-$sql = "SELECT DISTINCT amount_name FROM employee_allowance WHERE company_id = '". $_SESSION['companyid'] . "'";
+$sql = "SELECT * FROM company_allowance WHERE company_id = '". $_SESSION['companyid'] . "'";
 $result = $conn->query($sql);
 
 if ($result->num_rows > 0) {

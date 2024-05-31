@@ -19,8 +19,9 @@ if (isset($_POST['id'])) {
 
     $month = date('m', strtotime($from));
     $year = date('Y', strtotime($from));
+    $branch = $_POST['branch'];
 
-    $sql = "SELECT earnings, sss, phil, pbig FROM payroll_files WHERE month = '$month' AND year = '$year' AND period = 'first-half' AND company_id = '". $_SESSION['companyid'] . "' AND serialnumber = '$id'";
+    $sql = "SELECT earnings, sss, phil, pbig FROM payroll_files WHERE month = '$month' AND year = '$year' AND period = 'first-half' AND company_id = '". $_SESSION['companyid'] . "' AND serialnumber = '$id' AND branch = '$branch'";
 
     $result = $conn->query($sql);
     

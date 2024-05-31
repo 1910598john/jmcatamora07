@@ -18,9 +18,7 @@ if (isset($_POST['holiday'])) {
   $date = $_POST['date'];
   $class = $_POST['class'];
   
-
   $company_id = $_SESSION['companyid'];
-
 
   $stmt = $conn->prepare("INSERT INTO holidays (company_id, name, date, class)
   VALUES (?, ?, ?, ?)");
@@ -30,7 +28,6 @@ if (isset($_POST['holiday'])) {
   $data = array();
 
   if ($stmt->execute()) {
-
     echo 'success';
   }
 }

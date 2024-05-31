@@ -15,16 +15,17 @@ session_start();
 
 if (isset($_POST['serial'])) {
     $serial = $_POST['serial'];
+    $id = $_POST['id'];
     $company_id = $_SESSION['companyid'];
     $branch = $_POST['branch'];
-    $id = $_POST['id'];
-
-    $sql = "DELETE FROM employee_allowance WHERE serialnumber = '$serial' AND company_id = '$company_id' AND branch = '$branch' AND id = '$id'";
-
+    
+    $sql = "UPDATE early_in_approval SET approved = 1 WHERE company_id = '$company_id' AND serialnumber = '$serial' AND id = '$id' AND branch = '$branch'";
+    
     if ($conn->query($sql) === TRUE) {
-      echo "deleted";
+        echo 'approved';
     } 
 }
+
 
 
 $conn->close();

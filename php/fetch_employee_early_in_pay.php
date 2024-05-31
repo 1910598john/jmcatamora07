@@ -13,31 +13,26 @@ if ($conn->connect_error) {
 
 session_start();
 
-if (isset($_POST['branch'])) {
+if (isset($_POST['serial'])) {
     $serial = $_POST['serial'];
     $branch = $_POST['branch'];
-    $company_id = $_SESSION['companyid'];
     $paysched = $_POST['paysched'];
-
     if ($paysched == 'twice-monthly') {
         $from = $_POST['from'];
         $to = $_POST['to'];
-        $sql = "SELECT pay FROM holidaysss WHERE company_id = '$company_id' AND branch = '$branch' AND serialnumber = '$serial' AND date BETWEEN '$from' AND '$to'";
-        $result = $conn->query($sql);
+        $sql = "SELECT pay FROM early_in_approval WHERE approved = 1 AND company_id = '". $_SESSION['companyid'] . "' AND branch = '$branch' AND serialnumber = '$serial' AND date BETWEEN DATE('$from') AND DATE('$to')";
     } else {
         $month = $_POST['month'];
-        $year = $_POST['year'];
-        $sql = "SELECT pay FROM holidaysss WHERE company_id = '$company_id' AND branch = '$branch' AND serialnumber = '$serial' AND month = '$month' AND year = '$year'";
-        $result = $conn->query($sql);
+        $sql = "SELECT pay FROM early_in_approval WHERE approved = 1 AND company_id = '". $_SESSION['companyid'] . "' AND branch = '$branch' AND serialnumber = '$serial' AND MONTH(date) = $month";
     }
+    
+    $result = $conn->query($sql);
 
     if ($result->num_rows > 0) {
-    
         $pay = 0;
-        while ($row = $result->fetch_assoc()) {
-            $pay += intval($row['pay']);
+        while($row = $result->fetch_assoc()) {
+            $pay = $pay + intval($row['pay']);
         }
-        
         echo $pay;
     } else {
         echo 0;

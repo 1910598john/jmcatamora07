@@ -15,7 +15,7 @@ session_start();
 if (isset($_POST['date'])) {
     $date = $_POST['date'];
     
-    $sql = "SELECT id, name, class, serialnumber, position, department, contact_number, status, date FROM staffs WHERE company_id = '". $_SESSION['companyid'] . "' AND status = 'IN'";
+    $sql = "SELECT id, name, class, serialnumber, position, department, contact_number, status, date, branch FROM staffs WHERE company_id = '". $_SESSION['companyid'] . "' AND status = 'IN'";
     $result = $conn->query($sql);
 
     if ($result->num_rows > 0) {

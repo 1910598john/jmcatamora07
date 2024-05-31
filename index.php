@@ -23,12 +23,15 @@ if ((isset($_SESSION['username']))) {
 <div class="container">
     <div class="row justify-content-center align-items-center" style="height: 100vh;">
         <div class="col-md-5 p-5" style="background-color: var(--teal);">
+            <div style="height:50px;"> 
+                <img style="width:100%;height:100%;object-fit:contain;" src="./src/images/Logo.png"/>
+            </div>
             <div class="text-center">
-                <h2 class="text-white">PAYROLL SYSTEM</h2>
-                <p class="text-white">ADMIN LOGIN</p>
+                <h2 class="text-white" style="font-size:20px;text-shadow:0 0 5px #fff;">PAYROLL SYSTEM</h2>
             </div>
             <br>
             <hr>
+            <p class="text-white text-center" style="text-shadow:0 0 5px #fff;">LOGIN</p>
             <div class="form">
                 <form id="loginForm">
                     <div class="input-group mb-2">
@@ -52,19 +55,7 @@ if ((isset($_SESSION['username']))) {
                 </form>
                 <!--<a class="text-white" style="cursor:pointer;">Register</a>-->
             </div>
-            <br>
-            <div style="display: flex;align-items: center;">
-                <div style="flex:3;height:1px;background:rgba(0,0,0,0.1);"></div>
-                <div style="flex:1;display:grid;place-items:center;color:#fff;">Or</div>
-                <div style="flex:3;height:1px;background:rgba(0,0,0,0.1);"></div>
-            </div>
-         
-            <div class="fingerprint-login d-flex align-items-center justify-content-center pt-2">
-                <div style="width:25%;padding:5px;border:1px solid #fff;margin-right:30px;">
-                    <img src="./src/images/fingerprint_img.png" style="width:100%;"/>
-                </div>
-                <p class="text-white" style="font-size:20px;">Login with<br> Fingerprint</p>
-            </div>
+            
         </div>
     </div>
 </div>

@@ -12,21 +12,24 @@ if ($conn->connect_error) {
 }
 
 session_start();
-
 if (isset($_POST['date'])) {
     $date = $_POST['date'];
-    $serialnumber = $_POST['serial'];
+    $company_id = $_SESSION['companyid'];
     $branch = $_POST['branch'];
-
-    $sql = "SELECT time_logs FROM attendance WHERE company_id = '". $_SESSION['companyid'] ."' AND serialnumber = '$serialnumber' AND branch = '$branch' AND status = 'IN' AND date = '$date' ORDER BY id DESC LIMIT 1";
+    $paysched = $_POST['paysched'];
+    $sql = "SELECT * FROM holidaysss WHERE date = '$date' AND company_id = '$company_id' AND branch = '$branch' AND paysched = '$paysched'";
     $result = $conn->query($sql);
 
     if ($result->num_rows > 0) {
-        $row = $result->fetch_assoc();
-        echo $row['time_logs'];
-    } 
+        // output data of each row
+        $data = array();
+        while ($row = $result->fetch_assoc()) {
+            $data[] = $row;
+        }
+        
+        echo json_encode($data);
+    }
 }
-
 
 $conn->close();
 ?>

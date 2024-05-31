@@ -13,7 +13,7 @@ if ($conn->connect_error) {
 
 session_start();
 
-$sql = "SELECT DISTINCT company_id, class, name, serialnumber, position, department, contact_number, notice_message, date FROM notice WHERE company_id = '". $_SESSION['companyid'] . "' ORDER BY id DESC";
+$sql = "SELECT DISTINCT company_id, class, name, serialnumber, position, department, contact_number, notice_message, date, branch FROM notice WHERE company_id = '". $_SESSION['companyid'] . "' ORDER BY id DESC";
 $result = $conn->query($sql);
 
 if ($result->num_rows > 0) {

@@ -25,14 +25,14 @@ if (isset($_POST['data'])) {
     $to = $_POST['to'];
     $period = $_POST['period'];
 
-    $exists = checkIfFileExists($conn, $from, $to);
+    $exists = checkIfFileExists($conn, $from, $to, $_POST['branch']);
 
     $month = date('m', strtotime($from));
     $year = date('Y', strtotime($from));
 
     if (!$exists) {
-      $stmt = $conn->prepare("INSERT INTO payroll_files (paysched, period, from_date, to_date, month, year, company_id, name, serialnumber, class, class_name, rate, rate_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-      $stmt->bind_param("ssssssisissss", $paysched, $period, $from, $to, $month, $year, $company_id, $name, $serialnumber, $class, $class_name, $rate, $rate_type);
+      $stmt = $conn->prepare("INSERT INTO payroll_files (paysched, period, from_date, to_date, month, year, company_id, name, serialnumber, class, class_name, rate, rate_type, branch) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+      $stmt->bind_param("ssssssisisssss", $paysched, $period, $from, $to, $month, $year, $company_id, $name, $serialnumber, $class, $class_name, $rate, $rate_type, $branch);
   
       foreach ($datas as $data) {
         $name = $data['name'];
@@ -41,6 +41,7 @@ if (isset($_POST['data'])) {
         $class_name = $CLASS['names'][$data['class']];
         $rate = $CLASS['rates'][$data['class']];
         $rate_type = $CLASS['types'][$data['class']];
+        $branch = $_POST['branch'];
         if ($stmt->execute()) {
         }
       }
@@ -59,11 +60,11 @@ if (isset($_POST['data'])) {
     $selectedMonth = date('m', strtotime($_POST['mon']));
     $selectedYear = date('Y', strtotime($_POST['mon']));
 
-    $exists = checkIfFileExists2($conn, $selectedMonth, $selectedYear);
+    $exists = checkIfFileExists2($conn, $selectedMonth, $selectedYear, $_POST['branch']);
 
     if (!$exists) {
-      $stmt = $conn->prepare("INSERT INTO payroll_files (paysched, month, year, company_id, name, serialnumber, class, class_name, rate, rate_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-      $stmt->bind_param("sssisissss", $paysched, $selectedMonth, $selectedYear, $company_id, $name, $serialnumber, $class, $class_name, $rate, $rate_type);
+      $stmt = $conn->prepare("INSERT INTO payroll_files (paysched, month, year, company_id, name, serialnumber, class, class_name, rate, rate_type, branch) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+      $stmt->bind_param("sssisisssss", $paysched, $selectedMonth, $selectedYear, $company_id, $name, $serialnumber, $class, $class_name, $rate, $rate_type, $branch);
   
       foreach ($datas as $data) {
         $name = $data['name'];
@@ -72,6 +73,7 @@ if (isset($_POST['data'])) {
         $class_name = $CLASS['names'][$data['class']];
         $rate = $CLASS['rates'][$data['class']];
         $rate_type = $CLASS['types'][$data['class']];
+        $branch = $_POST['branch'];
         if ($stmt->execute()) {
         }
       }
@@ -87,8 +89,8 @@ if (isset($_POST['data'])) {
   }
 }
 
-function checkIfFileExists($conn, $from, $to) {
-  $sql = "SELECT from_date, to_date FROM payroll_files WHERE company_id = '". $_SESSION['companyid'] . "' AND from_date = '$from' AND to_date = '$to'";
+function checkIfFileExists($conn, $from, $to, $branch) {
+  $sql = "SELECT from_date, to_date FROM payroll_files WHERE company_id = '". $_SESSION['companyid'] . "' AND from_date = '$from' AND to_date = '$to' AND branch = '$branch'";
   $result = $conn->query($sql);
   if ($result->num_rows > 0) {
     return true;
@@ -97,8 +99,9 @@ function checkIfFileExists($conn, $from, $to) {
   }
 }
 
-function checkIfFileExists2($conn, $mon, $year) {
-  $sql = "SELECT month, year FROM payroll_files WHERE company_id = '". $_SESSION['companyid'] . "' AND month = '$mon' AND year = '$year'";
+function checkIfFileExists2($conn, $mon, $year, $branch) {
+
+  $sql = "SELECT month, year FROM payroll_files WHERE company_id = '". $_SESSION['companyid'] . "' AND month = '$mon' AND year = '$year' AND branch = '$branch' AND paysched = 'monthly'";
   $result = $conn->query($sql);
   if ($result->num_rows > 0) {
     return true;

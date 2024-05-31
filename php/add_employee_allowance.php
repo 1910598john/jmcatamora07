@@ -14,20 +14,24 @@ if ($conn->connect_error) {
 }
 
 if (isset($_POST['serial'])) {
-    $serial = $_POST['serial'];
-    $amount = $_POST['amount'];
-    $type = $_POST['type'];
-    $name = $_POST['name'];
-    $company_id = $_SESSION['companyid'];
- 
-    $stmt = $conn->prepare("INSERT INTO employee_allowance (company_id, serialnumber, type, amount_name, amount)
-    VALUES (?, ?, ?, ?, ?)");
+  $serial = $_POST['serial'];
+  $branch = $_POST['branch'];
+  $amount = $_POST['amount'];
+  $name = $_POST['allname'];
+  $allid = $_POST['allid'];
+  $type = $_POST['type'];
+  
+  
+  $company_id = $_SESSION['companyid'];
 
-    $stmt->bind_param("iisss", $company_id, $serial, $type, $name, $amount);
+  $stmt = $conn->prepare("INSERT INTO employee_allowance (company_id, serialnumber, branch, allowance_id, allowance_name, amount, type)
+  VALUES (?, ?, ?, ?, ?, ?, ?)");
 
-    if ($stmt->execute()) {
-        echo 'success';
-    }
+  $stmt->bind_param("iisssss", $company_id, $serial, $branch, $allid, $name, $amount, $type);
+
+  if ($stmt->execute()) {
+    echo 'success';
+  }
 }
 
 $conn->close();

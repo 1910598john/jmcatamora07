@@ -14,15 +14,19 @@ if ($conn->connect_error) {
 session_start();
 
 if (isset($_POST['serial'])) {
-    $serial = $_POST['serial'];
-    $company_id = $_SESSION['companyid'];
+    $snumber = $_POST['serial'];
+    $date = $_POST['date'];
     $branch = $_POST['branch'];
-    $id = $_POST['id'];
+    $pay = $_POST['pay'];
+    $company_id = $_SESSION['companyid'];
+    $perc = $_POST['perc'];
 
-    $sql = "DELETE FROM employee_allowance WHERE serialnumber = '$serial' AND company_id = '$company_id' AND branch = '$branch' AND id = '$id'";
+    $paysched = $_POST['paysched'];
 
+    $sql = "UPDATE holidaysss SET approved = 1, pay = $pay, percentage = $perc WHERE company_id = '$company_id' AND serialnumber = '$snumber' AND date = '$date' AND branch = '$branch' AND paysched = '$paysched'";
+    
     if ($conn->query($sql) === TRUE) {
-      echo "deleted";
+      
     } 
 }
 

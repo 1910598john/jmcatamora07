@@ -17,12 +17,12 @@ if (isset($_POST['paysched'])) {
     $company_id = $_SESSION['companyid'];
 
     if ($paysched == 'twice-monthly') {
-        $sql = "SELECT DISTINCT from_date, to_date FROM payroll_files WHERE paysched = '$paysched' AND company_id = '$company_id' AND from_date IS NOT NULL 
+        $sql = "SELECT DISTINCT from_date, to_date, branch FROM payroll_files WHERE paysched = '$paysched' AND company_id = '$company_id' AND from_date IS NOT NULL 
         AND to_date IS NOT NULL ORDER BY id DESC";
         
     } else {
         if ($paysched == 'monthly') {
-            $sql = "SELECT DISTINCT month, year FROM payroll_files WHERE paysched = '$paysched' AND company_id = '$company_id' AND month IS NOT NULL 
+            $sql = "SELECT DISTINCT month, year, branch FROM payroll_files WHERE paysched = '$paysched' AND company_id = '$company_id' AND month IS NOT NULL 
             AND year IS NOT NULL ORDER By id DESC";
         }
     }
@@ -38,6 +38,8 @@ if (isset($_POST['paysched'])) {
         echo json_encode($data);
     } 
 }
+
+
 
 $conn->close();
 ?>

@@ -13,13 +13,13 @@ if ($conn->connect_error) {
 
 session_start();
 
-if (isset($_POST['serial'])) {
-    $serial = $_POST['serial'];
+if (isset($_POST['date'])) {
+    $paysched = $_POST['paysched'];
     $company_id = $_SESSION['companyid'];
+    $date = $_POST['date'];
     $branch = $_POST['branch'];
-    $id = $_POST['id'];
 
-    $sql = "DELETE FROM employee_allowance WHERE serialnumber = '$serial' AND company_id = '$company_id' AND branch = '$branch' AND id = '$id'";
+    $sql = "DELETE FROM holidaysss WHERE branch = '$branch' AND company_id = '$company_id' AND date = '$date' AND paysched = '$paysched'";
 
     if ($conn->query($sql) === TRUE) {
       echo "deleted";

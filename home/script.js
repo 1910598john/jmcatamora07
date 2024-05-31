@@ -2,8 +2,8 @@
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-var gateway = `ws://192.168.10.147/attendance`;
-var websocket;
+// var gateway = `ws://192.168.10.147/attendance`;
+// var websocket;
 var SERIAL_NUMBER;
 var timeout;
 

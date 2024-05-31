@@ -263,6 +263,9 @@
     text-align: center;
     color: #fff;
 }
+.buttons-wrapper > div:hover p {
+    text-shadow: 0 0 3px #fff;
+}
 .buttons-wrapper > div p{
     font-size: 20px;
 }
@@ -272,6 +275,8 @@
     cursor: pointer;
     display: grid;
     place-items: center;
+    border: 1px solid rgba(0,0,0,0.1);
+    border-radius: 4px;
 }
 
 /* */
@@ -383,7 +388,7 @@ input[type='submit'], input[type='button']{
     color: #fff;
     font-size: 14px;
 }
-.window-content .action-button, .tlo-wrapper .action-button{
+.window-content .action-button, .tlo-wrapper .action-button, .folo-wrapper .action-button{
     padding: 5px 15px;
     border-radius: 4px;
     background: var(--teal);
@@ -442,9 +447,21 @@ input[type='submit'], input[type='button']{
     }
 }
 
+.notice-divs > div{
+    color:#fff;
+    padding:5px;
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+    display: flex;
+    justify-content: space-between;
+}
+
+.notice-divs > div:hover{
+    color: orange;
+    cursor: default;
+}
 
 .tooltiptext {
-    visibility: hidden;
+
     width: 100px;
     background-color: orange;
     text-align: center;

@@ -14,16 +14,17 @@ if ($conn->connect_error) {
 session_start();
 if (isset($_POST['serialnumber'])) {
     $id = $_POST['serialnumber'];
+    $branch = $_POST['branch'];
     
     if (isset($_POST['from']) && isset($_POST['to'])) {
         $fromDate = $_POST['from'];
         $toDate = $_POST['to'];
-        $sql = "SELECT * FROM staffs_trail WHERE company_id = '". $_SESSION['companyid'] . "' AND serialnumber = '$id' AND paid_status = 'not paid' AND date BETWEEN DATE('$fromDate') AND DATE('$toDate')";
+        $sql = "SELECT * FROM staffs_trail WHERE company_id = '". $_SESSION['companyid'] . "' AND serialnumber = '$id' AND paid_status = 'not paid' AND branch = '$branch' AND date BETWEEN DATE('$fromDate') AND DATE('$toDate')";
     } else {
         if (isset($_POST['mon'])) {
             $selectedMonth = date('m', strtotime($_POST['mon']));
             $selectedYear = date('Y', strtotime($_POST['mon']));
-            $sql = "SELECT * FROM staffs_trail WHERE company_id = '". $_SESSION['companyid'] . "' AND serialnumber = '$id' AND MONTH(date) = $selectedMonth
+            $sql = "SELECT * FROM staffs_trail WHERE company_id = '". $_SESSION['companyid'] . "' AND serialnumber = '$id' AND branch = '$branch' AND MONTH(date) = $selectedMonth
             AND YEAR(date) = $selectedYear";
         }
     }

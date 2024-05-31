@@ -18,11 +18,13 @@ if (isset($_POST['paysched'])) {
     $paysched = $_POST['paysched'];
     $col1 = $_POST['col1'];
     $col2 = $_POST['col2'];
+    $branch = $_POST['branch'];
+
     if ($paysched == 'twice-monthly') {
-        $sql = "DELETE FROM payroll_files WHERE from_date = '$col1' AND to_date = '$col2' AND company_id = '$company_id'";
+        $sql = "DELETE FROM payroll_files WHERE from_date = '$col1' AND to_date = '$col2' AND company_id = '$company_id' AND branch = '$branch' AND paysched = '$paysched'";
     } else {
         if ($paysched == 'monthly') {
-            $sql = "DELETE FROM payroll_files WHERE month = '$col1' AND year = '$col2' AND company_id = '$company_id'";
+            $sql = "DELETE FROM payroll_files WHERE month = '$col1' AND year = '$col2' AND company_id = '$company_id' AND branch = '$branch' AND paysched = '$paysched'";
         }
     }
     

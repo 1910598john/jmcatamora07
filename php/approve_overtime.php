@@ -18,22 +18,23 @@ if (isset($_POST['serial'])) {
     $sid = $_POST['sid'];
     $id = $_POST['id'];
     $company_id = $_SESSION['companyid'];
+    $branch = $_POST['branch'];
 
     if (isset($_POST['dismissed'])) {
-        $sql = "UPDATE staffs_trail SET ot_approval = 'dismissed' WHERE company_id = '$company_id' AND serialnumber = '$serial' AND id = '$sid'";
+        $sql = "UPDATE staffs_trail SET ot_approval = 'dismissed' WHERE company_id = '$company_id' AND serialnumber = '$serial' AND id = '$sid' AND branch = '$branch'";
     } else {
-        $sql = "UPDATE staffs_trail SET ot_approval = 'approved' WHERE company_id = '$company_id' AND serialnumber = '$serial' AND id = '$sid'";
+        $sql = "UPDATE staffs_trail SET ot_approval = 'approved' WHERE company_id = '$company_id' AND serialnumber = '$serial' AND id = '$sid' AND branch = '$branch'";
     }
     
     
     if ($conn->query($sql) === TRUE) {
-        delete_approval($conn, $serial, $company_id, $id);
+        delete_approval($conn, $serial, $company_id, $id, $branch);
     } 
     
 }
 
-function delete_approval($conn, $serial, $company_id, $id) {
-    $sql = "DELETE FROM ot_approval WHERE serialnumber = '" . $serial . "' AND id = '$id' AND company_id = '$company_id'";
+function delete_approval($conn, $serial, $company_id, $id, $branch) {
+    $sql = "DELETE FROM ot_approval WHERE serialnumber = '" . $serial . "' AND id = '$id' AND company_id = '$company_id'  AND branch = '$branch'";
 
     if ($conn->query($sql) === TRUE) {
         echo "approved";

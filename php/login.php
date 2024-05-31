@@ -11,15 +11,18 @@ if ($conn->connect_error) {
   die("Connection failed: " . $conn->connect_error);
 }
 
+session_start();
+
 if (isset($_POST['username']) && isset($_POST['password'])) {
   $user_name = $_POST['username'];
   $pass = $_POST['password'];
 
-  $sql = "SELECT username, password, company_id FROM payroll_admin";
+  $sql = "SELECT name, username, password, company_id FROM payroll_admin";
   $result = $conn->query($sql);
 
   $isRegistered = false;
   $company_id;
+  $name = '';
 
   if ($result->num_rows > 0) {
     //output data of each row
@@ -34,15 +37,17 @@ if (isset($_POST['username']) && isset($_POST['password'])) {
       if ($row['username'] == $user_name && $decrypted_data == $pass) {
         $company_id = $row['company_id'];
         $isRegistered = true;
+        $name = $row['name'];
       }
     }
   }
 
   if ($isRegistered) {
-    session_start();
+    
     $_SESSION['companyid'] = $company_id;
     $_SESSION['username'] = $user_name;
     $_SESSION['admin'] = "admin";
+    $_SESSION['nameofuser'] = $name;
     
     echo 'success';
   } else {
@@ -81,7 +86,7 @@ function isUser($conn) {
   }
 
   if ($isRegistered) {
-    session_start();
+
     $_SESSION['companyid'] = $company_id;
     $_SESSION['username'] = $user_name;
     $_SESSION['permissions'] = $permissions;

@@ -17,17 +17,18 @@ session_start();
 
 if (isset($_POST['serial'])) {
     $serial = $_POST['serial'];
+    $branch = $_POST['branch'];
 
     if (isset($_POST['from']) && isset($_POST['to'])) {
         $from = $_POST['from'];
         $to = $_POST['to'];
     
-        $sql = "SELECT * FROM staffs_trail WHERE company_id = '". $_SESSION['companyid'] . "' AND serialnumber = '$serial' AND date BETWEEN DATE('$from') AND DATE('$to') ORDER BY id DESC";
+        $sql = "SELECT * FROM staffs_trail WHERE company_id = '". $_SESSION['companyid'] . "' AND serialnumber = '$serial' AND branch = '$branch' AND date BETWEEN DATE('$from') AND DATE('$to') ORDER BY id DESC";
     } else {
         if (isset($_POST['mon'])) {
             $selectedMonth = date('m', strtotime($_POST['mon']));
             $selectedYear = date('Y', strtotime($_POST['mon']));
-            $sql = "SELECT * FROM staffs_trail WHERE company_id = '". $_SESSION['companyid'] . "' AND serialnumber = '$serial' AND MONTH(date) = $selectedMonth
+            $sql = "SELECT * FROM staffs_trail WHERE company_id = '". $_SESSION['companyid'] . "' AND serialnumber = '$serial' AND branch = '$branch' AND MONTH(date) = $selectedMonth
             AND YEAR(date) = $selectedYear ORDER BY id DESC";
         }
     }

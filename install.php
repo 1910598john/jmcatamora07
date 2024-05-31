@@ -26,7 +26,7 @@
 		username varchar(30) NOT NULL,
 		password varchar(30) NOT NULL,
 		serialnumber int(11) NOT NULL,
-		machine_id int(50) NOT NULL,
+		machine_id varchar(50) NOT NULL,
 		company_id int(11) NOT NULL
 	)";
 
@@ -70,6 +70,7 @@
 	//sql to create table
 	$sql = "CREATE TABLE IF NOT EXISTS staffs (
 		id int(6) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+		branch varchar(50) NOT NULL,
 		name varchar(30) NOT NULL,
 		class varchar(5) NOT NULL,
 		age int(2) NOT NULL,
@@ -91,6 +92,7 @@
 		leave_start DATE,
 		leave_end DATE,
 		file LONGBLOB,
+		
 		date_employed DATE,
 		date DATE
 	)";
@@ -165,6 +167,7 @@
 
 	$sql = "CREATE TABLE IF NOT EXISTS payroll_files(
 		id int(10) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+		branch varchar(50) NOT NULL,
 		paysched varchar(50) NOT NULL,
 		period varchar(50) NOT NULL,
 		from_date DATE,
@@ -229,6 +232,7 @@
 
 	$sql = "CREATE TABLE IF NOT EXISTS logs (
 		id int(6) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+		branch varchar(50) NOT NULL,
 		company_id int(11) NOT NULL,
 		user varchar(100) NOT NULL,
 		log varchar(255) NOT NULL,
@@ -244,16 +248,23 @@
 	$sql = "CREATE TABLE IF NOT EXISTS holidaysss (
 		id int(6) NOT NULL AUTO_INCREMENT PRIMARY KEY,
 		company_id int(11) NOT NULL,
-		month int(2) NOT NULL,
-		year int(4) NOT NULL,
+		branch varchar(50) NOT NULL,
+		month varchar(2) NOT NULL,
+		year varchar(4) NOT NULL,
 		date DATE,
 		holiday_name varchar(100) NOT NULL,
-		percentage float(10, 2) NOT NULL,
 		employee varchar(100) NOT NULL,
 		serialnumber int(10) NOT NULL,
-		isvalid_date_before tinyint(1) NOT NULL,
-		isvalid_date_after tinyint(1) NOT NULL,
-		approved tinyint(1) NOT NULL
+		class varchar(10) NOT NULL,
+		isvalid_date_before varchar(255) NOT NULL,
+		present tinyint(1) NOT NULL,
+		isvalid_date_after varchar(255) NOT NULL,
+		approved tinyint(1) DEFAULT 0,
+		percentage float(10, 2) NOT NULL,
+		paysched varchar(50) NOT NULL,
+		from_date DATE,
+		to_date DATE,
+		pay float(10, 2) NOT NULL
 	)";
 
 	if ($conn->query($sql) === TRUE) {
@@ -279,6 +290,7 @@
 
 	$sql = "CREATE TABLE IF NOT EXISTS ot_approval (
 		id int(6) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+		branch varchar(50) NOT NULL,
 		company_id int(11) NOT NULL,
 		serialnumber int(10) NOT NULL,
 		name varchar(100) NOT NULL,
@@ -301,12 +313,9 @@
 	$sql = "CREATE TABLE IF NOT EXISTS company_allowance (
 		id int(6) NOT NULL AUTO_INCREMENT PRIMARY KEY,
 		company_id int(11) NOT NULL,
-		allowance_name varchar(30) NOT NULL,
+		name varchar(30) NOT NULL,
 		amount int(10) NOT NULL,
-		detail varchar(20),
-		class varchar(5) NOT NULL,
-		serialnumber int(100) NOT NULL,
-		all_type varchar(255) NOT NULL
+		type varchar(20)
 	)";
 
 	if ($conn->query($sql) === TRUE) {
@@ -318,13 +327,30 @@
 	$sql = "CREATE TABLE IF NOT EXISTS allowance_penalty (
 		id int(6) NOT NULL AUTO_INCREMENT PRIMARY KEY,
 		company_id int(11) NOT NULL,
-		allowance varchar(10) NOT NULL,
+		allowance_id varchar(10) NOT NULL,
 		allowance_name varchar(100) NOT NULL,
 		type varchar(30) NOT NULL,
-		deduction varchar(10) NOT NULL,
-		class varchar(5) NOT NULL,
-		all_type varchar(200) NOT NULL,
-		serialnumber int(100) NOT NULL
+		deduction varchar(10) NOT NULL
+	)";
+
+	if ($conn->query($sql) === TRUE) {
+	    echo "<br>Table created successfully";
+	} else {
+	    echo "Error creating table: " . $conn->error;
+	}
+
+	$sql = "CREATE TABLE IF NOT EXISTS early_in_approval(
+		id int(6) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+		branch varchar(50) NOT NULL,
+		company_id int(11) NOT NULL,
+		serialnumber int(10) NOT NULL,
+		name varchar(100) NOT NULL,
+		position varchar(100) NOT NULL,
+		timed_in DATETIME,
+		early_in_mins int(5) NOT NULL,
+		pay float(10, 2) NOT NULL,
+		approved tinyint(1) DEFAULT 0,
+		date DATE
 	)";
 
 	if ($conn->query($sql) === TRUE) {
@@ -365,6 +391,7 @@
 
 	$sql = "CREATE TABLE IF NOT EXISTS staffs_trail (
 		id int(6) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+		branch varchar(50) NOT NULL,
 		company_id int(11) NOT NULL,
 		name varchar(30) NOT NULL,
 		class varchar(5) NOT NULL,
@@ -381,6 +408,7 @@
 		late_mins int(10) NOT NULL,
 		paid_status varchar(30) NOT NULL,
 		leave_status TINYINT(1) DEFAULT 0,
+		
 		date DATE
 	)";
 
@@ -393,6 +421,7 @@
 
 	$sql = "CREATE TABLE IF NOT EXISTS notice (
 		id int(6) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+		branch varchar(50) NOT NULL,
 		company_id int(11) NOT NULL,
 		class varchar(10) NOT NULL,
 		name varchar (30) NOT NULL,
@@ -412,12 +441,26 @@
 
 	$sql = "CREATE TABLE IF NOT EXISTS employee_allowance(
 		id int(6) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+		serialnumber int(10) NOT NULL,
+		branch varchar(50) NOT NULL,
 		company_id int(11) NOT NULL,
-		name varchar (30) NOT NULL,
-		serialnumber int(11) NOT NULL,
-		amount_name varchar(200) NOT NULL,
-		type varchar(100) NOT NULL,
-		amount float(10, 2) NOT NULL
+		allowance_id varchar(10) NOT NULL,
+		allowance_name varchar(50) NOT NULL,
+		amount varchar(200) NOT NULL,
+		type varchar(100) NOT NULL
+	)";
+
+	if ($conn->query($sql) === TRUE) {
+	    echo "<br>Table created successfully";
+	} else {
+	    echo "Error creating table: " . $conn->error;
+	}
+
+	$sql = "CREATE TABLE IF NOT EXISTS machines(
+		id int(6) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+		company_id int(11) NOT NULL,
+		branch_name varchar (100) NOT NULL,
+		machine_id varchar(50) NOT NULL
 	)";
 
 	if ($conn->query($sql) === TRUE) {
@@ -429,6 +472,7 @@
 	//sql to create table
 	$sql = "CREATE TABLE IF NOT EXISTS attendance (
 		id int(6) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+		branch varchar(50) NOT NULL,
 		name varchar(30) NOT NULL,
 		position varchar(30) NOT NULL,
 		department varchar(30) NOT NULL,
@@ -445,15 +489,16 @@
 	    echo "Error creating table: " . $conn->error;
 	}
 
-	echo "<script>
-			setTimeout(() => {
-				document.write('Redirecting..');
-			}, 1500);
-			setTimeout(() => {
-				window.open('./', '_self');
-			}, 3500);
-			</script>";
-		
+	echo 
+	"<script>
+	setTimeout(() => {
+		document.write('Redirecting..');
+	}, 1500);
+	setTimeout(() => {
+		window.open('./', '_self');
+	}, 3500);
+	</script>";
+	
 	$conn->close();
 ?>
 

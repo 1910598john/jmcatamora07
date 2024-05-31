@@ -14,6 +14,9 @@ if ($conn->connect_error) {
 }
 
 if (isset($_POST['name'])) {
+  $usernameNotUsed = checkUsername($conn);
+
+  if (!$usernameNotUsed) {
     $name = $_POST['name'];
     $username = $_POST['username'];
     $password = $_POST['password'];
@@ -37,6 +40,21 @@ if (isset($_POST['name'])) {
     if ($stmt->execute()) {
         echo "success";
     }
+  } else {
+    echo 'username exists';
+  }
+}
+
+function checkUsername($conn) {
+  $uname = $_POST['username'];
+  $sql = "SELECT username FROM users WHERE username = '$uname'";
+  $result = $conn->query($sql);
+
+  if ($result->num_rows > 0) {
+      return true;
+  } else {
+      return false;
+  }
 }
 
 

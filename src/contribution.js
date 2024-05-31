@@ -1,3 +1,35 @@
+var gateway = `ws://192.168.10.147/register`;
+var websocket;
+var timeout;
+var MACHINEID = 'Waiting to scan..';
+
+function initWebSocket() {
+    websocket = new WebSocket(gateway);
+    websocket.onopen = onOpen;
+    websocket.onclose = onClose;
+    websocket.onmessage = onMessage;
+}
+
+function onOpen(event) {
+    console.log('Connection opened');
+}
+
+function onClose(event) {
+    console.log('Connection closed');
+    setTimeout(initWebSocket, 1000);
+}
+
+$(document).ready(function() {
+    initWebSocket();
+}) 
+
+function onMessage(event) {
+    if (event.data.includes("machine")) {
+        MACHINEID = event.data.replace(/machine/g, '');
+        $("#machine-text").val(MACHINEID);
+    }
+}
+
 var close_icon = `
 <div class="close-window" style="position:absolute;right:-40px;top:-40px;cursor:pointer;">
     <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" fill="#fff" class="bi bi-x-circle" viewBox="0 0 16 16">
@@ -6,18 +38,13 @@ var close_icon = `
     </svg>
 </div>`;
 
-
-
-
 var current_file;
 $(".contribution").click(function(event){
     event.stopImmediatePropagation();
-
     $.ajax({
         type: 'POST',
         url: '../php/fetch_sss_file.php',
         success: function(res) {
-
             let files = "";
             try {
                 res = JSON.parse(res);
@@ -229,6 +256,7 @@ $(".users").click(function(event){
                     content += `
                     <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
                         <td>${res[i].name}</td>
+                        <td>${res[i].username}</td>
                         <td>${txt}</td>
                     </tr>`;
                 }
@@ -251,6 +279,7 @@ $(".users").click(function(event){
                             <thead>
                                 <tr>
                                     <td>NAME</td>
+                                    <td>USER ID</td>
                                     <td>PERMISSIONS</td>
                                 </tr>
                             </thead>
@@ -278,11 +307,12 @@ $(".users").click(function(event){
                             <input type="password" placeholder="Enter password" name="password"/>
                             <span>Permissions: (HOLD CTRL to select multiple)</span>
                             <select name="permission" multiple>
-                                <option value="view staffs">View staffs</option>
+                                <option value="view machines">Add branch</option>
                                 <option value="add staff">Add staff</option>
                                 <option value="edit staff">Edit staff</option>
-                                <option value="payroll">Payroll</option>
                                 <option value="logs">Logs</option>
+                                <option value="payroll">Payroll</option>
+                                <option value="view staffs">View staffs</option>
                             </select>
                             </form>
                             <br>
@@ -329,6 +359,8 @@ $(".users").click(function(event){
                                 if (res == 'success') {
                                     successNotification("User added successfully.", "success");
                                     $(".third-layer-overlay").remove();
+                                } else if (res == 'username exists') {
+                                    errorNotification("Username already exists.", "danger");
                                 }
                             }
                         });
@@ -349,4 +381,119 @@ $(".users").click(function(event){
         }
     })
     
+})
+
+$(".view-machines").click(function(event){
+    event.stopImmediatePropagation();
+    let content = "";
+
+    $.ajax({
+        type: 'POST',
+        url: '../php/fetch_machines.php',
+        success: function(res) {
+            try {
+                res = JSON.parse(res);
+                for (let i = 0; i < res.length; i++) {
+                    content += `
+                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                        <td>${res[i].branch_name}</td>
+                        <td>${res[i].machine_id}</td>
+                    </tr>`;
+                }
+
+            } catch(err) {
+                content += `
+                <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                    <td colspan="2" style="text-align:center;padding:10px 0;">No item.</td>
+                </tr>`;
+            }
+
+            document.body.insertAdjacentHTML("afterbegin", `
+            <div class="pop-up-window">
+                <div class="window-content pt-5" style="position:relative;min-width:25vw;">
+                    ${close_icon}
+                    <p class="text-center text-white" style="font-size:20px;">BRANCH (${COMPANY_NAME})</p>
+                    <button class="action-button add-branch">Add branch</button>
+                    <hr>
+                    <div style="max-height:250px;overflow:auto;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <td>BRANCH</td>
+                                    <td>MACHINE ID</td>
+                                </tr>
+                            </thead>
+                            ${content}
+                        </table>
+                    </div>
+                </div>
+            </div>`);
+
+            $(".close-window").click(function(event){
+                event.stopImmediatePropagation();
+                $(".pop-up-window").remove();
+            })
+
+            $(".add-branch").click(function(event){
+                event.stopImmediatePropagation();
+                document.body.insertAdjacentHTML("afterbegin", `
+                <div class="third-layer-overlay">
+                    <div class="tlo-wrapper pt-5" style="min-width:400px;position:relative;">
+                        ${close_icon}
+                        <p class="text-white text-center" style="font-size:20px;">ADD BRANCH</p>
+                        <hr>
+                        <div style="display:flex;flex-direction:column;color:#fff;">
+                            <form id="addBranchForm">
+                            <span>BRANCH NAME:</span>
+                            <input type="text" placeholder="Enter name" name="name"/>
+                            <span>SCAN MACHINE:</span>
+                            <input type="text" value="${MACHINEID}" id="machine-text" readonly placeholder="Waiting to scan.." name="machine"/>
+                            </form>
+                            <br>
+                            <input type="button" value="ADD BRANCH"/>
+                        </div>
+                    </div>
+                </div>`);
+
+                $("input[type='button']").click(function(event){
+                    event.stopImmediatePropagation();
+                    event.preventDefault();
+                    let data = new FormData(document.getElementById("addBranchForm"));
+                    var formDataObject = {};
+                    let isNotEmpty = true;
+                    data.forEach(function(value, key){
+                        
+                        formDataObject[key] = value;
+                        
+                        if (value === '') {
+                            isNotEmpty = false;
+                        }
+                    });
+
+                    $.ajax({
+                        type: 'POST',
+                        url: '../php/add_machine.php',
+                        data: {
+                            machine: '3209586263',//formDataObject.machine,
+                            branch: formDataObject.name
+                        }, success: function(res) {
+                            if (res == 'success') {
+                                successNotification("New branch created successfully.", "success");
+                                $(".third-layer-overlay").remove();
+                            } else if (res == 'branch exists') {
+                                errorNotification("Branch already exists.", "danger");
+                            }
+                        }
+                    })
+
+                })
+
+                $(".close-window").click(function(event){
+                    event.stopImmediatePropagation();
+                    $(".third-layer-overlay").remove();
+                })
+
+            });
+        }
+    });
 })
