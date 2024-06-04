@@ -22,7 +22,7 @@ if (isset($_POST['branch'])) {
     $stmt = $conn->prepare("INSERT INTO logs (company_id, user, log, time_log, branch)
     VALUES (?, ?, ?, NOW(), ?)");
 
-    $stmt->bind_param("isss", $company_id, $log, $name, $branch);
+    $stmt->bind_param("isss", $company_id,  $name, $log, $branch);
 
     if ($stmt->execute()) {
         echo 'logged';

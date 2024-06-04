@@ -13,7 +13,16 @@ let ot_app = 0;
 let missed_out = 0;
 let early_app = 0;
 
+var current_user;
+
 $(document).ready(function() {
+    $.ajax({
+        type: 'POST',
+        url: '../php/get_user_name.php',
+        success: function(res) {
+            current_user = res;
+        }
+    })
 
     $.ajax({
         type: 'GET',
@@ -180,8 +189,8 @@ $(document).ready(function() {
                                                     <td>${res2[i].date}</td>
                                                     <td>${br}</td>
                                                     <td>
-                                                        <button data-branch="${res2[i].branch}" data-indx="${i}" data-id="${res2[i].id}" data-snumber="${res2[i].serialnumber}" data-sid="${res2[i].row_id}" class="action-button approve">Approve</button>
-                                                        <button data-branch="${res2[i].branch}" data-indx="${i}" data-id="${res2[i].id}" data-snumber="${res2[i].serialnumber}" data-sid="${res2[i].row_id}" class="action-button ml-2 dismiss">Dismiss</button>
+                                                        <button data-branch="${res2[i].branch}" data-indx="${i}" data-id="${res2[i].id}" data-snumber="${res2[i].serialnumber}" data-sid="${res2[i].row_id}" class="action-button approve" data-name="${res2[i].name}">Approve</button>
+                                                        <button data-branch="${res2[i].branch}" data-indx="${i}" data-id="${res2[i].id}" data-snumber="${res2[i].serialnumber}" data-sid="${res2[i].row_id}" class="action-button ml-2 dismiss" data-name="${res2[i].name}">Dismiss</button>
                                                     </td>
                                                 </tr>`;
                                             }
@@ -227,6 +236,8 @@ $(document).ready(function() {
                                             let serial = $(this).data("snumber");
                                             let branch = $(this).data("branch");
 
+                                            let name = $(this).data("name");
+
                                             $.ajax({
                                                 type: 'POST',
                                                 url: '../php/approve_early_in.php',
@@ -238,6 +249,19 @@ $(document).ready(function() {
                                                     if (res == 'approved') {
                                                         $(`#row${idx}`).remove();
                                                         successNotification("Approved.", "success");
+
+                                                        $.ajax({
+                                                            type: 'POST',
+                                                            url: '../php/add_log.php',
+                                                            data: {
+                                                                log: `Approved ${name} early in pay.`,
+                                                                branch: branch,
+                                                                user: current_user
+                                                            },success: function(log_res) {
+                                                                
+                                                            }
+                                                        })
+
                                                     }
                                                 }
                                             })
@@ -254,6 +278,8 @@ $(document).ready(function() {
                                             let serial = $(this).data("snumber");
                                             let branch = $(this).data("branch");
 
+                                            let name = $(this).data("name");
+
                                             $.ajax({
                                                 type: 'POST',
                                                 url: '../php/dismiss_early_in.php',
@@ -265,6 +291,18 @@ $(document).ready(function() {
                                                     if (res == 'dismissed') {
                                                         $(`#row${idx}`).remove();
                                                         successNotification("Dismissed.", "success");
+
+                                                        $.ajax({
+                                                            type: 'POST',
+                                                            url: '../php/add_log.php',
+                                                            data: {
+                                                                log: `Dismissed ${name} early in pay.`,
+                                                                branch: branch,
+                                                                user: current_user
+                                                            },success: function(log_res) {
+                                                                
+                                                            }
+                                                        })
                                                     }
                                                 }
                                             })
@@ -334,8 +372,8 @@ $(document).ready(function() {
                                                             <td>${res[i].date}</td>
                                                             <td>${br}</td>
                                                             <td>
-                                                                <button data-branch="${res[i].branch}" data-indx="${i}" data-id="${res[i].id}" data-snumber="${res[i].serialnumber}" data-sid="${res[i].row_id}" class="action-button approve">Approve</button>
-                                                                <button data-branch="${res[i].branch}" data-indx="${i}" data-id="${res[i].id}" data-snumber="${res[i].serialnumber}" data-sid="${res[i].row_id}" class="action-button ml-2 dismiss">Dismiss</button>
+                                                                <button data-branch="${res[i].branch}" data-indx="${i}" data-id="${res[i].id}" data-snumber="${res[i].serialnumber}" data-sid="${res[i].row_id}" class="action-button approve" data-name="${res[i].name}">Approve</button>
+                                                                <button data-branch="${res[i].branch}" data-indx="${i}" data-id="${res[i].id}" data-snumber="${res[i].serialnumber}" data-sid="${res[i].row_id}" class="action-button ml-2 dismiss" data-name="${res[i].name}">Dismiss</button>
                                                             </td>
                                                         </tr>`;
                                                     }
@@ -381,6 +419,8 @@ $(document).ready(function() {
                                                     let snumber = $(this).data("snumber");
                                                     let index = $(this).data("indx");
                                                     let branch = $(this).data("branch");
+
+                                                    let name = $(this).data("name");
     
                                                     $.ajax({
                                                         type: 'POST',
@@ -394,6 +434,18 @@ $(document).ready(function() {
                                                             if (res2 == 'approved') {
                                                                 successNotification("Overtime approved.", "success");
                                                                 $(`#row${index}`).remove();
+
+                                                                $.ajax({
+                                                                    type: 'POST',
+                                                                    url: '../php/add_log.php',
+                                                                    data: {
+                                                                        log: `Approved ${name} overtime pay.`,
+                                                                        branch: branch,
+                                                                        user: current_user
+                                                                    },success: function(log_res) {
+                                                                        
+                                                                    }
+                                                                })
                                                                 
                                                                 res.splice(parseInt(index), 1);
                                                                 if (res.length == 0) {
@@ -411,6 +463,8 @@ $(document).ready(function() {
                                                     let snumber = $(this).data("snumber");
                                                     let index = $(this).data("indx");
                                                     let branch = $(this).data("branch");
+
+                                                    let name = $(this).data("name");
     
                                                     $.ajax({
                                                         type: 'POST',
@@ -426,6 +480,18 @@ $(document).ready(function() {
                                                             if (res2 == 'approved') {
                                                                 successNotification("Dismissed.", "success");
                                                                 $(`#row${index}`).remove();
+
+                                                                $.ajax({
+                                                                    type: 'POST',
+                                                                    url: '../php/add_log.php',
+                                                                    data: {
+                                                                        log: `Dismissed ${name} overtime pay.`,
+                                                                        branch: branch,
+                                                                        user: current_user
+                                                                    },success: function(log_res) {
+                                                                        
+                                                                    }
+                                                                })
                                                                 
                                                                 res.splice(parseInt(index), 1);
                                                                 if (res.length == 0) {

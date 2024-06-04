@@ -19,7 +19,18 @@ function onClose(event) {
     setTimeout(initWebSocket, 1000);
 }
 
+var current_user;
+
 $(document).ready(function() {
+
+    $.ajax({
+        type: 'POST',
+        url: '../php/get_user_name.php',
+        success: function(res) {
+            current_user = res;
+        }
+    })
+
     initWebSocket();
 }) 
 
@@ -260,11 +271,12 @@ $(".users").click(function(event){
                         <td>${txt}</td>
                     </tr>`;
                 }
+
             } catch (err) {
                 content += `
-                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
-                        <td colspan="2" style="text-align;center;padding: 10px 0;">No item</td>
-                    </tr>`;
+                <tr style="border-bottom:1px solid rgba(0,0,0,0.1);">
+                    <td colspan="3" style="text-align:center;padding: 10px 0;">No item</td>
+                </tr>`;
             }
 
             document.body.insertAdjacentHTML("afterbegin", `
@@ -359,6 +371,19 @@ $(".users").click(function(event){
                                 if (res == 'success') {
                                     successNotification("User added successfully.", "success");
                                     $(".third-layer-overlay").remove();
+
+                                    $.ajax({
+                                        type: 'POST',
+                                        url: '../php/add_log.php',
+                                        data: {
+                                            log: `Added new user named ${formDataObject.name}.`,
+                                            branch: 'All branch',
+                                            user: current_user
+                                        },success: function(log_res) {
+                                            
+                                        }
+                                    })
+
                                 } else if (res == 'username exists') {
                                     errorNotification("Username already exists.", "danger");
                                 }
@@ -470,21 +495,38 @@ $(".view-machines").click(function(event){
                         }
                     });
 
-                    $.ajax({
-                        type: 'POST',
-                        url: '../php/add_machine.php',
-                        data: {
-                            machine: '3209586263',//formDataObject.machine,
-                            branch: formDataObject.name
-                        }, success: function(res) {
-                            if (res == 'success') {
-                                successNotification("New branch created successfully.", "success");
-                                $(".third-layer-overlay").remove();
-                            } else if (res == 'branch exists') {
-                                errorNotification("Branch already exists.", "danger");
+                    if ($("input[name='machine']").val() != $("input[name='machine']").attr("placeholder")) {
+                        $.ajax({
+                            type: 'POST',
+                            url: '../php/add_machine.php',
+                            data: {
+                                machine: formDataObject.machine,//,
+                                branch: formDataObject.name
+                            }, success: function(res) {
+                                if (res == 'success') {
+                                    successNotification("New branch created successfully.", "success");
+                                    $(".third-layer-overlay").remove();
+    
+                                    $.ajax({
+                                        type: 'POST',
+                                        url: '../php/add_log.php',
+                                        data: {
+                                            log: `Added new branch named ${formDataObject.name}.`,
+                                            branch: 'All branch',
+                                            user: current_user
+                                        },success: function(log_res) {
+                                            
+                                        }
+                                    })
+                                } else if (res == 'branch exists') {
+                                    errorNotification("Branch already exists.", "danger");
+                                }
                             }
-                        }
-                    })
+                        })
+
+                    } else {
+                        errorNotification("Please scan branch machine.", "danger");
+                    }
 
                 })
 

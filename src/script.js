@@ -382,8 +382,7 @@ function computeSalary(id) {
                                                         allowanceResponseBody = 'None';
                                                     }
 
-                                                    console.log("ALLOWANCE");
-                                                    console.log(allowanceResponseBody)
+                                                 
 
                                                     $.ajax({
                                                         type: 'POST',
@@ -396,9 +395,6 @@ function computeSalary(id) {
                                                                 allowancePenalty = 'None';
                                                             }
 
-                                                            console.log("PENALTY");
-                                                            console.log(allowancePenalty)
-
                                                             $.ajax({
                                                                 type: 'POST',
                                                                 url: '../php/fetchHolidaysByClass.php',
@@ -410,7 +406,6 @@ function computeSalary(id) {
                                                                     to: to,
                                                                     month: MONTH,
                                                                     year: YEAR
-
                                                                 }, success: function(res) {
                                                                     let holidaypay = parseFloat(res);
                                                                     details = [];
@@ -471,9 +466,9 @@ function computeSalary(id) {
                                                                                 const mon = String(currentDate.getMonth() + 1).padStart(2, '0'); // Months are zero-indexed, so we add 1
                                                                                 const day = String(currentDate.getDate()).padStart(2, '0');
 
-                                                                                if (trail[i].date != `${year}-${mon}-${day}`)  {
+                                                                                //if (trail[i].date != `${year}-${mon}-${day}`)  {
                                                                                     days_worked += 1;
-                                                                                }
+                                                                                //}
                                                                                 if (trail[i].ot_approval == 'approved') {
                                                                                     ot_total += parseFloat(trail[i].ot_total);
                                                                                 }
@@ -503,26 +498,21 @@ function computeSalary(id) {
                                                                                 //days_worked -= 0.5;
                                                                             }
                                                                         }
-                                                                        
+
                                                                         late_mins += parseInt(trail[i].late_mins);
                                                                     }
-
                                                                     ///////////// COMPUTATION
                                                                     let salaryRate = parseInt(rate) * parseInt($(`#cal${id}`).val());
-
                                                                     details.push({"DAYS WORKED" : days_worked});
-
                                                                     if (numOfLeave > 0) {
                                                                         details.push({"DAYS LEAVE" : (numOfLeave)});
                                                                     }
-
                                                                     details.push({"SALARY RATE" : salaryRate.toLocaleString()});
                                                                     
                                                                     var absent = 0;
                                                                     rate = parseInt(rate);
                                                                     if (rateType == 'hourly') {
                                                                         rate = rate * parseInt(hour_perday);
-
                                                                     } else if (rateType == 'monthly') {
                                                                         rate = rate * 12;
                                                                         rate = rate / 365;
@@ -661,6 +651,9 @@ function computeSalary(id) {
                                                                             PAYSLIP.push({'name' : ot_total.toFixed(2), 'row': '11', 'col': '2'})
 
                                                                             net = earned;
+
+                                                                            PAYSLIP[7]['name'] = earned.toFixed(2);
+                                                                            details[6]['BASIC'] = earned.toFixed(2);
 
                                                                             details.push({"EARNED" : {"value" : earned.toLocaleString(), "highlight" : "", "op" : "+"}});
 
@@ -1633,6 +1626,7 @@ function computeSalary(id) {
                         }
                     }
                 })
+
             } catch(err) {
                 console.log(err);
             }
@@ -2223,6 +2217,13 @@ function generateFile(res, staffs_len){
                 $("input[type='checkbox']").change(function(event){
                     let snum = $(this).parent("label").data("s");
 
+                    let name;
+                    for (let n = 0; n < STAFFS.length; n++) {
+                        if (STAFFS[n].serialnumber == snum) {
+                            name = STAFFS[n].name;
+                        }
+                    }
+
                     if ($(`#net-pay${snum}`).html() === '0' || $(`#net-pay${snum}`).html() === '0.00') {
                         $(this).prop('checked', !$(this).prop('checked'));
                     } else {
@@ -2243,9 +2244,21 @@ function generateFile(res, staffs_len){
 
                                 td = td + ded;
 
-                                ALLDetails[parseInt(snum)][21]['TOTAL DEDUCTIONS'] = {'value' : td.toLocaleString(), 'highlight' : '', 'op' : '-'};
-                                ALLDetails[parseInt(snum)][12]['SSS'] = {'value' : D[`d${snum}`].sss, 'op' : '-'};
+                                ALLDetails[parseInt(snum)][21]['TOTAL DEDUCTIONS'] = {'value' : td.toFixed(2), 'highlight' : '', 'op' : '-'};
+                                ALLDetails[parseInt(snum)][12]['SSS'] = {'value' : D[`d${snum}`].sss.toFixed(2), 'op' : '-'};
                                 ALLDetails[parseInt(snum)][24]['NET'] = {'value' : net.toLocaleString(), 'highlight' : ''};
+
+
+                                for (let x = 0; x < PAYSLIPS.length; x++) {
+                                    let plip  = PAYSLIPS[x];
+                                    for (let s = 0; s < plip.length; s++) {
+                                        if (plip[s].name == name) {
+                                            plip[19]['name'] = D[`d${snum}`].sss.toFixed(2);
+                                            plip[37]['name'] = td.toFixed(2);
+                                            plip[42]['name'] = net.toLocaleString();
+                                        }
+                                    }
+                                }
                                 
                             }
                             if ($(this).attr("id").includes("phil")) {
@@ -2255,10 +2268,21 @@ function generateFile(res, staffs_len){
                                 $(`#net-pay${snum}`).html(net.toLocaleString());
                                 td = td + ded;
                                 
-                                ALLDetails[parseInt(snum)][21]['TOTAL DEDUCTIONS'] = {'value' : td.toLocaleString(), 'highlight' : '', 'op' : '-'};                 
+                                ALLDetails[parseInt(snum)][21]['TOTAL DEDUCTIONS'] = {'value' : td.toFixed(2), 'highlight' : '', 'op' : '-'};                 
                                 deductions[`deduc${snum}`]['phil'] = D[`d${snum}`].phil;
-                                ALLDetails[parseInt(snum)][13]['PHILHEALTH'] = {'value' : D[`d${snum}`].phil, 'op' : '-'};
+                                ALLDetails[parseInt(snum)][13]['PHILHEALTH'] = {'value' : D[`d${snum}`].phil.toFixed(2), 'op' : '-'};
                                 ALLDetails[parseInt(snum)][24]['NET'] = {'value' : net.toLocaleString(), 'highlight' : ''};
+
+                                for (let x = 0; x < PAYSLIPS.length; x++) {
+                                    let plip  = PAYSLIPS[x];
+                                    for (let s = 0; s < plip.length; s++) {
+                                        if (plip[s].name == name) {
+                                            plip[21]['name'] = D[`d${snum}`].phil.toFixed(2);
+                                            plip[37]['name'] = td.toFixed(2);
+                                            plip[42]['name'] = net.toLocaleString();
+                                        }
+                                    }
+                                }
                             }
                             if ($(this).attr("id").includes("pbig")) {
                                 let ded = parseFloat(D[`d${snum}`].pbig);
@@ -2266,11 +2290,24 @@ function generateFile(res, staffs_len){
                                 $(`#net-pay${snum}`).html(net.toLocaleString());
                                 td = td + ded;
                                 
-                                ALLDetails[parseInt(snum)][21]['TOTAL DEDUCTIONS'] = {'value' : td.toLocaleString(), 'highlight' : '', 'op' : '-'};
+                                ALLDetails[parseInt(snum)][21]['TOTAL DEDUCTIONS'] = {'value' : td.toFixed(2), 'highlight' : '', 'op' : '-'};
                                 deductions[`deduc${snum}`]['pbig'] = D[`d${snum}`].pbig;
-                                ALLDetails[parseInt(snum)][14]['PAG-IBIG'] = {'value' : D[`d${snum}`].pbig, 'op' : '-'};
+                                ALLDetails[parseInt(snum)][14]['PAG-IBIG'] = {'value' : D[`d${snum}`].pbig.toFixed(2), 'op' : '-'};
                                 ALLDetails[parseInt(snum)][24]['NET'] = {'value' : net.toLocaleString(), 'highlight' : ''};
+
+                                for (let x = 0; x < PAYSLIPS.length; x++) {
+                                    let plip  = PAYSLIPS[x];
+                                    for (let s = 0; s < plip.length; s++) {
+                                        if (plip[s].name == name) {
+                                            plip[23]['name'] = D[`d${snum}`].pbig.toFixed(2);
+                                            plip[37]['name'] = td.toFixed(2);
+                                            plip[42]['name'] = net.toLocaleString();
+                                        }
+                                    }
+                                }
                             }
+
+        
                             
                         } else {
                             if ($(this).attr("id").includes("sss")) {
@@ -2279,10 +2316,21 @@ function generateFile(res, staffs_len){
                                 $(`#net-pay${snum}`).html(net.toLocaleString());
                                 td = td - ded;
                                 
-                                ALLDetails[parseInt(snum)][21]['TOTAL DEDUCTIONS'] = {'value' : td.toLocaleString(), 'highlight' : '', 'op' : '-'};
+                                ALLDetails[parseInt(snum)][21]['TOTAL DEDUCTIONS'] = {'value' : td.toFixed(2), 'highlight' : '', 'op' : '-'};
                                 deductions[`deduc${snum}`]['sss'] = 0;
-                                ALLDetails[parseInt(snum)][12]['SSS'] = {'value' : deductions[`deduc${snum}`].sss, 'op' : '-'};
+                                ALLDetails[parseInt(snum)][12]['SSS'] = {'value' : deductions[`deduc${snum}`].sss.toFixed(2), 'op' : '-'};
                                 ALLDetails[parseInt(snum)][24]['NET'] = {'value' : net.toLocaleString(), 'highlight' : ''};
+
+                                for (let x = 0; x < PAYSLIPS.length; x++) {
+                                    let plip  = PAYSLIPS[x];
+                                    for (let s = 0; s < plip.length; s++) {
+                                        if (plip[s].name == name) {
+                                            plip[19]['name'] = deductions[`deduc${snum}`].sss.toFixed(2);
+                                            plip[37]['name'] = td.toFixed(2);
+                                            plip[42]['name'] = net.toLocaleString();
+                                        }
+                                    }
+                                }
                             }
                             if ($(this).attr("id").includes("phil")) {
                                 
@@ -2292,28 +2340,50 @@ function generateFile(res, staffs_len){
                                 $(`#net-pay${snum}`).html(net.toLocaleString());
                                 td = td - ded;
                                 
-                                ALLDetails[parseInt(snum)][21]['TOTAL DEDUCTIONS'] = {'value' : td.toLocaleString(), 'highlight' : '', 'op' : '-'};
+                                ALLDetails[parseInt(snum)][21]['TOTAL DEDUCTIONS'] = {'value' : td.toFixed(2), 'highlight' : '', 'op' : '-'};
                                 deductions[`deduc${snum}`]['phil'] = 0;
-                                ALLDetails[parseInt(snum)][13]['PHILHEALTH'] = {'value' : deductions[`deduc${snum}`].phil, 'op' : '-'};
+                                ALLDetails[parseInt(snum)][13]['PHILHEALTH'] = {'value' : deductions[`deduc${snum}`].phil.toFixed(2), 'op' : '-'};
                                 ALLDetails[parseInt(snum)][24]['NET'] = {'value' : net.toLocaleString(), 'highlight' : ''};
+
+                                for (let x = 0; x < PAYSLIPS.length; x++) {
+                                    let plip  = PAYSLIPS[x];
+                                    for (let s = 0; s < plip.length; s++) {
+                                        if (plip[s].name == name) {
+                                            plip[21]['name'] = deductions[`deduc${snum}`].phil.toFixed(2);
+                                            plip[37]['name'] = td.toFixed(2);
+                                            plip[42]['name'] = net.toLocaleString();
+                                        }
+                                    }
+                                }
                             }
+
                             if ($(this).attr("id").includes("pbig")) {
                                 
                                 let ded = parseFloat(deductions[`deduc${snum}`].pbig);
                                 td = td - ded;
                                 
-                                ALLDetails[parseInt(snum)][21]['TOTAL DEDUCTIONS'] = {'value' : td.toLocaleString(), 'highlight' : '', 'op' : '-'};
+                                ALLDetails[parseInt(snum)][21]['TOTAL DEDUCTIONS'] = {'value' : td.toFixed(2), 'highlight' : '', 'op' : '-'};
                                 net = net + ded;
                                 $(`#net-pay${snum}`).html(net.toLocaleString());
 
                                 deductions[`deduc${snum}`]['pbig'] = 0;
-                                ALLDetails[parseInt(snum)][14]['PAG-IBIG'] = {'value' : deductions[`deduc${snum}`].pbig, 'op' : '-'};
+                                ALLDetails[parseInt(snum)][14]['PAG-IBIG'] = {'value' : deductions[`deduc${snum}`].pbig.toFixed(2), 'op' : '-'};
                                 ALLDetails[parseInt(snum)][24]['NET'] = {'value' : net.toLocaleString(), 'highlight' : ''};
+
+                                for (let x = 0; x < PAYSLIPS.length; x++) {
+                                    let plip  = PAYSLIPS[x];
+                                    for (let s = 0; s < plip.length; s++) {
+                                        if (plip[s].name == name) {
+                                            plip[23]['name'] = deductions[`deduc${snum}`].pbig.toFixed(2);
+                                            plip[37]['name'] = td.toFixed(2);
+                                            plip[42]['name'] = net.toLocaleString();
+                                        }
+                                    }
+                                }
                             }
                         }
 
                         
-
                         if (PAYSCHED == 'twice-monthly') {
                             $.ajax({
                                 type: 'POST',
@@ -2355,6 +2425,7 @@ function generateFile(res, staffs_len){
                         }
                     }
 
+                
                 })
     
                 $(".trail").click(function(event){
@@ -3903,7 +3974,7 @@ function confirmation_window(title, btn, continueCallback, cancelCallback) {
     })
 }
 
-function delete_file(title, btn, col1, col2, x, branch) {
+function delete_file(title, btn, col1, col2, x, branch, f) {
 
     confirmation_window(title, btn, function() {
         if (PAYSCHED == 'twice-monthly') {
@@ -3924,9 +3995,24 @@ function delete_file(title, btn, col1, col2, x, branch) {
                 if (res == 'deleted') {
                     $(`.file${x}`).remove();
                     successNotification('File deleted.', 'success');
+
+                    $.ajax({
+                        type: 'POST',
+                        url: '../php/add_log.php',
+                        data: {
+                            log: `Deleted file ${f}.`,
+                            branch: SELECTED_BRANCH,
+                            user: current_user
+
+                        },success: function(log_res) {
+                            console.log(log_res);
+                        }
+                    })
                 }
             }
         })
+
+        
 
         $(".confirmation-overlay").remove();
     }, function() {
@@ -3975,7 +4061,7 @@ $(".payroll").on("click", function(event){
                                 </svg>
                                 <div class="dropdown-menu" aria-labelledby="svgdropdown">
                                     <a class="dropdown-item" onclick="this.parentNode.parentNode.parentNode.click();">Open file</a>
-                                    <a class="dropdown-item" onclick=" delete_file('DELETE PAYROLL FILE', 'CONFIRM', '${res[i].from_date}', '${res[i].to_date}', '${i}', '${res[i].branch}')">Delete file</a>
+                                    <a class="dropdown-item" onclick=" delete_file('DELETE PAYROLL FILE', 'CONFIRM', '${res[i].from_date}', '${res[i].to_date}', '${i}', '${res[i].branch}', '${mon} ${res[i].from_date.split("-")[2]}-${res[i].to_date.split("-")[2]}, ${res[i].from_date.split("-")[0]}')">Delete file</a>
                                 </div>
                             </div>
                             <div style="position:absolute;top:60%;transform:translateY(-60%);width:calc(100% - 10px);">
@@ -4000,7 +4086,7 @@ $(".payroll").on("click", function(event){
                                     </svg>
                                     <div class="dropdown-menu" aria-labelledby="svgdropdown">
                                         <a class="dropdown-item" onclick="this.parentNode.parentNode.parentNode.click();">Open file</a>
-                                        <a class="dropdown-item" onclick="delete_file('DELETE PAYROLL FILE', 'CONFIRM', '${res[i].month}', '${res[i].year}', '${i}', '${res[i].branch}')">Delete file</a>
+                                        <a class="dropdown-item" onclick="delete_file('DELETE PAYROLL FILE', 'CONFIRM', '${res[i].month}', '${res[i].year}', '${i}', '${res[i].branch}', '${months[parseInt(res[i].month) - 1]} ${res[i].year}')">Delete file</a>
                                     </div>
                                 </div>
                                 <div style="position:absolute;top:50%;transform:translateY(-50%);width:calc(100% - 10px);">
@@ -4038,6 +4124,8 @@ $(".payroll").on("click", function(event){
 
                 $(".file").click(function(event){
                     event.stopImmediatePropagation();
+
+
 
                     if (PAYSCHED == 'twice-monthly') {
                         from = $(this).data("col1");
@@ -4089,6 +4177,9 @@ $(".payroll").on("click", function(event){
                                         let year = d.getFullYear();
 
                                         PAYSLIP.push({'name' : `${m} ${day}-${day_2}, ${year}`, 'row': '2', 'col': '3', 'span': '2', 'align': 'right'});
+
+                                        
+
                                     } else if (PAYSCHED == 'monthly') {
                                         
                                         let year = res[i].year;
@@ -4240,10 +4331,24 @@ $(".payroll").on("click", function(event){
                                         let _d2 = newdate2.getDate();
                                         let _year = newdate.getFullYear();
                                         txt += `${_mon} ${_d1}-${_d2}, ${_year}`;
+                                        
                                     } else {
                                         txt = `${formatDate(MON)}`;
                                     }
                                 }
+
+                                $.ajax({
+                                    type: 'POST',
+                                    url: '../php/add_log.php',
+                                    data: {
+                                        log: `Opened file ${txt}.`,
+                                        branch: SELECTED_BRANCH,
+                                        user: current_user
+
+                                    },success: function(log_res) {
+                                        console.log(log_res);
+                                    }
+                                })
 
                                 function formatDate(inputDate) {
                                     // Split the inputDate into year and month parts
@@ -4572,6 +4677,15 @@ $(".payroll").on("click", function(event){
                 
                                 $("input[type='checkbox']").change(function(event){
                                     let snum = $(this).parent("label").data("s");
+
+                                    let name;
+                                    for (let n = 0; n < STAFFS.length; n++) {
+                                        if (STAFFS[n].serialnumber == snum) {
+                                            name = STAFFS[n].name;
+                                        }
+                                    }
+
+                                
                 
                                     if ($(`#net-pay${snum}`).html() === '0' || $(`#net-pay${snum}`).html() === '0.00' || $(this).hasClass("disabled")) {
                                         $(this).prop('checked', !$(this).prop('checked'));
@@ -4595,9 +4709,20 @@ $(".payroll").on("click", function(event){
                 
                                                 td = td + ded;
                 
-                                                ALLDetails[parseInt(snum)][21]['TOTAL DEDUCTIONS'] = {'value' : td.toLocaleString(), 'highlight' : '', 'op' : '-'};
+                                                ALLDetails[parseInt(snum)][21]['TOTAL DEDUCTIONS'] = {'value' : td.toFixed(2), 'highlight' : '', 'op' : '-'};
                                                 ALLDetails[parseInt(snum)][12]['SSS'] = {'value' : D[`d${snum}`].sss, 'op' : '-'};
                                                 ALLDetails[parseInt(snum)][24]['NET'] = {'value' : net.toLocaleString(), 'highlight' : ''};
+
+                                                for (let x = 0; x < PAYSLIPS.length; x++) {
+                                                    let plip  = PAYSLIPS[x];
+                                                    for (let s = 0; s < plip.length; s++) {
+                                                        if (plip[s].name == name) {
+                                                            plip[19]['name'] = D[`d${snum}`].sss.toFixed(2);
+                                                            plip[37]['name'] = td.toFixed(2);
+                                                            plip[42]['name'] = net.toLocaleString();
+                                                        }
+                                                    }
+                                                }
 
                                                 
                                             }
@@ -4608,10 +4733,21 @@ $(".payroll").on("click", function(event){
                                                 $(`#net-pay${snum}`).html(net.toLocaleString());
                                                 td = td + ded;
                                                 
-                                                ALLDetails[parseInt(snum)][21]['TOTAL DEDUCTIONS'] = {'value' : td.toLocaleString(), 'highlight' : '', 'op' : '-'};                 
+                                                ALLDetails[parseInt(snum)][21]['TOTAL DEDUCTIONS'] = {'value' : td.toFixed(2), 'highlight' : '', 'op' : '-'};                 
                                                 deductions[`deduc${snum}`]['phil'] = D[`d${snum}`].phil;
                                                 ALLDetails[parseInt(snum)][13]['PHILHEALTH'] = {'value' : D[`d${snum}`].phil, 'op' : '-'};
                                                 ALLDetails[parseInt(snum)][24]['NET'] = {'value' : net.toLocaleString(), 'highlight' : ''};
+
+                                                for (let x = 0; x < PAYSLIPS.length; x++) {
+                                                    let plip  = PAYSLIPS[x];
+                                                    for (let s = 0; s < plip.length; s++) {
+                                                        if (plip[s].name == name) {
+                                                            plip[21]['name'] = D[`d${snum}`].phil.toFixed(2);
+                                                            plip[37]['name'] = td.toFixed(2);
+                                                            plip[42]['name'] = net.toLocaleString();
+                                                        }
+                                                    }
+                                                }
 
                           
                                             }
@@ -4621,10 +4757,21 @@ $(".payroll").on("click", function(event){
                                                 $(`#net-pay${snum}`).html(net.toLocaleString());
                                                 td = td + ded;
                                                 
-                                                ALLDetails[parseInt(snum)][21]['TOTAL DEDUCTIONS'] = {'value' : td.toLocaleString(), 'highlight' : '', 'op' : '-'};
+                                                ALLDetails[parseInt(snum)][21]['TOTAL DEDUCTIONS'] = {'value' : td.toFixed(2), 'highlight' : '', 'op' : '-'};
                                                 deductions[`deduc${snum}`]['pbig'] = D[`d${snum}`].pbig;
                                                 ALLDetails[parseInt(snum)][14]['PAG-IBIG'] = {'value' : D[`d${snum}`].pbig, 'op' : '-'};
                                                 ALLDetails[parseInt(snum)][24]['NET'] = {'value' : net.toLocaleString(), 'highlight' : ''};
+
+                                                for (let x = 0; x < PAYSLIPS.length; x++) {
+                                                    let plip  = PAYSLIPS[x];
+                                                    for (let s = 0; s < plip.length; s++) {
+                                                        if (plip[s].name == name) {
+                                                            plip[23]['name'] = D[`d${snum}`].pbig.toFixed(2);
+                                                            plip[37]['name'] = td.toFixed(2);
+                                                            plip[42]['name'] = net.toLocaleString();
+                                                        }
+                                                    }
+                                                }
 
                                             }
 
@@ -4676,10 +4823,21 @@ $(".payroll").on("click", function(event){
                                                 $(`#net-pay${snum}`).html(net.toLocaleString());
                                                 td = td - ded;
                                                 
-                                                ALLDetails[parseInt(snum)][21]['TOTAL DEDUCTIONS'] = {'value' : td.toLocaleString(), 'highlight' : '', 'op' : '-'};
+                                                ALLDetails[parseInt(snum)][21]['TOTAL DEDUCTIONS'] = {'value' : td.toFixed(2), 'highlight' : '', 'op' : '-'};
                                                 deductions[`deduc${snum}`]['sss'] = 0;
                                                 ALLDetails[parseInt(snum)][12]['SSS'] = {'value' : deductions[`deduc${snum}`].sss, 'op' : '-'};
                                                 ALLDetails[parseInt(snum)][24]['NET'] = {'value' : net.toLocaleString(), 'highlight' : ''};
+
+                                                for (let x = 0; x < PAYSLIPS.length; x++) {
+                                                    let plip  = PAYSLIPS[x];
+                                                    for (let s = 0; s < plip.length; s++) {
+                                                        if (plip[s].name == name) {
+                                                            plip[19]['name'] = deductions[`deduc${snum}`].sss.toFixed(2);
+                                                            plip[37]['name'] = td.toFixed(2);
+                                                            plip[42]['name'] = net.toLocaleString();
+                                                        }
+                                                    }
+                                                }
 
                                         
                                             }
@@ -4691,10 +4849,21 @@ $(".payroll").on("click", function(event){
                                                 $(`#net-pay${snum}`).html(net.toLocaleString());
                                                 td = td - ded;
                                                 
-                                                ALLDetails[parseInt(snum)][21]['TOTAL DEDUCTIONS'] = {'value' : td.toLocaleString(), 'highlight' : '', 'op' : '-'};
+                                                ALLDetails[parseInt(snum)][21]['TOTAL DEDUCTIONS'] = {'value' : td.toFixed(2), 'highlight' : '', 'op' : '-'};
                                                 deductions[`deduc${snum}`]['phil'] = 0;
                                                 ALLDetails[parseInt(snum)][13]['PHILHEALTH'] = {'value' : deductions[`deduc${snum}`].phil, 'op' : '-'};
                                                 ALLDetails[parseInt(snum)][24]['NET'] = {'value' : net.toLocaleString(), 'highlight' : ''};
+
+                                                for (let x = 0; x < PAYSLIPS.length; x++) {
+                                                    let plip  = PAYSLIPS[x];
+                                                    for (let s = 0; s < plip.length; s++) {
+                                                        if (plip[s].name == name) {
+                                                            plip[21]['name'] = deductions[`deduc${snum}`].phil.toFixed(2);
+                                                            plip[37]['name'] = td.toFixed(2);
+                                                            plip[42]['name'] = net.toLocaleString();
+                                                        }
+                                                    }
+                                                }
 
                                             }
                                             if ($(this).attr("id").includes("pbig")) {
@@ -4702,13 +4871,24 @@ $(".payroll").on("click", function(event){
                                                 let ded = parseFloat(deductions[`deduc${snum}`].pbig);
                                                 td = td - ded;
                                                 
-                                                ALLDetails[parseInt(snum)][21]['TOTAL DEDUCTIONS'] = {'value' : td.toLocaleString(), 'highlight' : '', 'op' : '-'};
+                                                ALLDetails[parseInt(snum)][21]['TOTAL DEDUCTIONS'] = {'value' : td.toFixed(2), 'highlight' : '', 'op' : '-'};
                                                 net = net + ded;
                                                 $(`#net-pay${snum}`).html(net.toLocaleString());
                 
                                                 deductions[`deduc${snum}`]['pbig'] = 0;
                                                 ALLDetails[parseInt(snum)][14]['PAG-IBIG'] = {'value' : deductions[`deduc${snum}`].pbig, 'op' : '-'};
                                                 ALLDetails[parseInt(snum)][24]['NET'] = {'value' : net.toLocaleString(), 'highlight' : ''};
+
+                                                for (let x = 0; x < PAYSLIPS.length; x++) {
+                                                    let plip  = PAYSLIPS[x];
+                                                    for (let s = 0; s < plip.length; s++) {
+                                                        if (plip[s].name == name) {
+                                                            plip[23]['name'] = deductions[`deduc${snum}`].pbig.toFixed(2);
+                                                            plip[37]['name'] = td.toFixed(2);
+                                                            plip[42]['name'] = net.toLocaleString();
+                                                        }
+                                                    }
+                                                }
 
                                           
                                             }
@@ -6345,6 +6525,33 @@ $(".payroll").on("click", function(event){
                                 PERIOD = $("#period").val();
                                 SELECTED_BRANCH = $("#branch").val();
                                 $(".pop-up-window").remove();
+
+                                let txt = "";
+                               
+                                let newdate = new Date(from);
+                                let newdate2 = new Date(to);
+                                let _mon = months[newdate.getMonth()];
+                                let _d1 = newdate.getDate();
+                                let _d2 = newdate2.getDate();
+                                let _year = newdate.getFullYear();
+                                txt += `${_mon} ${_d1}-${_d2}, ${_year}`;
+                                        
+                                   
+                                $.ajax({
+                                    type: 'POST',
+                                    url: '../php/add_log.php',
+                                    data: {
+                                        log: `Created file ${txt}.`,
+                                        branch: SELECTED_BRANCH,
+                                        user: current_user
+
+                                    },success: function(log_res) {
+                                        console.log(log_res);
+                                    }
+                                })
+
+                                
+
                                 proceed();
                             } else {
                                 errorNotification("Please select date to proceed.", "warning");
@@ -6390,6 +6597,39 @@ $(".payroll").on("click", function(event){
                                 SELECTED_BRANCH = $("#branch").val();
                                 
                                 $(".pop-up-window").remove();
+
+                                let txt = `${formatDate(MON)}`;
+
+                                $.ajax({
+                                    type: 'POST',
+                                    url: '../php/add_log.php',
+                                    data: {
+                                        log: `Created file ${txt}.`,
+                                        branch: SELECTED_BRANCH,
+                                        user: current_user
+
+                                    },success: function(log_res) {
+                                        console.log(log_res);
+                                    }
+                                })
+
+                                function formatDate(inputDate) {
+                                    // Split the inputDate into year and month parts
+                                    const [year, month] = inputDate.split('-');
+                                
+                                    // Convert month from numeric string to integer
+                                    const monthNumber = parseInt(month, 10);
+                                
+                                    // Create a Date object with the year and month
+                                    const date = new Date(year, monthNumber - 1);
+                                
+                                    // Get the month name in abbreviated form (e.g., 'Apr')
+                                    const monthName = date.toLocaleString('default', { month: 'short' });
+                                
+                                    // Format the result as 'MMM YYYY'
+                                    return `${monthName} ${year}`;
+                                }
+
                                 proceed();
                             } else {
                                 errorNotification("Please select month to proceed.", "warning");
@@ -7705,6 +7945,18 @@ $(".settings").on("click", function(event){
                                                 if (res.message == 'success') {
                                                     successNotification("New class added.", "success");
                                                     $(".fourth-layer-overlay").remove();
+
+                                                    $.ajax({
+                                                        type: 'POST',
+                                                        url: '../php/add_log.php',
+                                                        data: {
+                                                            log: `Added class (${formDataObject.class}).`,
+                                                            branch: 'All branch',
+                                                            user: current_user
+                                                        },success: function(log_res) {
+                                                            
+                                                        }
+                                                    })
                                                 }
 
                                             } catch(err) {
@@ -7903,10 +8155,22 @@ $(".settings").on("click", function(event){
                                                 }, success: function(res){
                                                     if (res == 'success') {
                                                         successNotification("Allowance added.", "success");
-                                                        setTimeout(() => {
-                                                            location.reload();
-                                                        }, 1500);
-                                                        $(".fourth-layer-overlay").remove();
+
+                                                        $.ajax({
+                                                            type: 'POST',
+                                                            url: '../php/add_log.php',
+                                                            data: {
+                                                                log: `Added company (${formDataObject.name}) allowance.`,
+                                                                branch: 'All branch',
+                                                                user: current_user
+                                                            },success: function(log_res) {
+                                                                setTimeout(() => {
+                                                                    location.reload();
+                                                                }, 1500);
+                                                                $(".fourth-layer-overlay").remove();
+                                                            }
+                                                        })
+
                                                     
                                                     }
                                                 }
@@ -8119,6 +8383,18 @@ $(".settings").on("click", function(event){
                                                                 if (res == 'success') {
                                                                     successNotification(`${allname} penalty added.`, "success");
                                                                     $(".fourth-layer-overlay").remove();
+
+                                                                    $.ajax({
+                                                                        type: 'POST',
+                                                                        url: '../php/add_log.php',
+                                                                        data: {
+                                                                            log: `Added allowance penalty.`,
+                                                                            branch: 'All branch',
+                                                                            user: current_user
+                                                                        },success: function(log_res) {
+                                                                            
+                                                                        }
+                                                                    })
                                                                 }
                                                                     
                                                             }
@@ -8621,6 +8897,7 @@ $(".edit-staff").click(function(event){
             <div style="display:flex;flex-direction:column;color:#fff;">
                 <span>SELECT BRANCH</span>
                 <select id="branch">
+                    <option value="">Select branch</option>
                     ${brOps}
                 </select>
                 <span>SELECT EMPLOYEE</span>
@@ -8777,13 +9054,25 @@ function addStaff(){
             data: formData,
 
             success: function(res){
-                console.log(res);
+               
                 if (res == 'success') {
                     websocket.send(500);
 
                     $(".pop-up-window").remove();
                     $("input[type='text'], input[type='password'], input[type='number']").val('');
                     successNotification("New employee added.", "success");
+
+                    $.ajax({
+                        type: 'POST',
+                        url: '../php/add_log.php',
+                        data: {
+                            log: `Added new employee named ${formDataObject.name}.`,
+                            branch: registeredBranch,
+                            user: current_user
+                        },success: function(log_res) {
+                            
+                        }
+                    })
                 }
             }
         })
@@ -8865,7 +9154,81 @@ function displayCurrentTime(){
         setTimeout(() => {
             displayCurrentTime();
         }, 1000);
-
     }, 1000)
 }
+
+$(".logs").click(function(event){
+    event.stopImmediatePropagation();
+    $.ajax({
+        type: 'POST',
+        url: '../php/fetch_logs.php',
+        success: function(res) {
+            let content = "";
+            try {
+                res = JSON.parse(res);
+                for (let i = 0; i < res.length; i++) {
+                    // Convert the string to a Date object
+                    const date = new Date(res[i].time_log);
+                    // Format the date into a human-readable string
+                    const options = { 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric', 
+                        hour: '2-digit', 
+                        minute: '2-digit', 
+          
+                    };
+                    const formattedDate = date.toLocaleDateString('en-US', options);
+                    let br;
+                    for (let j = 0; j < BRANCH.length; j++) {
+                        if (res[i].branch == BRANCH[j].machine_id) br = BRANCH[j].branch_name;
+                    }
+                    if (br == 'undefined' || br == null) {
+                        br = 'All branch';
+                    }
+                    content += `
+                    <tr style="border-bottom:1px solid rgba(0,0,0,0.1)">
+                        <td>${res[i].user}</td>
+                        <td>${res[i].log}</td>
+                        <td>${br}</td>
+                        <td>${formattedDate}</td>
+                    </tr>`;
+                }
+
+            } catch (err) {
+                content += `
+                <tr>
+                    <td colspan="4" style="text-align:center;padding:10px 0;">No item</td>
+                </tr>`;
+            }
+
+            document.body.insertAdjacentHTML("afterbegin", `
+            <div class="pop-up-window">
+                <div class="window-content" style="position:relative;">
+                    ${close_icon}
+                    <br>
+                    <p class="text-center text-white" style="font-size:20px;">Logs</p>
+                    <br>
+                    <hr>
+                    <div class="table-container" style="max-height:60vh;overflow:auto;max-width:80vw;min-width:30vw;">
+                        <table>
+                            <thead>
+                                <td>USER</td>
+                                <td>LOG</td>
+                                <td>BRANCH</td>
+                                <td>TIME</td>
+                               
+                            </thead>
+                            ${content}
+                        </table>
+                    </div>
+                </div>
+            </div>`);
+
+            $(".close-window").click(function(event){
+                $(".pop-up-window").remove();
+            })
+        }
+    })
+})
 

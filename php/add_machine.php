@@ -35,7 +35,7 @@ if (isset($_POST['branch'])) {
 }
 
 function checkBranch($conn, $branch, $machine) {
-    $sql = "SELECT branch_name, machine_id FROM machines WHERE company_id = '". $_SESSION['companyid'] . "' AND branch_name = '$branch' OR machine_id = '$machine'";
+    $sql = "SELECT branch_name, machine_id FROM machines WHERE company_id = '". $_SESSION['companyid'] . "' AND branch_name = '$branch' AND machine_id = '$machine'";
     $result = $conn->query($sql);
     if ($result->num_rows > 0) {
         return true;
