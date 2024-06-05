@@ -124,8 +124,8 @@ if (isset($_POST['serialnumber'], $_POST['name'], $_POST['pos'], $_POST['dept'],
 
         $free_time = $total_hrs - $hr_prday;
 
-        if ($consumed_time > $free_time) {
-          $penalty = $consumed_time - $free_time;
+        if ($consumed_time > ($free_time * 60)) {
+          $penalty = $consumed_time - ($free_time * 60);
         }
       }
 

@@ -181,8 +181,8 @@ function searchStaff($conn, $machineID, $serial) {
 
                         $free_time = $total_hrs - $hr_prday;
 
-                        if ($consumed_time > $free_time) {
-                            $penalty = $consumed_time - $free_time;
+                        if ($consumed_time > ($free_time * 60)) {
+                            $penalty = $consumed_time - ($free_time * 60);
                         }
                     }
 
@@ -322,7 +322,7 @@ function searchStaff($conn, $machineID, $serial) {
         
         if ($conn->query($sql) === TRUE) {
             $_SESSION['time_logged'] = $status;
-            echo $_SESSION['details']['name'] . " TIMED " . $_SESSION['details']['status'];
+            echo "TIMED " . $_SESSION['details']['status'] . " " . $_SESSION['details']['name'];
         }
     }
     
@@ -546,7 +546,7 @@ function searchStaff($conn, $machineID, $serial) {
     }
     
     function checkIfSameDayST($conn, $serialnumber, $company_id, $branch){
-        $sql = "SELECT id, date FROM staffs_trail WHERE serialnumber = '$serialnumber' AND branch = '$branch' AND company_id = '$company_id' ORDER BY id DESC LIMIT 1";
+        $sql = "SELECT id, date, end_time FROM staffs_trail WHERE serialnumber = '$serialnumber' AND branch = '$branch' AND company_id = '$company_id' ORDER BY id DESC LIMIT 1";
         $result = $conn->query($sql);
         if ($result->num_rows > 0) {
             $row = $result->fetch_assoc();

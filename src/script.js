@@ -1861,7 +1861,7 @@ function generateFile(res, staffs_len){
                             </label>
                         </td>
                         <td id="net-pay${res[i].serialnumber}">0</td>
-                        <td id="paid${res[i].serialnumber}">Not paid</td>
+                     
                         <td>
                         <button class="action-button mr-1 payslip${res[i].serialnumber} view-details" data-class="${res[i].class}" data-id="${res[i].serialnumber}" data-name="${res[i].name}" data-position="${res[i].position}" style="background:orange;display:none;">DETAILS</button>
                         <button class="action-button mr-1 compute-salary" data-id="${res[i].serialnumber}">COMPUTE</button>
@@ -1936,7 +1936,6 @@ function generateFile(res, staffs_len){
                                         <td>PHILHEALTH</td>
                                         <td>PAG-IBIG</td>
                                         <td>NET PAY</td>
-                                        <td>STATUS</td>
                                         <td>ACTION</td>
                                     </tr>
                                 </thead>
