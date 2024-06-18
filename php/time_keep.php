@@ -178,12 +178,22 @@ function searchStaff($conn, $machineID, $serial) {
                         $hrs = $interval->h;
                         $mis = $interval->i;
                         $total_hrs = $hrs + ($mis / 60);
-
                         $free_time = $total_hrs - $hr_prday;
 
                         if ($consumed_time > ($free_time * 60)) {
                             $penalty = $consumed_time - ($free_time * 60);
                         }
+
+                    } else {
+                        $hr_prday = intval($Class['hour']);
+                        $start = new DateTime($Class['in']);
+                        $end = new DateTime($Class['out']);
+                        $interval = $start->diff($end);
+                        $hrs = $interval->h;
+                        $mis = $interval->i;
+                        $total_hrs = $hrs + ($mis / 60);
+                
+                        $free_time = $total_hrs - $hr_prday;
                     }
 
                 
@@ -193,6 +203,7 @@ function searchStaff($conn, $machineID, $serial) {
                         $sql = "INSERT INTO staffs_trail (name, class, company_id, hours_worked, start_time, end_time, date, serialnumber,  leave_status, paid_status, branch) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
                         $stmt = $conn->prepare($sql);
                         $stmt->bind_param("ssissssiiss", $name, $class, $company_id, $totalHoursWorked, $_POST['timein'], $_POST['timeout'], $_POST['date'], $serialnumber, $onLeave, $paid_status, $machineID);
+
                     } else {
                         $sql = "INSERT INTO staffs_trail (name, class, company_id, hours_worked, start_time, end_time, date, serialnumber, leave_status, paid_status, branch) VALUES (?, ?, ?, ?, ?, NOW(), NOW(), ?, ?, ?, ?)";
                         $stmt = $conn->prepare($sql);
@@ -201,9 +212,9 @@ function searchStaff($conn, $machineID, $serial) {
                 
                     if ($stmt->execute()) {
                         if (isset($_POST['timeout'])) {
-                        updateStaffWorkedHours($serialnumber, $company_id, $conn, $totalHoursWorked, $conn->insert_id, $totalMinutesWorked, $id, $isSameDay, $_POST['timein'], $totalWorkedToday, $_POST['timeout'], $machineID, $penalty);
+                        updateStaffWorkedHours($serialnumber, $company_id, $conn, $totalHoursWorked, $conn->insert_id, $totalMinutesWorked, $id, $isSameDay, $_POST['timein'], $totalWorkedToday, $_POST['timeout'], $machineID, $penalty, $free_time * 60);
                         } else {
-                        updateStaffWorkedHours($serialnumber, $company_id, $conn, $totalHoursWorked, $conn->insert_id, $totalMinutesWorked, $id, $isSameDay, $in_log, $totalWorkedToday, date("Y-m-d H:i:s"), $machineID, $penalty);
+                        updateStaffWorkedHours($serialnumber, $company_id, $conn, $totalHoursWorked, $conn->insert_id, $totalMinutesWorked, $id, $isSameDay, $in_log, $totalWorkedToday, date("Y-m-d H:i:s"), $machineID, $penalty, $free_time * 60);
                         }
                         
                     }
@@ -396,7 +407,7 @@ function searchStaff($conn, $machineID, $serial) {
     return false;
     }
     
-    function updateStaffWorkedHours($serial, $company_id, $conn, $hoursWorked, $id, $totalMinutesWorked, $id2, $isSameDay2, $timed_in, $totalWorkedToday, $timed_out, $branch, $penalty){
+    function updateStaffWorkedHours($serial, $company_id, $conn, $hoursWorked, $id, $totalMinutesWorked, $id2, $isSameDay2, $timed_in, $totalWorkedToday, $timed_out, $branch, $penalty, $free_time){
     $hour_worked_today = getHourWorkedToday($serial, $conn, $company_id, $branch);
     
     $isSameDay = checkIfSameDay($conn, $serial, $company_id, $branch);
@@ -404,7 +415,7 @@ function searchStaff($conn, $machineID, $serial) {
     if (isset($_POST['date'])) {
         $sql = "UPDATE staffs SET total_hours = total_hours + $hoursWorked, hours_worked_today = $hour_worked_today WHERE company_id = '$company_id' AND serialnumber = '$serial' AND branch = '$branch'";
         if ($conn->query($sql) === TRUE) {
-        updateTotalWorkedToday($conn, $hour_worked_today, $company_id, $serial, $id, $totalMinutesWorked, $id2, $isSameDay2, $timed_in, $totalWorkedToday, $timed_out, $id, $branch, $penalty);
+        updateTotalWorkedToday($conn, $hour_worked_today, $company_id, $serial, $id, $totalMinutesWorked, $id2, $isSameDay2, $timed_in, $totalWorkedToday, $timed_out, $id, $branch, $penalty, $free_time);
         }
     } else {
         if (!$isSameDay) {
@@ -416,7 +427,7 @@ function searchStaff($conn, $machineID, $serial) {
         } else {
         $sql = "UPDATE staffs SET total_hours = total_hours + $hoursWorked, hours_worked_today = $hour_worked_today WHERE company_id = '$company_id' AND serialnumber = '$serial' AND branch = '$branch'";
         if ($conn->query($sql) === TRUE) {
-            updateTotalWorkedToday($conn, $hour_worked_today, $company_id, $serial, $id, $totalMinutesWorked, $id2, $isSameDay2, $timed_in, $totalWorkedToday, $timed_out, $id, $branch, $penalty);
+            updateTotalWorkedToday($conn, $hour_worked_today, $company_id, $serial, $id, $totalMinutesWorked, $id2, $isSameDay2, $timed_in, $totalWorkedToday, $timed_out, $id, $branch, $penalty, $free_time);
         }
         }
     }
@@ -429,7 +440,7 @@ function searchStaff($conn, $machineID, $serial) {
     }
     }
     
-    function updateTotalWorkedToday($conn, $hour_worked_today, $company_id, $serial, $id, $totalMinutesWorked, $id2, $isSameDay2, $timed_in,  $totalWorkedToday, $timed_out, $inserted_id, $branch, $penalty){
+    function updateTotalWorkedToday($conn, $hour_worked_today, $company_id, $serial, $id, $totalMinutesWorked, $id2, $isSameDay2, $timed_in,  $totalWorkedToday, $timed_out, $inserted_id, $branch, $penalty, $free_time){
     $class = fetchClass($conn, $company_id, $serial);
     $rate = intval($class['rate']);
     $type = intval($class['type']);
@@ -481,7 +492,10 @@ function searchStaff($conn, $machineID, $serial) {
     $ut_mins = 0;
     
     if ($clockOutTime < $scheduledEndTime) {
+    
         $ut_mins = ($scheduledEndTime - $clockOutTime) / 60;
+   
+        
         $ut = $ut_mins * $per_min;
     } elseif ($clockOutTime > $scheduledEndTime) {
         $ot_mins = ($clockOutTime - $scheduledEndTime) / 60;

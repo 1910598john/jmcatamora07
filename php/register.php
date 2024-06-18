@@ -34,12 +34,7 @@ if (isset($_POST['username']) && isset($_POST['password']) && isset($_POST['name
             return $companyid;
         }
     
-        $companyid;
-        if (isset($_SESSION['companyid'])) {
-            $companyid = $_SESSION['companyid'];
-        } else {
-            $companyid = checkCompanyid($conn);
-        }
+        $companyid = checkCompanyid($conn);
     
         //encrypt password
         $ciphering = "AES-128-CTR";

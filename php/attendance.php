@@ -127,6 +127,16 @@ if (isset($_POST['serialnumber'], $_POST['name'], $_POST['pos'], $_POST['dept'],
         if ($consumed_time > ($free_time * 60)) {
           $penalty = $consumed_time - ($free_time * 60);
         }
+      } else {
+        $hr_prday = intval($Class['hour']);
+        $start = new DateTime($Class['in']);
+        $end = new DateTime($Class['out']);
+        $interval = $start->diff($end);
+        $hrs = $interval->h;
+        $mis = $interval->i;
+        $total_hrs = $hrs + ($mis / 60);
+
+        $free_time = $total_hrs - $hr_prday;
       }
 
       $onLeave = 0;//onLeave($conn, $company_id, $serialnumber);
@@ -143,9 +153,9 @@ if (isset($_POST['serialnumber'], $_POST['name'], $_POST['pos'], $_POST['dept'],
 
       if ($stmt->execute()) {
         if (isset($_POST['timeout'])) {
-          updateStaffWorkedHours($serialnumber, $company_id, $conn, $totalHoursWorked, $conn->insert_id, $totalMinutesWorked, $id, $isSameDay, $_POST['timein'], $totalWorkedToday, $_POST['timeout'], $branch, $penalty);
+          updateStaffWorkedHours($serialnumber, $company_id, $conn, $totalHoursWorked, $conn->insert_id, $totalMinutesWorked, $id, $isSameDay, $_POST['timein'], $totalWorkedToday, $_POST['timeout'], $branch, $penalty, $free_time * 60);
         } else {
-          updateStaffWorkedHours($serialnumber, $company_id, $conn, $totalHoursWorked, $conn->insert_id, $totalMinutesWorked, $id, $isSameDay, $in_log, $totalWorkedToday, date("Y-m-d H:i:s"), $branch, $penalty);
+          updateStaffWorkedHours($serialnumber, $company_id, $conn, $totalHoursWorked, $conn->insert_id, $totalMinutesWorked, $id, $isSameDay, $in_log, $totalWorkedToday, date("Y-m-d H:i:s"), $branch, $penalty, $free_time * 60);
         }
       }
     } else {
@@ -335,7 +345,7 @@ function checkIfSameDay($conn, $serialnumber, $company_id, $branch){
   return false;
 }
 
-function updateStaffWorkedHours($serial, $company_id, $conn, $hoursWorked, $id, $totalMinutesWorked, $id2, $isSameDay2, $timed_in, $totalWorkedToday, $timed_out, $branch, $penalty){
+function updateStaffWorkedHours($serial, $company_id, $conn, $hoursWorked, $id, $totalMinutesWorked, $id2, $isSameDay2, $timed_in, $totalWorkedToday, $timed_out, $branch, $penalty, $free_time){
   $hour_worked_today = getHourWorkedToday($serial, $conn, $company_id, $branch);
 
   $isSameDay = checkIfSameDay($conn, $serial, $company_id, $branch);
@@ -343,7 +353,7 @@ function updateStaffWorkedHours($serial, $company_id, $conn, $hoursWorked, $id, 
   if (isset($_POST['date'])) {
     $sql = "UPDATE staffs SET total_hours = total_hours + $hoursWorked, hours_worked_today = $hour_worked_today WHERE company_id = '$company_id' AND serialnumber = '$serial' AND branch = '$branch'";
     if ($conn->query($sql) === TRUE) {
-      updateTotalWorkedToday($conn, $hour_worked_today, $company_id, $serial, $id, $totalMinutesWorked, $id2, $isSameDay2, $timed_in, $totalWorkedToday, $timed_out, $id, $branch, $penalty);
+      updateTotalWorkedToday($conn, $hour_worked_today, $company_id, $serial, $id, $totalMinutesWorked, $id2, $isSameDay2, $timed_in, $totalWorkedToday, $timed_out, $id, $branch, $penalty, $free_time);
     }
   } else {
     if (!$isSameDay) {
@@ -355,7 +365,7 @@ function updateStaffWorkedHours($serial, $company_id, $conn, $hoursWorked, $id, 
     } else {
       $sql = "UPDATE staffs SET total_hours = total_hours + $hoursWorked, hours_worked_today = $hour_worked_today WHERE company_id = '$company_id' AND serialnumber = '$serial' AND branch = '$branch'";
       if ($conn->query($sql) === TRUE) {
-        updateTotalWorkedToday($conn, $hour_worked_today, $company_id, $serial, $id, $totalMinutesWorked, $id2, $isSameDay2, $timed_in, $totalWorkedToday, $timed_out, $id, $branch, $penalty);
+        updateTotalWorkedToday($conn, $hour_worked_today, $company_id, $serial, $id, $totalMinutesWorked, $id2, $isSameDay2, $timed_in, $totalWorkedToday, $timed_out, $id, $branch, $penalty, $free_time);
       }
     }
   }
@@ -368,7 +378,7 @@ function UPDATEOTANDUTVALUE($conn, $serial, $company_id, $id) {
   }
 }
 
-function updateTotalWorkedToday($conn, $hour_worked_today, $company_id, $serial, $id, $totalMinutesWorked, $id2, $isSameDay2, $timed_in,  $totalWorkedToday, $timed_out, $inserted_id, $branch, $penalty){
+function updateTotalWorkedToday($conn, $hour_worked_today, $company_id, $serial, $id, $totalMinutesWorked, $id2, $isSameDay2, $timed_in,  $totalWorkedToday, $timed_out, $inserted_id, $branch, $penalty, $free_time){
   $class = fetchClass($conn, $company_id, $serial);
   $rate = intval($class['rate']);
   $type = intval($class['type']);

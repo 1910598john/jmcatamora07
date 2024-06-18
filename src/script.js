@@ -87,16 +87,19 @@ function onMessage(event) {
         else if (data.message == 'success') {
             SERIAL_NUMBER = data.id;
             registeredBranch = data.uniqueID;
-            $("input[type='submit']").prop("disabled", false);
+            $("input[type='submit']").prop("disabled", false).css({
+                "background" : "var(--teal)",
+                "color" : "#fff !important"
+            })
             successNotification("Fingerprint confirmed.", "success");
         }
         
     } catch(err){
-        console.log(err);
+       
     }
 
     if (event.data == 'failed fingerprint') {
-        console.log(event.data);
+       
         errorNotification("Failed to identify the fingerprint.", "warning");
         errorNotification("Please try again.", "warning");
     }
@@ -141,7 +144,7 @@ $(document).ready(function(){
                 }
 
             } catch (err) {
-                console.log(err);
+                
             }
         }
     })
@@ -154,7 +157,7 @@ $(document).ready(function(){
                 res = JSON.parse(res);
                 COMPANY_ALLOWANCE = res;
             } catch (err) {
-                console.log(err);
+                
             }
         }
     })
@@ -181,7 +184,7 @@ $(document).ready(function(){
                     }
                 }
             } catch (err) {
-                console.log(err);
+                
             }
         }
     });
@@ -199,7 +202,7 @@ $(document).ready(function(){
                 sss_first_half = res.sss_first_half;
 
             } catch (err) {
-                console.log(err);
+                
             }
         }
     });
@@ -212,7 +215,7 @@ $(document).ready(function(){
                 res = JSON.parse(res);
                 STAFFS = res;
             } catch (err){
-                console.log(err);
+                
             }
         }
     })
@@ -227,7 +230,7 @@ $(document).ready(function(){
                 res = JSON.parse(res);
                 ALL_CLASS = res;
             } catch(err) {
-                console.log(err);
+                
             }
         }
     })
@@ -242,7 +245,7 @@ $(document).ready(function(){
                 COMPANY_ADD = res.address;
                 PAYSCHED = res.pay_sched;
             } catch (err) {
-                console.log(err);
+                
             }
         }
     })
@@ -255,7 +258,7 @@ $(document).ready(function(){
                 res = JSON.parse(res);
                 BRANCH = res;
             } catch (err) {
-                console.log(err);
+                
             }
         }
     })
@@ -476,9 +479,9 @@ function computeSalary(id) {
 
                                                                                 ut_mins += parseFloat(trail[i].ut_mins);
                                                                                 
-                                                                                if (trail[i].date != `${year}-${mon}-${day}`)  {
+                                                                                //if (trail[i].date != `${year}-${mon}-${day}`)  {
                                                                                     ut_total += parseFloat(trail[i].ut_total);
-                                                                                }
+                                                                                //}
                                                                             }
                                                                         }
 
@@ -486,7 +489,7 @@ function computeSalary(id) {
                                                                         HOURPERDAY = HOURPERDAY / 2;
                                                                         
                                                                         let OnLeave = false;
-
+                                                                        
                                                                         if (parseInt(trail[i].leave_status) == 1) {
                                                                             OnLeave = true;
                                                                             numOfLeave += 1;
@@ -733,7 +736,7 @@ function computeSalary(id) {
                                                                                                 pbig_contri = pbig_contri - parseFloat(res.pbig);
 
                                                                                             } catch (err) {
-                                                                                                console.log(err);
+                                                                                                
                                                                                             }
 
                                                                                         
@@ -1136,7 +1139,7 @@ function computeSalary(id) {
                                                                                                 }
                                                                                             }
 
-                                                                                            console.log(x);
+                                                                                           
                                                                                             
                                                                                             $("#available-payslip").html(`Available: ${x}`);
 
@@ -1615,20 +1618,20 @@ function computeSalary(id) {
                                             
                                             
                                         } catch(err) {
-                                            console.log(err);
+                                            
                                         }
                                     }
                                 }
                             })
 
                         } catch(err) {
-                            console.log(err);
+                            
                         }
                     }
                 })
 
             } catch(err) {
-                console.log(err);
+                
             }
         }
     })
@@ -1690,7 +1693,7 @@ function update_payroll_file(paysched, col1, col2, name, serial, _class, class_n
             branch: SELECTED_BRANCH
 
         }, success: function(res) {
-            console.log(res);
+            
         }
     })
 }
@@ -1751,7 +1754,7 @@ function generatePayslips() {
     try {
         $("#pages").remove();
     } catch (err) {
-        console.log("");
+       
     }
 
     document.body.insertAdjacentHTML("afterbegin", `
@@ -1760,7 +1763,7 @@ function generatePayslips() {
 
     PAYSLIPS.forEach(function(index) {
         let arr = Object.values(index);
-        console.log(arr);
+        
         if (parseFloat(arr[39].name) > 0) {
             var table = createTableFromObject(index);
             document.getElementById("pages").appendChild(table);
@@ -2204,7 +2207,7 @@ function generateFile(res, staffs_len){
 
                                 
                             } catch (err) {
-                                console.log(err);
+                                
 
                             }
                         }
@@ -2222,6 +2225,8 @@ function generateFile(res, staffs_len){
                             name = STAFFS[n].name;
                         }
                     }
+
+               
 
                     if ($(`#net-pay${snum}`).html() === '0' || $(`#net-pay${snum}`).html() === '0.00') {
                         $(this).prop('checked', !$(this).prop('checked'));
@@ -2247,6 +2252,7 @@ function generateFile(res, staffs_len){
                                 ALLDetails[parseInt(snum)][12]['SSS'] = {'value' : D[`d${snum}`].sss.toFixed(2), 'op' : '-'};
                                 ALLDetails[parseInt(snum)][24]['NET'] = {'value' : net.toLocaleString(), 'highlight' : ''};
 
+                                
 
                                 for (let x = 0; x < PAYSLIPS.length; x++) {
                                     let plip  = PAYSLIPS[x];
@@ -2254,11 +2260,10 @@ function generateFile(res, staffs_len){
                                         if (plip[s].name == name) {
                                             plip[19]['name'] = D[`d${snum}`].sss.toFixed(2);
                                             plip[37]['name'] = td.toFixed(2);
-                                            plip[42]['name'] = net.toLocaleString();
+                                            plip[43]['name'] = net.toLocaleString();
                                         }
                                     }
                                 }
-                                
                             }
                             if ($(this).attr("id").includes("phil")) {
                                 let ded = parseFloat(D[`d${snum}`].phil);
@@ -2278,7 +2283,7 @@ function generateFile(res, staffs_len){
                                         if (plip[s].name == name) {
                                             plip[21]['name'] = D[`d${snum}`].phil.toFixed(2);
                                             plip[37]['name'] = td.toFixed(2);
-                                            plip[42]['name'] = net.toLocaleString();
+                                            plip[43]['name'] = net.toLocaleString();
                                         }
                                     }
                                 }
@@ -2300,7 +2305,7 @@ function generateFile(res, staffs_len){
                                         if (plip[s].name == name) {
                                             plip[23]['name'] = D[`d${snum}`].pbig.toFixed(2);
                                             plip[37]['name'] = td.toFixed(2);
-                                            plip[42]['name'] = net.toLocaleString();
+                                            plip[43]['name'] = net.toLocaleString();
                                         }
                                     }
                                 }
@@ -2326,7 +2331,7 @@ function generateFile(res, staffs_len){
                                         if (plip[s].name == name) {
                                             plip[19]['name'] = deductions[`deduc${snum}`].sss.toFixed(2);
                                             plip[37]['name'] = td.toFixed(2);
-                                            plip[42]['name'] = net.toLocaleString();
+                                            plip[43]['name'] = net.toLocaleString();
                                         }
                                     }
                                 }
@@ -2350,7 +2355,7 @@ function generateFile(res, staffs_len){
                                         if (plip[s].name == name) {
                                             plip[21]['name'] = deductions[`deduc${snum}`].phil.toFixed(2);
                                             plip[37]['name'] = td.toFixed(2);
-                                            plip[42]['name'] = net.toLocaleString();
+                                            plip[43]['name'] = net.toLocaleString();
                                         }
                                     }
                                 }
@@ -2375,7 +2380,7 @@ function generateFile(res, staffs_len){
                                         if (plip[s].name == name) {
                                             plip[23]['name'] = deductions[`deduc${snum}`].pbig.toFixed(2);
                                             plip[37]['name'] = td.toFixed(2);
-                                            plip[42]['name'] = net.toLocaleString();
+                                            plip[43]['name'] = net.toLocaleString();
                                         }
                                     }
                                 }
@@ -2399,7 +2404,7 @@ function generateFile(res, staffs_len){
                                     net: net,
                                     branch: SELECTED_BRANCH
                                 }, success:function(res) {
-                                    console.log(res);
+                                    
                                 }
                             })
                         } else if (PAYSCHED == 'monthly') {
@@ -2418,7 +2423,7 @@ function generateFile(res, staffs_len){
                                     net: net,
                                     branch: SELECTED_BRANCH
                                 }, success:function(res) {
-                                    console.log(res);
+                                    
                                 }
                             })
                         }
@@ -2512,7 +2517,7 @@ function generateFile(res, staffs_len){
                                 }
 
                             } catch (err) {
-                                console.log(err);
+                                
                                 content += `
                                 <tr>
                                     <td colspan="8" class="text-center pt-3">No item</td>
@@ -2742,7 +2747,7 @@ function generateFile(res, staffs_len){
                                 }
     
                             } catch(err) {
-                                console.log(err);
+                                
                             }
     
                             document.body.insertAdjacentHTML("afterbegin", `
@@ -2870,7 +2875,7 @@ function generateFile(res, staffs_len){
                                             branch: SELECTED_BRANCH,
                                             paysched: PAYSCHED
                                         },success: function(res) {
-                                            console.log(res);
+                                            
                                             if (res == 'deleted') {
                                                 $(`#div${id}`).remove();
                                             }
@@ -3059,7 +3064,7 @@ function generateFile(res, staffs_len){
                                                                             perc: perc,
                                                                             paysched: PAYSCHED
                                                                         }, success: function(res) {
-                                                                            console.log(res);
+                                                                            
                                                                         }
                                                                     })
     
@@ -3087,7 +3092,7 @@ function generateFile(res, staffs_len){
                                                                         }
     
                                                                     } catch(err) {
-                                                                        console.log(err);
+                                                                        
                                                                     }
     
                                                                     // if (COMPUTED.length > 0) {
@@ -3106,7 +3111,7 @@ function generateFile(res, staffs_len){
                                                                     
                                                                     successNotification("Approved.", "success");
                                                                 } catch (err) {
-                                                                    console.log(err);
+                                                                    
                                                                     errorNotification("Error fetching class.", "danger");
                                                                 }
     
@@ -3129,7 +3134,7 @@ function generateFile(res, staffs_len){
                                                 })
 
                                             } catch(err) {
-                                                console.log(err);
+                                                
                                             }
                                         }
                                     })
@@ -3323,7 +3328,7 @@ function generateFile(res, staffs_len){
                                                                 
                                                             },
                                                             success: function(res){
-                                                                console.log(res);
+                                                                
                                                             }
                                                         })
                                                     } else {
@@ -3346,7 +3351,7 @@ function generateFile(res, staffs_len){
                                                                 
                                                             },
                                                             success: function(res){
-                                                                console.log(res);
+                                                                
                                                             }
                                                         })
                                                     }
@@ -3460,7 +3465,7 @@ function generateFile(res, staffs_len){
                                                                         perc: perc,
                                                                         paysched: PAYSCHED
                                                                     }, success: function(res) {
-                                                                        console.log(res);
+                                                                        
                                                                     }
                                                                 })
 
@@ -3488,7 +3493,7 @@ function generateFile(res, staffs_len){
                                                                     }
 
                                                                 } catch(err) {
-                                                                    console.log(err);
+                                                                    
                                                                 }
 
                                                                 // if (COMPUTED.length > 0) {
@@ -3507,7 +3512,7 @@ function generateFile(res, staffs_len){
                                                                 
                                                                 successNotification("Approved.", "success");
                                                             } catch (err) {
-                                                                console.log(err);
+                                                                
                                                                 errorNotification("Error fetching class.", "danger");
                                                             }
 
@@ -3579,7 +3584,7 @@ function generateFile(res, staffs_len){
                                 }
     
                             } catch(err) {
-                                console.log(err);
+                                
                             }
     
                             document.body.insertAdjacentHTML("afterbegin", `
@@ -3674,7 +3679,7 @@ function generateFile(res, staffs_len){
                     event.stopImmediatePropagation();
     
                     let id = $(this).data("id");
-                    console.log(id);
+                  
                     let name = $(this).data("name");
                     let position = $(this).data("position");
                     let CLASS = $(this).data("class");
@@ -3737,7 +3742,7 @@ function generateFile(res, staffs_len){
                                     } 
     
                                 } catch(err) {
-                                    console.log(err);
+                                    
                                 }
     
                                 reportArr.push(value);
@@ -3852,7 +3857,7 @@ function generateFile(res, staffs_len){
                                             },
 
                                             success: function(res) {
-                                                console.log(res);
+                                                
                                                 if (res == 'paid') {
                                                     successNotification(`${name} is paid.`, "success");
                                                     $(`#paid${id}`).html("Paid");
@@ -3930,7 +3935,7 @@ function generateFile(res, staffs_len){
                     try {
                         document.getElementById("pages").innerHTML = "";
                     } catch (err) {
-                        console.log(err);
+                        
                     }
 
                     $(".pop-up-window").remove();
@@ -3990,7 +3995,7 @@ function delete_file(title, btn, col1, col2, x, branch, f) {
                 branch: branch
             },
             success: function(res) {
-                console.log(res);
+                
                 if (res == 'deleted') {
                     $(`.file${x}`).remove();
                     successNotification('File deleted.', 'success');
@@ -4004,7 +4009,7 @@ function delete_file(title, btn, col1, col2, x, branch, f) {
                             user: current_user
 
                         },success: function(log_res) {
-                            console.log(log_res);
+                            
                         }
                     })
                 }
@@ -4345,7 +4350,7 @@ $(".payroll").on("click", function(event){
                                         user: current_user
 
                                     },success: function(log_res) {
-                                        console.log(log_res);
+                                       
                                     }
                                 })
 
@@ -4623,8 +4628,6 @@ $(".payroll").on("click", function(event){
                                                         let selected = $("#selection").val();
                                                         let workingDays = $("#working-days").val();
 
-
-                                
                                                         if ($("#select-by").val() == 'class') {
                                                             if (selected.length > 0) {
                                                                 for (let i = 0; i < selected.length; i++) {
@@ -4665,13 +4668,8 @@ $(".payroll").on("click", function(event){
                                                 }
                                             }
                                         })
-                                        
-
-                    
-                                        
                                     }
 
-                                    
                                 })
                 
                                 $("input[type='checkbox']").change(function(event){
@@ -4683,8 +4681,6 @@ $(".payroll").on("click", function(event){
                                             name = STAFFS[n].name;
                                         }
                                     }
-
-                                
                 
                                     if ($(`#net-pay${snum}`).html() === '0' || $(`#net-pay${snum}`).html() === '0.00' || $(this).hasClass("disabled")) {
                                         $(this).prop('checked', !$(this).prop('checked'));
@@ -4696,6 +4692,8 @@ $(".payroll").on("click", function(event){
                                         let td = ALLDetails[parseInt(snum)][21]['TOTAL DEDUCTIONS'].value;
                                         td = td.replace(/,/g, '');
                                         td = parseFloat(td);
+
+                                      
                 
                                         if ($(this).is(":checked")) {
 
@@ -4712,13 +4710,15 @@ $(".payroll").on("click", function(event){
                                                 ALLDetails[parseInt(snum)][12]['SSS'] = {'value' : D[`d${snum}`].sss, 'op' : '-'};
                                                 ALLDetails[parseInt(snum)][24]['NET'] = {'value' : net.toLocaleString(), 'highlight' : ''};
 
+                                                
+
                                                 for (let x = 0; x < PAYSLIPS.length; x++) {
                                                     let plip  = PAYSLIPS[x];
                                                     for (let s = 0; s < plip.length; s++) {
                                                         if (plip[s].name == name) {
-                                                            plip[19]['name'] = D[`d${snum}`].sss.toFixed(2);
+                                                            plip[19]['name'] = D[`d${snum}`].sss;
                                                             plip[37]['name'] = td.toFixed(2);
-                                                            plip[42]['name'] = net.toLocaleString();
+                                                            plip[43]['name'] = net.toLocaleString();
                                                         }
                                                     }
                                                 }
@@ -4743,7 +4743,7 @@ $(".payroll").on("click", function(event){
                                                         if (plip[s].name == name) {
                                                             plip[21]['name'] = D[`d${snum}`].phil.toFixed(2);
                                                             plip[37]['name'] = td.toFixed(2);
-                                                            plip[42]['name'] = net.toLocaleString();
+                                                            plip[43]['name'] = net.toLocaleString();
                                                         }
                                                     }
                                                 }
@@ -4765,9 +4765,9 @@ $(".payroll").on("click", function(event){
                                                     let plip  = PAYSLIPS[x];
                                                     for (let s = 0; s < plip.length; s++) {
                                                         if (plip[s].name == name) {
-                                                            plip[23]['name'] = D[`d${snum}`].pbig.toFixed(2);
+                                                            plip[23]['name'] = D[`d${snum}`].pbig;
                                                             plip[37]['name'] = td.toFixed(2);
-                                                            plip[42]['name'] = net.toLocaleString();
+                                                            plip[43]['name'] = net.toLocaleString();
                                                         }
                                                     }
                                                 }
@@ -4790,7 +4790,7 @@ $(".payroll").on("click", function(event){
                                                         net: net,
                                                         branch: SELECTED_BRANCH
                                                     }, success:function(res) {
-                                                        console.log(res);
+                                                        
                                                     }
                                                 })
                                             } else if (PAYSCHED == 'monthly') {
@@ -4809,7 +4809,7 @@ $(".payroll").on("click", function(event){
                                                         net: net,
                                                         branch: SELECTED_BRANCH
                                                     }, success:function(res) {
-                                                        console.log(res);
+                                                       
                                                     }
                                                 })
                                             }
@@ -4833,7 +4833,7 @@ $(".payroll").on("click", function(event){
                                                         if (plip[s].name == name) {
                                                             plip[19]['name'] = deductions[`deduc${snum}`].sss.toFixed(2);
                                                             plip[37]['name'] = td.toFixed(2);
-                                                            plip[42]['name'] = net.toLocaleString();
+                                                            plip[43]['name'] = net.toLocaleString();
                                                         }
                                                     }
                                                 }
@@ -4859,7 +4859,7 @@ $(".payroll").on("click", function(event){
                                                         if (plip[s].name == name) {
                                                             plip[21]['name'] = deductions[`deduc${snum}`].phil.toFixed(2);
                                                             plip[37]['name'] = td.toFixed(2);
-                                                            plip[42]['name'] = net.toLocaleString();
+                                                            plip[43]['name'] = net.toLocaleString();
                                                         }
                                                     }
                                                 }
@@ -4884,7 +4884,7 @@ $(".payroll").on("click", function(event){
                                                         if (plip[s].name == name) {
                                                             plip[23]['name'] = deductions[`deduc${snum}`].pbig.toFixed(2);
                                                             plip[37]['name'] = td.toFixed(2);
-                                                            plip[42]['name'] = net.toLocaleString();
+                                                            plip[43]['name'] = net.toLocaleString();
                                                         }
                                                     }
                                                 }
@@ -4908,7 +4908,7 @@ $(".payroll").on("click", function(event){
                                                         net: net,
                                                         branch: SELECTED_BRANCH
                                                     }, success:function(res) {
-                                                        console.log(res);
+                                                       
                                                     }
                                                 })
                                             } else if (PAYSCHED == 'monthly') {
@@ -4927,7 +4927,7 @@ $(".payroll").on("click", function(event){
                                                         net: net,
                                                         branch: SELECTED_BRANCH
                                                     }, success:function(res) {
-                                                        console.log(res);
+                                                       
                                                     }
                                                 })
                                             }
@@ -5019,7 +5019,7 @@ $(".payroll").on("click", function(event){
                                                 }
                 
                                             } catch (err) {
-                                                console.log(err);
+                                               
                                                 content += `
                                                 <tr>
                                                     <td colspan="8" class="text-center pt-3">No item</td>
@@ -5251,7 +5251,7 @@ $(".payroll").on("click", function(event){
                                                 }
                     
                                             } catch(err) {
-                                                console.log(err);
+                                                
                                             }
                     
                                             document.body.insertAdjacentHTML("afterbegin", `
@@ -5381,7 +5381,7 @@ $(".payroll").on("click", function(event){
                                                             branch: SELECTED_BRANCH,
                                                             paysched: PAYSCHED
                                                         },success: function(res) {
-                                                            console.log(res);
+                                                           
                                                             if (res == 'deleted') {
                                                                 $(`#div${id}`).remove();
                                                             }
@@ -5574,7 +5574,7 @@ $(".payroll").on("click", function(event){
                                                                                             perc: perc,
                                                                                             paysched: PAYSCHED
                                                                                         }, success: function(res) {
-                                                                                            console.log(res);
+                                                                                            
                                                                                         }
                                                                                     })
                     
@@ -5602,7 +5602,7 @@ $(".payroll").on("click", function(event){
                                                                                         }
                     
                                                                                     } catch(err) {
-                                                                                        console.log(err);
+                                                                                        
                                                                                     }
                     
                                                                                     // if (COMPUTED.length > 0) {
@@ -5621,7 +5621,7 @@ $(".payroll").on("click", function(event){
                                                                                     
                                                                                     successNotification("Approved.", "success");
                                                                                 } catch (err) {
-                                                                                    console.log(err);
+                                                                                  
                                                                                     errorNotification("Error fetching class.", "danger");
                                                                                 }
                     
@@ -5644,7 +5644,7 @@ $(".payroll").on("click", function(event){
                                                                 })
 
                                                             } catch(err) {
-                                                                console.log(err);
+                                                                
                                                             }
                                                         }
                                                     })
@@ -5827,7 +5827,7 @@ $(".payroll").on("click", function(event){
                                                                                 
                                                                             },
                                                                             success: function(res){
-                                                                                console.log(res);
+                                                                               
                                                                             }
                                                                         })
                                                                     } else {
@@ -5850,7 +5850,7 @@ $(".payroll").on("click", function(event){
                                                                                 
                                                                             },
                                                                             success: function(res){
-                                                                                console.log(res);
+                                                                                
                                                                             }
                                                                         })
                                                                     }
@@ -5960,7 +5960,7 @@ $(".payroll").on("click", function(event){
                                                                                         perc: perc,
                                                                                         paysched: PAYSCHED
                                                                                     }, success: function(res) {
-                                                                                        console.log(res);
+                                                                                        
                                                                                     }
                                                                                 })
 
@@ -5988,7 +5988,7 @@ $(".payroll").on("click", function(event){
                                                                                     }
 
                                                                                 } catch(err) {
-                                                                                    console.log(err);
+                                                                                    
                                                                                 }
 
                                                                                 // if (COMPUTED.length > 0) {
@@ -6007,7 +6007,7 @@ $(".payroll").on("click", function(event){
                                                                                 
                                                                                 successNotification("Approved.", "success");
                                                                             } catch (err) {
-                                                                                console.log(err);
+                                                                              
                                                                                 errorNotification("Error fetching class.", "danger");
                                                                             }
 
@@ -6079,7 +6079,7 @@ $(".payroll").on("click", function(event){
                                                 }
                     
                                             } catch(err) {
-                                                console.log(err);
+                                                
                                             }
                     
                                             document.body.insertAdjacentHTML("afterbegin", `
@@ -6169,11 +6169,8 @@ $(".payroll").on("click", function(event){
                     
                                 $(".view-details").on("click", function(event){
                                     event.stopImmediatePropagation();
-
-
-                    
                                     let id = $(this).data("id");
-                                    console.log(id);
+                                  
                                     let name = $(this).data("name");
                                   
                                     let CLASS = $(this).data("class");
@@ -6236,7 +6233,7 @@ $(".payroll").on("click", function(event){
                                                     } 
                     
                                                 } catch(err) {
-                                                    console.log(err);
+                                                   
                                                 }
                     
                                                 reportArr.push(value);
@@ -6430,7 +6427,7 @@ $(".payroll").on("click", function(event){
                                     try {
                                         document.getElementById("pages").innerHTML = "";
                                     } catch (err) {
-                                        console.log(err);
+                                     
                                     }
 
                                     $(".pop-up-window").remove();
@@ -6444,7 +6441,7 @@ $(".payroll").on("click", function(event){
 
 
                             } catch (err) {
-                                console.log(err);
+                                
                             }
                         }
                     })
@@ -6545,7 +6542,7 @@ $(".payroll").on("click", function(event){
                                         user: current_user
 
                                     },success: function(log_res) {
-                                        console.log(log_res);
+                                       
                                     }
                                 })
 
@@ -6608,7 +6605,7 @@ $(".payroll").on("click", function(event){
                                         user: current_user
 
                                     },success: function(log_res) {
-                                        console.log(log_res);
+                                        
                                     }
                                 })
 
@@ -6654,7 +6651,7 @@ $(".payroll").on("click", function(event){
                     generateFile(res, res.length);
                     
                 } catch(err) {
-                    console.log(err);
+                   
                 }
 
                 
@@ -6667,29 +6664,25 @@ $(".payroll").on("click", function(event){
 //management
 $(".add-staff").on("click", function(event){
     event.stopImmediatePropagation();
-
     $.ajax({
         type: 'GET',
         url: '../php/fetch_classes.php',
         success: function(res){
-       
             try {
                 res = JSON.parse(res);
-                
                 let ops = "";
                 let branch = "";
-
                 for (let i = 0; i < res.length ; i++) {
                     ops += `
-                    <option value="${res[i].id}">${res[i].class_name}</option>
+                        <option value="${res[i].id}">${res[i].class_name}</option>
                     `;
                 }
-
+                
                 for (let i = 0; i < BRANCH.length; i++) {
                     branch += `
                     <option value="${res[i].machine_id}">${BRANCH[i].branch_name}</option>`;
                 }
-
+                
                 document.body.insertAdjacentHTML("afterbegin", `
                 <div class="pop-up-window">
                     <div class="window-content pt-5" style="position:relative;">
@@ -6740,7 +6733,7 @@ $(".add-staff").on("click", function(event){
                 })
 
             } catch (err) {
-                console.log(err);
+               
             }
         }
     });
@@ -7009,7 +7002,7 @@ $(".view-staffs").on("click", function(event){
                                                                         branch: branch,
                                                                         user: current_user
                                                                     },success: function(log_res) {
-                                                                        console.log(log_res);
+                                                                        
                                                                     }
                                                                 })
                                                             }
@@ -7041,7 +7034,7 @@ $(".view-staffs").on("click", function(event){
                                         serial: details.serial,
                                         branch: details.branch
                                     }, success: function(res) {
-                                        console.log(res);
+                                        
                                         let imgSrc;
                                         if (res != 'none') {
                                             imgSrc = "data:image/jpeg;base64," + res;
@@ -7274,7 +7267,7 @@ $(".view-staffs").on("click", function(event){
                                                         branch: branch,
                                                         user: current_user
                                                     },success: function(log_res) {
-                                                        console.log(log_res);
+                                                        
                                                     }
                                                 })
                                             }
@@ -7299,7 +7292,7 @@ $(".view-staffs").on("click", function(event){
                         serial: details.serial,
                         branch: details.branch
                     }, success: function(res) {
-                        console.log(res);
+                      
                         let imgSrc;
                         if (res != 'none') {
                             imgSrc = "data:image/jpeg;base64," + res;
@@ -7374,7 +7367,7 @@ $(".view-staffs").on("click", function(event){
                             leave_start = res[0].leave_start;
                             leave_end = res[0].leave_end;
                         } catch(err) {
-                            console.log("");
+                          
                         }
                     }
                 })
@@ -7477,7 +7470,7 @@ $(".view-staffs").on("click", function(event){
                                         }
         
                                     } catch(err) {
-                                        console.log(err);
+                                        
                                     }
                                 }
                             })
@@ -7524,7 +7517,7 @@ $(".view-staffs").on("click", function(event){
                                     }
     
                                 } catch(err) {
-                                    console.log(err);
+                                    
                                 }
                             }
                         })
@@ -7682,7 +7675,7 @@ $(".settings").on("click", function(event){
                         $(".pop-up-window input[name='pbig']").val(res[0].pag_ibig_deduction);
 
                     } catch (err) {
-                        console.log(err);
+                        
                     }
                 }
             })
@@ -7722,7 +7715,7 @@ $(".settings").on("click", function(event){
                                 try {
                                     $(".must").remove();
                                 } catch(err){
-                                    console.log("");
+                                   
                                 }
 
                             } else {
@@ -7938,7 +7931,7 @@ $(".settings").on("click", function(event){
                                             deductions: formDataObject.deductions
 
                                         }, success: function(res){
-                                            //console.log(res);
+                                           
                                             try {
                                                 res = JSON.parse(res);
                                                 if (res.message == 'success') {
@@ -7959,7 +7952,7 @@ $(".settings").on("click", function(event){
                                                 }
 
                                             } catch(err) {
-                                                console.log(err);
+                                               
                                             }
                                         }
                                     })
@@ -8316,7 +8309,7 @@ $(".settings").on("click", function(event){
                                                         <option value="${res[i].id}|${res[i].name}">${res[i].name}</option>`;
                                                     }
                                                 } catch (err) {
-                                                    console.log(err);
+                                                   
                                                 }
 
                                                 document.body.insertAdjacentHTML("afterbegin", `
@@ -8663,7 +8656,7 @@ $(".settings").on("click", function(event){
                                                             }
                                                             
                                                         } catch(err) {
-                                                            console.log(err);
+                                                          
                                                         }
                                                     }
                                                 })
@@ -8970,7 +8963,7 @@ $(".edit-staff").click(function(event){
                         branch: selected_branch,
                         serial: emSerial
                     },success: function(res){
-                        console.log(res);
+                      
                         if (res == 'success') {
                             successNotification("Employee " + $("select#edit").val() + " changed.", "success");
                             $(".third-layer-overlay").remove();
@@ -8999,7 +8992,7 @@ $(".edit-staff").click(function(event){
                             emOps += `<option value="${res[i].serialnumber}">${res[i].name}</option>`;
                         }
                     } catch (err) {
-                        console.log(err);
+                       
                     }
                     document.getElementById("employee").insertAdjacentHTML("afterbegin", `${emOps}`);
                 }
@@ -9209,21 +9202,19 @@ $(".logs").click(function(event){
                     <p class="text-center text-white" style="font-size:20px;">Logs</p>
                     <br>
                     <hr>
-                    <div class="table-container" style="max-height:60vh;overflow:auto;max-width:80vw;min-width:30vw;">
+                    <div class="table-container" style="max-height:60vh;overflow:auto;max-width:80vw;min-width:40vw;">
                         <table>
                             <thead>
                                 <td>USER</td>
                                 <td>LOG</td>
                                 <td>BRANCH</td>
                                 <td>TIME</td>
-                               
                             </thead>
                             ${content}
                         </table>
                     </div>
                 </div>
             </div>`);
-
             $(".close-window").click(function(event){
                 $(".pop-up-window").remove();
             })
