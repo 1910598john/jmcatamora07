@@ -78,7 +78,6 @@ var deductions = {};
 var CLASSES = {};
 
 function onMessage(event) {
- 
     try {
         let data = JSON.parse(event.data);
         if (data.message == 'registered') {
@@ -88,7 +87,7 @@ function onMessage(event) {
             SERIAL_NUMBER = data.id;
             registeredBranch = data.uniqueID;
             $("input[type='submit']").prop("disabled", false).css({
-                "background" : "var(--teal)",
+                "background" : "var(--lg)",
                 "color" : "#fff !important"
             })
             successNotification("Fingerprint confirmed.", "success");
@@ -6677,10 +6676,13 @@ $(".add-staff").on("click", function(event){
                         <option value="${res[i].id}">${res[i].class_name}</option>
                     `;
                 }
-                
-                for (let i = 0; i < BRANCH.length; i++) {
-                    branch += `
-                    <option value="${res[i].machine_id}">${BRANCH[i].branch_name}</option>`;
+                try {
+                    for (let i = 0; i < BRANCH.length; i++) {
+                        branch += `
+                        <option value="${res[i].machine_id}">${BRANCH[i].branch_name}</option>`;
+                    }
+                } catch(err) {
+                    console.log(err);
                 }
                 
                 document.body.insertAdjacentHTML("afterbegin", `
@@ -6722,7 +6724,7 @@ $(".add-staff").on("click", function(event){
                                 <img src="../src/images/fid.png" style="height:200px;"/>
                             </div>
 
-                            <input disabled type="submit" onclick="addStaff()" value="Add Staff" style="background:var(--lg);"/>
+                            <input disabled type="submit" onclick="addStaff()" value="Add Staff"/>
                         </form>
                     </div>
                 </div>`);
@@ -8919,12 +8921,12 @@ $(".edit-staff").click(function(event){
                     <p class="text-white text-center" style="font-size:20px;">EDIT</p>
                     <hr>
                     <div style="display:flex;flex-direction:column;color:#fff;">
-                        <span>SELECT TO EDIT:</span>
+                        <span>Select to edit:</span>
                         <select id="edit">
                             <option value="branch">Branch</option>
                             <option value="class">Class</option>
                         </select>
-                        <span id="label">SELECT BRANCH</span>
+                        <span id="label">Select branch:</span>
                         <select id="name">
                             ${brOps}
                         </select>
@@ -8939,6 +8941,7 @@ $(".edit-staff").click(function(event){
             })
 
             $("select#edit").change(function(event){
+                $("#label").html("Select " + $(this).val());
                 $("select#name").html("");
                 if ($(this).val() == 'branch') {
                     document.getElementById("name").insertAdjacentHTML("afterbegin", `${brOps}`);

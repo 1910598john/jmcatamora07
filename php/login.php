@@ -37,7 +37,7 @@ if (isset($_POST['username']) && isset($_POST['password'])) {
       if ($row['username'] == $user_name && $decrypted_data == $pass) {
         $company_id = $row['company_id'];
         $isRegistered = true;
-        $name = $row['name'];
+        $name = $row['name'] . " (admin)";
       }
     }
   }
