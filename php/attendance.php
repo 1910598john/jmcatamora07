@@ -73,7 +73,7 @@ if (isset($_POST['serialnumber'], $_POST['name'], $_POST['pos'], $_POST['dept'],
       
       $endTimestamp;
       $startTimestamp;
-      if (isset($_POST['timeout'])) {
+      if (isset($_POST['timein'])) {
         $endTimestamp = strtotime($_POST['timeout']);
         $startTimestamp = strtotime($_POST['timein']);
       } else {

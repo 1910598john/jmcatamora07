@@ -655,7 +655,7 @@ $(document).ready(function() {
                     
                                                             $("input[type='time']").on("change", function(event){
                                                                 event.stopImmediatePropagation();
-                                                                // timeOut = date + ` ${$(this).val()}:00`;
+                                                                timeOut = date + ` ${$(this).val()}:00`;
                     
                                                                 // const startTimestamp = new Date(res).getTime();
                                                                 // const endTimestamp = new Date(timeOut).getTime();
@@ -695,8 +695,9 @@ $(document).ready(function() {
                                                                         timeout: timeOut,
                                                                         date: date,
                                                                         branch: branch
-                                                                    },success: function(res){
-                                                                        if (res == 'success') {
+                                                                    },success: function(res2){
+                                                                        console.log(res2);
+                                                                        if (res2 == 'success') {
                                                                             successNotification("Missed time out resolved.", "success");
                                                                             $(".third-layer-overlay").remove();
                                                                             $(`#notice-row${serialnumber}`).remove();
